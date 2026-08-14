@@ -1,0 +1,62 @@
+
+
+SECTIONS 0x00000000 ALIGN 32
+{
+	;if u want to modify the base address of section, you may pay attention to update_image.h
+    ROM_SYS  0x00000000
+    {
+        *bim_vectors.o(SYS_BOOT, +First)		
+        *bim_handlers.o(SYS_BOOT)
+    }
+	ROM + 0
+	{
+	 
+	 *.o(+RO)
+	 
+	}
+	
+	PEND_FOR_FLASH 0x00400000 EMPTY 0x20
+	{
+	}
+	
+    RAM_DATA  0x00400020 
+    {
+        *(+RW)
+    }
+    
+    RAM_BSS  +0 
+    {
+        *(+ZI)
+    } 
+	
+	
+	;for bim usb driver
+	ARM_LIB_HEAP  0x0040BFFC - 0x1F0 - 0x1F0 - 0x2F0 - 0x200  - 0X4000 - 0X4000 EMPTY 0x4000 ;
+	{	
+	}
+
+	
+	ARM_LIB_STACK 0x0040BFFC - 0x1F0 - 0x1F0 - 0x2F0 - 0x200  - 0X4000 EMPTY 0x4000 ;
+	{	
+	}
+	;end for bim usb driver
+	
+    RAM_STACK_UNUSED 0x0040BFFC - 0x1F0 - 0x1F0 - 0x2F0 - 0x200  EMPTY 0x200 ;
+    {
+    } 
+
+    RAM_STACK_SVC 0x0040BFFC - 0x1F0 - 0x1F0 - 0x2F0  EMPTY 0x2F0 ;0x00401a2c
+    {
+    } 
+
+    RAM_STACK_IRQ 0x0040BFFC - 0x1F0 - 0x1F0  EMPTY 0x1F0 ;
+    {
+    } 
+	
+	RAM_STACK_FIQ 0x0040BFFC - 0x1F0 EMPTY 0x1F0
+    {
+	
+    }
+}
+
+

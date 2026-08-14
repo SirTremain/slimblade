@@ -76,4 +76,6 @@ The descriptor probe also removes the earlier small-container concern: the recov
 - [Beken BK3635 product page](https://www.bekencorp.com/en/goods/detail/cid/46.html), retrieved 2026-08-14: 160 KiB flash, 32 KiB RAM, JTAG/SPI download, full-speed USB.
 - [Beken BK3633 BLE SDK](https://gitee.com/beken-corp/bk3633_ble_sdk), commit `0a461f8ed4a4f17ff6889d6f9d34e521b92b8243`, retrieved 2026-08-14. Relevant source SHA-256 values: image header `069f1d14ae189b33b1711c40c84d6f3055ab2ec4f7497daedaf30de7ce01f4d4`; GNU build flags `e3bf2d57861029a15be1bcb70c658a1be365f821de364be0a769cbc571bc6c99`; USB boot selection `c3c97da7b59d5ababf7ecb7ec773197c43d6dc092cfcf4aae6ff7174d397e735`.
 
-The SDK was inspected in temporary storage and is not committed here.
+The build-relevant SDK source is vendored under
+[`vendor/bk3633_sdk`](../vendor/bk3633_sdk/README.md). Compiled SDK reference
+artifacts were inspected in temporary storage and are not committed.

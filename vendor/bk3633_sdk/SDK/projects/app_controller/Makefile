@@ -1,0 +1,186 @@
+
+BUILD_DIR = build
+TARGET    = BK3633_CONTROLLER
+
+AR = arm-none-eabi-gcc-ar
+CC = arm-none-eabi-gcc
+
+CCFLAGS  = -Os -mcpu=arm968e-s -march=armv5te -mthumb -mthumb-interwork -ffunction-sections -fdata-sections
+CCFLAGS += -flto -fno-strict-aliasing -fgnu89-inline -ffast-math -fmessage-length=0
+CCFLAGS += -Wall
+CCFLAGS += -DCONFIG_AOS_CLI
+
+LKFLAGS  = -Os -mcpu=arm968e-s -mthumb -mthumb-interwork -flto -ffunction-sections -fdata-sections
+LKFLAGS += -nostartfiles
+
+CCFLAGS += -I../../src/ip/ble/ll/api \
+      -I../../src/ip/ble/ll/import/reg \
+      -I../../src/ip/ble/ll/src \
+      -I../../src/ip/bt/api \
+      -I../../src/ip/bt/import/reg \
+      -I../../src/ip/bt/src \
+      -I../../src/ip/em/api \
+      -I../../src/ip/hci/api \
+      -I../../src/ip/sch/api \
+      -I../../src/ip/sch/import \
+      -I../../src/modules/aes/api \
+      -I../../src/modules/common/api \
+      -I../../src/modules/dbg/api \
+      -I../../src/modules/ecc_p256/api \
+      -I../../src/modules/h4tl/api \
+      -I../../src/modules/ke/api \
+      -I../../src/plf/nvds/api \
+      -I../../src/driver/rf \
+      -I../../src/plf/rwip/api \
+      -I../../src/plf/rwip/import/reg \
+      -I../../src/plf/refip/import/reg \
+      -I../../src/plf/refip/src/arch \
+      -I../../src/plf/refip/src/arch/boot/rvds \
+      -I../../src/plf/refip/src/arch/compiler/armgcc \
+      -I../../src/plf/refip/src/arch/ll/armgcc \
+      -I../../src/driver/flash \
+      -I../../src/driver/led \
+      -I../../src/driver/reg \
+      -I../../src/driver/syscntl \
+      -I../../src/driver/timer \
+      -I../../src/driver/uart \
+      -I../../src/driver/uart2 \
+      -I../../src/header \
+      -I../../src/header/header_file \
+      -I../../src/plf/refip/src/driver \
+      -I../../src/ip/ble/hl/api \
+      -I../../src/ip/ble/hl/inc \
+      -I../../src/ip/ble/hl/src/gap/gapc \
+      -I../../src/ip/ble/hl/src/gap/gapm \
+      -I../../src/ip/ble/hl/src/gatt \
+      -I../../src/ip/ble/hl/src/gatt/attc \
+      -I../../src/ip/ble/hl/src/gatt/attm \
+      -I../../src/ip/ble/hl/src/gatt/atts \
+      -I../../src/ip/ble/hl/src/gatt/gattc \
+      -I../../src/ip/ble/hl/src/gatt/gattm \
+      -I../../src/ip/ble/hl/src/l2c/l2cc \
+      -I../../src/ip/ble/hl/src/l2c/l2cm \
+      -I../../src/app/api \
+      -I../../src/profiles/dis/diss/api \
+      -I../../src/profiles/fee0/api \
+      -I../../src/profiles/bas/bass/api \
+      -I../../src/profiles/fcc0_128/api \
+      -I../../src/driver/gpio \
+      -I../../src/driver/spi \
+      -I../../src/driver/icu \
+      -I../../src/driver/wdt \
+      -I../../src/driver/adc \
+      -I../../src/profiles/ancs/ancsc/api \
+      -I../../src/profiles/oad/api \
+      -I../../src/profiles/ancs/ancsc \
+      -I./config \
+      -I./app/api \
+	  -I./lib \
+      -I../../src/driver/uart2 \
+      -I../../src/driver/aon_rtc \
+      -I../../src/plf/prf \
+      -I../../src/driver/dma \
+      -I../../src/driver/intc
+      
+LKFLAGS += -L./lib	  
+LKFLAGS += -T./lnk/link_bim.lds
+LKFLAGS += --specs=nosys.specs
+LKLIBS  += -lc -lm -lbk3633_stack
+
+ASMS = app/src/startup_bim.S \
+	   app/src/handler_bim.S
+	   
+SRCS = app/src/main.c \
+       app/src/intc.c 
+SRC2 =	   
+SRC2 = src/driver/icu/icu.c \
+       src/driver/uart/uart.c \
+	   src/driver/uart2/uart2.c \
+       src/driver/flash/flash.c \
+       src/driver/rf/rf_xvr.c \
+       src/driver/wdt/wdt.c \
+	   src/driver/dma/dma.c \
+	   src/driver/spi/spi.c \
+	   src/driver/aon_rtc/aon_rtc.c \
+       src/driver/gpio/gpio.c \
+       src/driver/adc/adc.c \
+	   src/plf/rwip/src/rwbt.c \
+	   src/plf/rwip/src/rwble.c \
+	   src/plf/rwip/src/rwip.c 
+	   
+OBJS := $(SRCS:%.c=$(BUILD_DIR)/%.o)
+OBJS += $(SRC1:%.c=$(BUILD_DIR)/dd1/%.o)
+OBJS += $(SRC2:%.c=$(BUILD_DIR)/dd2/%.o)
+OBJS += $(ASMS:%.S=$(BUILD_DIR)/%.o)
+DEPS := $(OBJS:.o=.d)
+
+target: $(BUILD_DIR)/$(TARGET).elf $(BUILD_DIR)/$(TARGET).bin
+
+$(BUILD_DIR)/$(TARGET).elf : $(OBJS)
+	@echo Build target: $@
+	@$(CC) $(LKFLAGS) -o $@ $(OBJS) $(LKLIBS)
+	@echo 'Finished building target: $@'
+	@echo ' '
+
+%.bin : %.elf
+	@echo Build target: $@
+	@arm-none-eabi-objcopy -O binary $< $@
+	@arm-none-eabi-objdump -date     $<    > $(<:%.elf=%.dmp)
+	@arm-none-eabi-nm                $<    > $(<:%.elf=%.map)
+ifeq ($(OS),Windows_NT)
+	@arm-none-eabi-readelf.exe       $< -a > $(<:%.elf=%.txt)
+	@encrc -bc -o $(@:%.bin=%_crc.bin) $@
+	@cp -R ./build/BK3633_CONTROLLER.bin ./output
+	@./output/encrypt.exe  ./output/BK3633_CONTROLLER.bin 00000000
+else
+
+	@arm-none-eabi-readelf           $< -a > $(<:%.elf=%.txt)
+	@./BinConvert -crc  $@
+	@cp -R ./build/BK3633_CONTROLLER.bin ./output
+	@cp -R ./build/BK3633_CONTROLLER_crc.bin ./output
+endif
+
+	@echo 'Finished building target: $@'
+	@echo ' '
+
+clean:
+	@echo Clean project: $(TARGET)
+	@-rm -rf $(OBJS) $(DEPS) $(BUILD_DIR)/$(TARGET).elf $(BUILD_DIR)/$(TARGET).bin
+	-@echo ' '
+
+prev-build:
+	-@echo 'Pre-building'
+	-@rm -rf $(BUILD_DIR)/$(TARGET)*.*
+	-@echo ' '
+
+post-build:
+	-@echo 'Post-building'
+	-@echo ' '
+
+$(BUILD_DIR)/%.o : %.c
+	@echo Compiling $<
+	@mkdir -p $(dir $@)
+	@$(CC) -c $(CCFLAGS) -MMD -MP -MF$(@:%.o=%.d) -MT$(@) $< -o $@
+
+$(BUILD_DIR)/dd1/%.o : ../%.c
+	@echo Compiling $<
+	@mkdir -p $(dir $@)
+	@$(CC) -c $(CCFLAGS) -MMD -MP -MF$(@:%.o=%.d) -MT$(@) $< -o $@
+
+$(BUILD_DIR)/dd2/%.o : ../../%.c
+	@echo Compiling $<
+	@mkdir -p $(dir $@)
+	@$(CC) -c $(CCFLAGS) -MMD -MP -MF$(@:%.o=%.d) -MT$(@) $< -o $@
+
+$(BUILD_DIR)/%.o : %.S
+	@echo Compiling $<
+	@mkdir -p $(dir $@)
+	@$(CC) -c $(CCFLAGS) -MMD -MP -MF$(@:%.o=%.d) -MT$(@) $< -o $@
+
+ifneq ($(MAKECMDGOALS),clean)
+ifneq ($(strip $(DEPS)),)
+-include $(DEPS)
+endif
+endif
+
+.PHONY : all clean pre-build post-build

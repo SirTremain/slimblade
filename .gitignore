@@ -1,2 +1,16 @@
 **__pycache__**
 images
+
+# Generated products from the vendored Beken SDK.
+vendor/bk3633_sdk/SDK/**/build/
+vendor/bk3633_sdk/SDK/**/output/
+vendor/bk3633_sdk/SDK/**/Listings/
+vendor/bk3633_sdk/SDK/**/lst/
+vendor/bk3633_sdk/SDK/**/*.uvgui.*
+vendor/bk3633_sdk/SDK/**/*.[oad]
+vendor/bk3633_sdk/SDK/**/*.elf
+vendor/bk3633_sdk/SDK/**/*.bin
+vendor/bk3633_sdk/SDK/**/*.map
+vendor/bk3633_sdk/SDK/**/*.out
+vendor/bk3633_sdk/SDK/**/*.dmp
+vendor/bk3633_sdk/SDK/**/*.lib
