@@ -13,6 +13,7 @@ Compact notes on the Kensington SlimBlade Pro sensor and firmware interface.
 - [Vendored BK3633 SDK](vendor/bk3633_sdk/README.md)
 - [BK3635 wired port starting point](vendor/bk3633_sdk/SDK/projects/slimblade_wired/README.md)
 - [Development tooling](docs/development-tooling.md)
+- [Rust migration plan](docs/rust-migration-plan.md)
 - [Board observations](docs/board-observations.md)
 
 Linux development support:
