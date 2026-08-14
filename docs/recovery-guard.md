@@ -49,6 +49,30 @@ This proves the persistent marker is committed before the experimental entry
 and is honored during a true cold boot. It also proves recovery can restore a
 working application after that experimental entry hangs.
 
+## Experimental-code invariant
+
+During development, experimental code must never clear or write persistent
+storage. Sensor, button, and USB work does not require it. The audited prefix is
+the only application code that writes the loader marker; the resident loader is
+the only component expected to change recovery state while installing another
+image.
+
+Every flash candidate must pass preflight that:
+
+- preserves the live-proven marker prefix byte-for-byte;
+- confines experimental code and direct calls to its audited code range;
+- rejects persistent-controller literals in `0x00803000–0x008030ff` and known
+  storage word addresses `0x8000`, `0x807c`, and `0x807d`;
+- rejects indirect `BLX` calls and software interrupts unless a later audit
+  explicitly introduces and verifies them;
+- confirms erased padding, application CRC, payload hash, and the complete
+  expected difference set.
+
+These static checks reduce accidental access; they cannot prove arbitrary
+native code safe from every corrupt-pointer write. Early experiments must not
+vendor or link nonvolatile-storage drivers. A compiled experiment will also
+require its ELF symbols and call graph to be checked before flashing.
+
 ## Remaining risks
 
 - Failure before the marker completes would still prevent automatic loader

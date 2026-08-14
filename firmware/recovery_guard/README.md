@@ -13,3 +13,7 @@ The 2026-08-14 hardware test produced the intended USB silence. A complete USB
 power cycle with the battery disconnected then entered the resident loader,
 which answered `B2/d2` and successfully restored the proven v4.53 image. See
 [`../../docs/recovery-guard.md`](../../docs/recovery-guard.md).
+
+`make preflight` also applies conservative storage-isolation checks to the
+post-marker experimental range. Future experiments must keep these checks and
+must not link persistent-storage drivers.

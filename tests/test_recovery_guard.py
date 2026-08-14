@@ -82,7 +82,35 @@ class RecoveryGuardTests(unittest.TestCase):
             bytes.fromhex("00f085f8"),
         )
 
+    def test_storage_isolation_rejects_controller_literal(self) -> None:
+        image = b"\x00" * 8 + (0x00803000).to_bytes(4, "little")
+        with self.assertRaisesRegex(
+            verifier.VerificationError, "persistent-storage"
+        ):
+            verifier.verify_experiment_storage_isolation(image, 8, 12)
+
+    def test_storage_isolation_rejects_marker_word_address(self) -> None:
+        image = b"\x00" * 8 + (0x0000807C).to_bytes(4, "little")
+        with self.assertRaisesRegex(
+            verifier.VerificationError, "persistent-storage"
+        ):
+            verifier.verify_experiment_storage_isolation(image, 8, 12)
+
+    def test_storage_isolation_rejects_call_into_guard_prefix(self) -> None:
+        start = 0x100
+        image = bytearray(b"\x00" * 0x108)
+        image[start : start + 4] = maker.thumb_bl(start, 0x80)
+        with self.assertRaisesRegex(verifier.VerificationError, "calls outside"):
+            verifier.verify_experiment_storage_isolation(image, start, start + 4)
+
+    def test_storage_isolation_accepts_current_self_loop(self) -> None:
+        image = b"\x00" * maker.EXPERIMENT_ENTRY + maker.EXPERIMENT_CODE
+        report = verifier.verify_experiment_storage_isolation(
+            image, maker.EXPERIMENT_ENTRY, maker.GUARD_CODE_END
+        )
+        self.assertEqual(report["persistent_address_literals"], 0)
+        self.assertEqual(report["out_of_range_direct_calls"], 0)
+
 
 if __name__ == "__main__":
     unittest.main()
-

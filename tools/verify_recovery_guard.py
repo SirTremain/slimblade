@@ -47,6 +47,9 @@ EXPECTED_DIFFERENCES = [
     0x21C4,
     0x21C5,
 ]
+PERSISTENT_CONTROLLER_START = 0x00803000
+PERSISTENT_CONTROLLER_END = 0x00803100
+PERSISTENT_WORD_ADDRESSES = {0x00008000, 0x0000807C, 0x0000807D}
 
 
 class VerificationError(ValueError):
@@ -71,6 +74,60 @@ def _thumb_bl_target(image: bytes, address: int) -> int:
     if delta & (1 << 22):
         delta -= 1 << 23
     return address + 4 + delta
+
+
+def verify_experiment_storage_isolation(
+    image: bytes, start: int, end: int
+) -> dict[str, object]:
+    """Apply conservative static checks to the post-marker experiment."""
+    _require(0 <= start < end <= len(image), "experimental range is invalid")
+    experiment = image[start:end]
+
+    forbidden_literals: list[tuple[int, int]] = []
+    for offset in range(0, max(0, len(experiment) - 3)):
+        value = struct.unpack_from("<I", experiment, offset)[0]
+        if (
+            PERSISTENT_CONTROLLER_START <= value < PERSISTENT_CONTROLLER_END
+            or value in PERSISTENT_WORD_ADDRESSES
+        ):
+            forbidden_literals.append((start + offset, value))
+    _require(
+        not forbidden_literals,
+        "experiment contains a persistent-storage controller/word address",
+    )
+
+    direct_targets: list[int] = []
+    for address in range(start, end - 3, 2):
+        high, low = struct.unpack_from("<HH", image, address)
+        if high & 0xF800 == 0xF000 and low & 0xF800 == 0xF800:
+            target = _thumb_bl_target(image, address)
+            direct_targets.append(target)
+            _require(
+                start <= target < end,
+                f"experiment calls outside its isolated range: {target:#x}",
+            )
+
+    halfwords = [
+        struct.unpack_from("<H", experiment, offset)[0]
+        for offset in range(0, len(experiment) - 1, 2)
+    ]
+    _require(
+        not any(opcode & 0xFF87 == 0x4780 for opcode in halfwords),
+        "experiment contains an indirect Thumb BLX",
+    )
+    _require(
+        not any(opcode & 0xFF00 == 0xDF00 for opcode in halfwords),
+        "experiment contains a Thumb software interrupt",
+    )
+    return {
+        "range": f"0x{start:x}-0x{end:x}",
+        "bytes": len(experiment),
+        "persistent_address_literals": 0,
+        "out_of_range_direct_calls": 0,
+        "indirect_blx": 0,
+        "software_interrupts": 0,
+        "direct_call_targets": [f"0x{target:x}" for target in direct_targets],
+    }
 
 
 def verify_recovery_guard_data(
@@ -112,6 +169,9 @@ def verify_recovery_guard_data(
         guard[EXPERIMENT_ENTRY:GUARD_CODE_END] == EXPERIMENT_CODE,
         "experimental hang instruction changed",
     )
+    experiment_isolation = verify_experiment_storage_isolation(
+        guard, EXPERIMENT_ENTRY, GUARD_CODE_END
+    )
     _require(
         guard[GUARD_CODE_END:] == b"\xff" * (len(guard) - GUARD_CODE_END),
         "bytes after guard code are not erased padding",
@@ -144,6 +204,7 @@ def verify_recovery_guard_data(
         "live_stub_final_target": "0x20fc",
         "guard_experiment_entry": f"0x{EXPERIMENT_ENTRY:x}",
         "fallback_invariant": "loader marker completes before experimental entry",
+        "experiment_storage_isolation": experiment_isolation,
         "experiment": "deliberate Thumb self-loop; power cycle should enter loader",
     }
 
