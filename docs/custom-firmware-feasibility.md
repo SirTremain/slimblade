@@ -77,10 +77,12 @@ Read-out protection may prevent making a complete backup. It does not by itself 
 
 1. The stock-derived USB `bcdDevice 4.50` acceptance probe passed.
 2. The exact [stock recovery carrier](recovery-carrier.md) passed its direct read, watchdog reset, full marker/recovery, loader query, and complete reflash tests.
-3. The minimal stub passes offline stock/disassembly and corruption tests, and its critical MMIO recovery path is now independently proven on hardware by the carrier.
+3. The minimal stub passes offline stock/disassembly and corruption tests, and its critical MMIO recovery path is independently proven on hardware by the carrier.
 4. The [reset trampoline](reset-trampoline.md) booted successfully as version `4.52`, proving custom ARM code at reset while retaining the stock application and all carrier recovery commands.
-5. Preserve the first 8 KiB boot region in every USB update.
-6. Keep pad mapping/JTAG/SPI recovery as a separate hardware fallback investigation.
+5. The [startup trampoline](startup-trampoline.md) booted successfully as version `4.53`, proving the supervisor-mode, stack, and ARM/Thumb transition path.
+6. The exact 420-byte standalone recovery stub booted, wrote the marker, reset into a new resident-loader enumeration, answered `B2 d2`, and was replaced successfully with v4.53.
+7. Preserve the first 8 KiB boot region in every USB update.
+8. Keep pad mapping/JTAG/SPI recovery as a separate hardware fallback investigation.
 
 ## Rotatrix fallback distinction
 

@@ -79,24 +79,31 @@ The carrier, [reset trampoline](reset-trampoline.md), and
 [startup trampoline](startup-trampoline.md) gates are complete. Together they
 live-prove the direct recovery MMIO sequence, earliest reset hook,
 supervisor-mode switch, standalone stack, and ARM/Thumb transitions. Only their
-composition as the 420-byte standalone image remains untested.
+composition as the 420-byte standalone image was the final test gate.
 
-## Readiness assessment
+## Live standalone result
 
-Offline audit is complete for the existing 420-byte candidate. Modified-image
-acceptance and transfer geometry are live-proven by v4.50, recovery MMIO and
-complete restore by v4.51, earliest reset entry by v4.52, and
-CPU-mode/stack/interworking behavior by v4.53. The final image also has a
-decoded, fixed internal call graph and reproducible hashes.
+On 2026-08-14 the exact 420-byte candidate was flashed from resident loader
+device number 42. The loader accepted erase, echoed all 3,748 payload blocks,
+and accepted payload CRC `6e473ed7`. The standalone application then executed
+and the same physical USB port returned as a new `25a7:fabe` loader instance,
+device number 43. Its non-writing `B2` response identified BK3635 type `d2`.
 
-The planned standalone attempt stopped safely after the normal application
-entered loader `25a7:fabe` and answered `B2` as BK3635 type `d2`. Inspection
-showed that the preceding application was still v4.52, so no `B0` erase or
-firmware data was sent. The v4.53 startup gate was then flashed separately and
-returned successfully as `047d:80d7`, `bcdDevice 0453`. No standalone
-recovery-stub flash has yet been performed.
+This proves the complete source-built vector, reset, ARM-to-Thumb entry,
+storage erase and marker writes, stock-equivalent delay, and watchdog-reset path
+executed together and entered the resident loader. It is the first standalone
+replacement application in this investigation.
 
-The guarded host command now accepts only the exact container and payload hashes above. After the final block, it requires a *new* known loader enumeration on the same physical USB path, with disappearance or a changed USB device number; the pre-flash loader instance cannot satisfy the result check. The intended live sequence uses `/dev/slimblade-vendor` to enter the loader, validates `/dev/slimblade-loader`, flashes the one-shot stub, queries the returned loader, and restores the proven reset-trampoline image. No standalone stub has been sent to hardware.
+The returned loader then accepted restoration of the exact v4.53 startup
+trampoline: all 3,748 blocks echoed and payload CRC `4e9c5e53` passed. The same
+port returned as `047d:80d7`, `bcdDevice 0453`, device number 45, with its
+170-byte vendor HID descriptor and stable symlink. User confirmation of normal
+movement, buttons, and scrolling after restoration remains pending.
+
+The guarded host command accepts only the exact container and payload hashes
+above. After the final block, it requires a *new* known loader enumeration on
+the same physical USB path, with disappearance or a changed USB device number;
+the pre-flash loader instance cannot satisfy the result check.
 
 ## Lowest-risk acceptance probe
 

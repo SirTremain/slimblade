@@ -6,9 +6,10 @@ The register sequence is derived from exact stock application disassembly and
 is checked by a hash-locked offline verifier. The same MMIO sequence passed on
 hardware inside the stock recovery carrier. The standalone startup operations
 normalize to the startup trampoline that subsequently ran successfully on the
-BK3635. Three clean builds were byte-identical. These pieces have not yet run
-together as this standalone image, so the generated file remains intentionally named
-`DO_NOT_FLASH-recovery-stub.container.bin` and still requires a separate
-explicit flash decision.
+BK3635. Three clean builds were byte-identical. The exact standalone image then
+ran successfully, wrote the loader marker, reset, and returned as a new
+`25a7:fabe` loader that answered BK3635 type `d2`. The generated file retains
+its `DO_NOT_FLASH` name because another hardware write still requires a separate
+explicit decision.
 
 Build with `make`. Run `make preflight` while the exact official v4.49 extraction is present at `/tmp/slimblade-v449.bin`. Generated files remain under ignored `build/`.
