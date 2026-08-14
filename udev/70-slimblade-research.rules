@@ -1,0 +1,7 @@
+# Kensington SlimBlade Pro normal wired application.
+ACTION=="add", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="047d", ATTRS{idProduct}=="80d7", MODE:="0666"
+
+# BK3635 USB loader identities recognized by Kensington's updater.
+ACTION=="add", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="25a7", ATTRS{idProduct}=="fabe", MODE:="0666"
+ACTION=="add", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="3554", ATTRS{idProduct}=="f600", MODE:="0666"
+ACTION=="add", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="3554", ATTRS{idProduct}=="f800", MODE:="0666"

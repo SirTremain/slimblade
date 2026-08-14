@@ -6,11 +6,11 @@ Last checked: 2026-08-14
 
 | Gate | Current result | Confidence |
 | --- | --- | --- |
-| Can a custom image be delivered? | **Probably.** No hard blocker has been found. | Medium |
-| Can a broken application be recovered? | **Probably by hardware, but not yet demonstrated.** | Medium-low |
-| Flash the only available device? | **No-go until recovery is demonstrated on spare hardware.** | High |
+| Can a custom image be delivered? | **Yes.** A modified, correctly checksummed stock-derived image was accepted and booted. | High |
+| Can an interrupted official update be recovered over USB? | **Yes, while the resident loader remains active.** | High |
+| Does a cold boot with an invalid application force the USB loader? | **Unknown.** | Low |
 
-Firmware analysis is still worthwhile: the update path does not presently look cryptographically locked. Flashing the user's only unit is not justified yet because the recovery path lacks an exact pin map and a tested programmer procedure.
+Firmware analysis is still worthwhile: the update path is not cryptographically locked. Official USB recovery has been demonstrated after application erase, and the minimal recovery candidate now passes hash-locked offline checks. Its direct MMIO recovery path has not yet run on hardware.
 
 ## Required scope
 
@@ -34,17 +34,28 @@ The official USB update does **not appear to modify the bootloader**:
 
 This is high-confidence evidence that ordinary application updates preserve the first 8 KiB. It does not prove that this region is immutable ROM: a low-level JTAG/SPI operation might still alter it. A custom uploader should retain the same lower address boundary.
 
-The embedded loader code makes further offline analysis possible and gives a known vendor loader image for low-level recovery. It does **not yet prove** that a unit with an invalid application will automatically enumerate that loader over USB; that behavior remains the decisive closed-case recovery question.
+The embedded loader code makes further offline analysis possible and gives a known vendor loader image for low-level recovery. The live test proves that an already-running loader survives an interrupted application erase and can accept a fresh update. It does **not yet prove** that a cold boot with an invalid application automatically enters that loader.
+
+## Live loader-entry result
+
+A read-only/transition test has now proved that the normal application accepts the official reset-to-update packet and enumerates the resident loader as `25A7:FABE`. The loader remains reachable with the battery disconnected and USB as its only power source. It periodically re-enumerates while idle.
+
+No non-writing exit command was found: loader command `0x0d`, a cable reconnect, and a complete battery-plus-USB power removal all returned to loader mode. Static analysis shows only `B0` (prepare), `B1` (data), and `B2` (identify) in its command dispatcher; the normal application launch follows successful final-block validation.
+
+The official recovery cycle is now demonstrated. A first host attempt stopped after erase began and before sending any `B1` block. The loader stayed reachable. A corrected attempt resent `B0`, wrote and verified all 3,748 blocks of the exact v4.49 payload, and returned the device to normal `047D:80D7`, firmware `4.49`. The user confirmed normal ball, scroll, and button operation. The battery remained disconnected throughout.
 
 ## Evidence for custom images
 
 - The official updater sends a raw 119,920-byte executable payload to address `0x2000`.
-- Its prepare command supplies payload length and CRC-32, followed by address/data packets with simple checksums.
+- Its prepare command supplies payload length and CRC-32, followed by 32-byte address/data packets that the loader echoes for host verification.
 - The host calculates the CRC from the supplied payload; it does not compare the image against a fixed v4.49 hash.
 - No signature or public-key material appears in the host protocol. The 4.48 and 4.49 images differ at only 26 byte positions, which is inconsistent with an ordinary large digital-signature block.
-- Two changing four-byte header fields are still unidentified. Device-side authentication or another checksum cannot yet be ruled out.
+- Both changing header fields are now identified and reproduced as Beken image CRC-32 values.
+- Loader disassembly shows `B0` erasing the application region, `B1` enforcing address bounds and read-back, and the final block checking the host-supplied payload CRC. No image-signature comparison appears in this loop.
 
 This means creating and transmitting a replacement image looks feasible. Reproducing hardware initialization and the Bluetooth/2.4 GHz stacks may be much harder than bypassing the updater.
+
+The acceptance question is now live-proven: a descriptor-only modification booted and reported `bcdDevice 4.50`. It retained the stock command-`0x0d` recovery path, and the user confirmed normal ball movement, buttons, and scrolling.
 
 ## Evidence for recovery
 
@@ -57,14 +68,13 @@ This means creating and transmitting a replacement image looks feasible. Reprodu
 
 Read-out protection may prevent making a complete backup. It does not by itself prove that erase and reprogramming are blocked, but the exact protection state of this product is unknown.
 
-## Recovery proof required before flashing
+## Staged recovery work
 
-1. Confirm the programming-pad mapping without writing flash.
-2. Establish communication through the pads and identify the required voltage and programmer.
-3. Prove that a blank or deliberately broken application can be erased, programmed, and verified without altering the first 8 KiB.
-4. Preserve the first 8 KiB boot region unless a complete known-good image and full-chip recovery method exist.
-
-No device has been flashed or electrically probed during this research.
+1. The stock-derived USB `bcdDevice 4.50` acceptance probe passed.
+2. The exact [stock recovery carrier](recovery-carrier.md) passed its direct read, watchdog reset, full marker/recovery, loader query, and complete reflash tests.
+3. The minimal stub passes offline stock/disassembly and corruption tests, and its critical MMIO recovery path is now independently proven on hardware by the carrier.
+4. Preserve the first 8 KiB boot region in every USB update.
+5. Keep pad mapping/JTAG/SPI recovery as a separate hardware fallback investigation.
 
 ## Rotatrix fallback distinction
 

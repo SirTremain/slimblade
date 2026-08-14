@@ -35,12 +35,18 @@ Official package URLs:
 - Physical inspection of the research device confirmed package marking `BK3635UQN56A`, with secondary marking `AU334KX`. Beken documents the BK3635 QFN56 variant as a 7 x 7 mm, 56-pin package; no authoritative decoding of the extra suffix or secondary traceability code has been found.
 - Both inspected versions use the same 128,112-byte resource size, but the contents and hashes differ.
 - `SetFileDownloadAddr(8192)` removes the image prefix. Data packets carry 32 bytes each and add base address `0x2000` to the packet offset.
-- The prepare packet contains the payload length and a CRC-32 using polynomial `0xEDB88320`; packet framing also uses a simple byte checksum.
+- The prepare packet contains the payload length and a reflected CRC-32 using polynomial `0xEDB88320`, initial value `0xffffffff`, and no final XOR. The v4.49 payload CRC is `dd0fe246`.
 - The updater calculates that CRC from the selected payload rather than comparing it with a hard-coded v4.49 hash.
 - The image contains unencrypted executable code and readable USB descriptors. Versions 4.48 and 4.49 differ at only 26 byte positions.
-- No public-key signature or signature field was found in the updater protocol. Two changing four-byte header values remain unexplained, so acceptance of an altered image is not yet proven.
+- No public-key signature or signature field was found in the updater protocol. The two changing four-byte header values are reflected CRC-32 values for the combined and application image regions; both reproduce exactly for v4.48 and v4.49.
 - The running application receives a HID command that resets it into update mode. It is not yet known whether a corrupt application can enter that mode by reset or pin strapping alone.
 - The updater distinguishes a normal device from a boot device. For this BK3635 mouse class it recognizes boot HID paths containing `25A7:FABE`, `3554:F600`, or `3554:F800`; the normal SlimBlade application uses Kensington `047D:80D7`. If a hardware entry method is found, this VID/PID change provides a direct confirmation that it worked.
+- A live, non-flashing test sent the updater's normal-mode report `08 0d 00 00 00 00 00 00 00 00 00 00 00 00 00 00 40`. The device immediately changed from `047D:80D7` to loader identity `25A7:FABE`, proving closed-case software entry.
+- In loader mode, command `0x0d` resets back into the loader rather than launching the application. Disconnecting USB, disconnecting the battery, waiting, and reconnecting on USB power also returned to `25A7:FABE`. The loader re-enumerates approximately every eight seconds while idle.
+- The device enumerates and powers its loader from USB with the battery physically disconnected.
+- An interrupted recovery test stopped after the loader reported that application erase had started and before any `B1` data block was sent. The loader remained available as `25A7:FABE`.
+- The reproduced Linux host then sent the exact official v4.49 payload in 3,748 address/data blocks. Every `B1` block was echoed byte-for-byte, final validation succeeded, and the device returned to `047D:80D7` with `bcdDevice 4.49`. Linux registered its normal mouse and secondary HID interfaces, and the user confirmed normal ball, scroll, and button operation. This was performed on USB power with the battery disconnected.
+- A stock-derived probe changed only USB `bcdDevice` from 4.49 to 4.50 and regenerated both image CRCs. The loader accepted its modified 119,920-byte payload, echoed all 3,748 blocks, passed final CRC validation, and launched `047D:80D7` with `bcdDevice 4.50`. The user confirmed normal ball movement, buttons, and scrolling. This directly proves that correctly checksummed custom images are not blocked by signature enforcement.
 
 ## Evidence and open work
 
@@ -50,8 +56,5 @@ Official package URLs:
 
 Next useful checks:
 
-1. Enter the official loader without writing and confirm its USB VID/PID and exit behavior.
-2. Determine from loader analysis whether an absent or invalid application automatically leaves USB recovery available.
-3. Identify the two changing four-byte header values and any device-side image validation.
-4. Reproduce the host protocol and compile a minimal application for address `0x2000`.
-5. Test image acceptance only after a satisfactory closed-case or pad-based recovery path has been demonstrated.
+1. Test the stock-hosted staged MMIO carrier before considering the standalone recovery stub.
+2. Determine whether an absent or invalid application enters USB recovery from a cold power-on.
