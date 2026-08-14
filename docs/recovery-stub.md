@@ -97,8 +97,8 @@ replacement application in this investigation.
 The returned loader then accepted restoration of the exact v4.53 startup
 trampoline: all 3,748 blocks echoed and payload CRC `4e9c5e53` passed. The same
 port returned as `047d:80d7`, `bcdDevice 0453`, device number 45, with its
-170-byte vendor HID descriptor and stable symlink. User confirmation of normal
-movement, buttons, and scrolling after restoration remains pending.
+170-byte vendor HID descriptor and stable symlink. The user subsequently
+confirmed normal ball movement, scrolling, and button operation.
 
 The guarded host command accepts only the exact container and payload hashes
 above. After the final block, it requires a *new* known loader enumeration on

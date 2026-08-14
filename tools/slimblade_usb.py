@@ -83,6 +83,15 @@ STARTUP_TRAMPOLINE_PAYLOAD_SHA256 = (
 )
 STARTUP_TRAMPOLINE_PAYLOAD_CRC = 0x4E9C5E53
 STARTUP_TRAMPOLINE_BCD_DEVICE = "0453"
+RECOVERY_GUARD_SIZE = 128_112
+RECOVERY_GUARD_SHA256 = (
+    "7bb3055bc1575bcb9ca4eab9ba2a83a3dbaba131e92cca78fffb18397cc2d19a"
+)
+RECOVERY_GUARD_PAYLOAD_SIZE = 119_920
+RECOVERY_GUARD_PAYLOAD_SHA256 = (
+    "3c11672dca070a246202b70b743456b4b5bb32b157d2e305e2f032499e36823c"
+)
+RECOVERY_GUARD_PAYLOAD_CRC = 0x2B64F82E
 BOOT_REPORT_LENGTH = 49
 BOOT_REPORT_ID = 0x06
 NORMAL_REPORT_LENGTH = 17
@@ -272,6 +281,26 @@ def load_startup_trampoline(path: Path) -> bytes:
         or payload_crc != STARTUP_TRAMPOLINE_PAYLOAD_CRC
     ):
         raise ValueError("stock startup-trampoline payload validation failed")
+    return payload
+
+
+def load_recovery_guard(path: Path) -> bytes:
+    image = path.read_bytes()
+    digest = hashlib.sha256(image).hexdigest()
+    if len(image) != RECOVERY_GUARD_SIZE or digest != RECOVERY_GUARD_SHA256:
+        raise ValueError(
+            "firmware is not the recorded marker-first guard hang probe: "
+            f"size={len(image)}, sha256={digest}"
+        )
+    payload = image[OFFICIAL_V449_PAYLOAD_OFFSET:]
+    payload_digest = hashlib.sha256(payload).hexdigest()
+    payload_crc = updater_crc32(payload)
+    if (
+        len(payload) != RECOVERY_GUARD_PAYLOAD_SIZE
+        or payload_digest != RECOVERY_GUARD_PAYLOAD_SHA256
+        or payload_crc != RECOVERY_GUARD_PAYLOAD_CRC
+    ):
+        raise ValueError("marker-first guard payload validation failed")
     return payload
 
 
@@ -582,6 +611,30 @@ def wait_for_boot_reenumeration(
     return None
 
 
+def observe_expected_usb_silence(
+    previous: dict[str, str | int], timeout: float
+) -> bool:
+    """Require the pre-flash loader to disappear and no USB device to replace it."""
+    previous_path = previous["sysfs"]
+    saw_absence = False
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        same_path = next(
+            (
+                device
+                for device in sysfs_usb_identities()
+                if device["sysfs"] == previous_path
+            ),
+            None,
+        )
+        if same_path is None:
+            saw_absence = True
+        elif saw_absence:
+            return False
+        time.sleep(0.05)
+    return saw_absence
+
+
 def enter_loader(device: Path, timeout: float) -> int:
     details = identity_dict(device)
     identity = details["identity"]
@@ -711,7 +764,10 @@ def flash_application_payload(
     operation: str,
     expected_bcd_device: str,
     expect_loader_after_flash: bool = False,
+    expect_usb_silence_after_flash: bool = False,
 ) -> int:
+    if expect_loader_after_flash and expect_usb_silence_after_flash:
+        raise ValueError("post-flash expectations are mutually exclusive")
     try:
         (
             selected_device,
@@ -806,7 +862,15 @@ def flash_application_payload(
 
         # The loader validates the whole-image CRC after the final C1 packet and
         # then resets into the application. A final 5A/A5 status can arrive first.
-        print("final block echoed; waiting for application USB identity", flush=True)
+        if expect_usb_silence_after_flash:
+            print(
+                "final block echoed; observing expected application USB silence",
+                flush=True,
+            )
+        elif expect_loader_after_flash:
+            print("final block echoed; waiting for resident loader", flush=True)
+        else:
+            print("final block echoed; waiting for application USB identity", flush=True)
     except (OSError, RuntimeError) as error:
         print(f"{operation} failed: {error}", file=sys.stderr, flush=True)
         return 3
@@ -824,6 +888,30 @@ def flash_application_payload(
             )
             return 4
         print(json.dumps({"boot_device": boot_device}, sort_keys=True), flush=True)
+        return 0
+
+    if expect_usb_silence_after_flash:
+        observation_seconds = max(timeout, 5.0)
+        if not observe_expected_usb_silence(
+            boot_usb_identity, observation_seconds
+        ):
+            print(
+                "guard data completed, but the old loader did not disappear and "
+                "remain USB-silent",
+                file=sys.stderr,
+            )
+            return 4
+        print(
+            json.dumps(
+                {
+                    "expected_usb_silence": True,
+                    "observation_seconds": observation_seconds,
+                    "physical_power_cycle_required": True,
+                },
+                sort_keys=True,
+            ),
+            flush=True,
+        )
         return 0
 
     expected = (KENSINGTON_VENDOR_ID, SLIMBLADE_PRO_WIRED_PRODUCT_ID)
@@ -941,6 +1029,23 @@ def flash_startup_trampoline(device: Path, firmware: Path, timeout: float) -> in
         STARTUP_TRAMPOLINE_SHA256,
         "stock startup-trampoline flash",
         STARTUP_TRAMPOLINE_BCD_DEVICE,
+    )
+
+
+def flash_recovery_guard(device: Path, firmware: Path, timeout: float) -> int:
+    try:
+        payload = load_recovery_guard(firmware)
+    except (OSError, ValueError) as error:
+        print(f"refusing marker-first guard flash: {error}", file=sys.stderr)
+        return 2
+    return flash_application_payload(
+        device,
+        payload,
+        timeout,
+        RECOVERY_GUARD_SHA256,
+        "marker-first recovery-guard hang-probe flash",
+        "",
+        expect_usb_silence_after_flash=True,
     )
 
 
@@ -1129,6 +1234,17 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="SHA256",
         help="must exactly match the recorded startup-trampoline image hash",
     )
+    guard = subparsers.add_parser(
+        "flash-recovery-guard-hang-probe",
+        help="write the exact marker-first guard and require intentional USB silence",
+    )
+    guard.add_argument("--firmware", type=Path, required=True)
+    guard.add_argument("--timeout", type=float, default=3.0)
+    guard.add_argument(
+        "--confirm-sha256",
+        metavar="SHA256",
+        help="must exactly match the recorded marker-first guard image hash",
+    )
     carrier_read = subparsers.add_parser(
         "carrier-read-probe",
         help="send carrier command 0x0e and require its checksummed reply",
@@ -1242,6 +1358,15 @@ def main() -> int:
             )
             return 2
         return flash_startup_trampoline(args.device, args.firmware, args.timeout)
+    if args.command == "flash-recovery-guard-hang-probe":
+        if args.confirm_sha256 != RECOVERY_GUARD_SHA256:
+            print(
+                "refusing marker-first guard flash without the exact "
+                "--confirm-sha256 value",
+                file=sys.stderr,
+            )
+            return 2
+        return flash_recovery_guard(args.device, args.firmware, args.timeout)
     if args.command == "carrier-read-probe":
         if not args.confirm:
             print("refusing carrier read probe without --confirm", file=sys.stderr)

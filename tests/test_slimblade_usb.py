@@ -249,6 +249,41 @@ class PacketTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "not the recorded"):
                 slimblade_usb.load_startup_trampoline(path)
 
+    def test_recovery_guard_payload_constants(self) -> None:
+        image = (
+            MODULE_PATH.parents[1]
+            / "firmware"
+            / "recovery_guard"
+            / "build"
+            / "DO_NOT_FLASH-marker-first-guard-hang-probe.container.bin"
+        )
+        if not image.exists():
+            self.skipTest("recovery guard has not been built")
+        payload = slimblade_usb.load_recovery_guard(image)
+        self.assertEqual(len(payload), slimblade_usb.RECOVERY_GUARD_PAYLOAD_SIZE)
+        self.assertEqual(
+            slimblade_usb.updater_crc32(payload),
+            slimblade_usb.RECOVERY_GUARD_PAYLOAD_CRC,
+        )
+
+    def test_recovery_guard_rejects_one_byte_corruption(self) -> None:
+        image = (
+            MODULE_PATH.parents[1]
+            / "firmware"
+            / "recovery_guard"
+            / "build"
+            / "DO_NOT_FLASH-marker-first-guard-hang-probe.container.bin"
+        )
+        if not image.exists():
+            self.skipTest("recovery guard has not been built")
+        corrupted = bytearray(image.read_bytes())
+        corrupted[0x21C4] ^= 1
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "corrupted.bin"
+            path.write_bytes(corrupted)
+            with self.assertRaisesRegex(ValueError, "not the recorded"):
+                slimblade_usb.load_recovery_guard(path)
+
 
 class CarrierGuardTests(unittest.TestCase):
     def test_read_probe_accepts_only_valid_checksummed_command_reply(self) -> None:
@@ -378,6 +413,21 @@ class CarrierGuardTests(unittest.TestCase):
                     self.assertEqual(slimblade_usb.main(), 2)
                 flash.assert_not_called()
 
+    def test_recovery_guard_needs_exact_hash_confirmation(self) -> None:
+        argv = [
+            "slimblade_usb.py",
+            "flash-recovery-guard-hang-probe",
+            "--firmware",
+            "guard.bin",
+            "--confirm-sha256",
+            "wrong",
+        ]
+        with mock.patch.object(sys, "argv", argv):
+            with mock.patch.object(slimblade_usb, "flash_recovery_guard") as flash:
+                with mock.patch("sys.stderr", new=io.StringIO()):
+                    self.assertEqual(slimblade_usb.main(), 2)
+                flash.assert_not_called()
+
     def test_full_recovery_needs_exact_action_confirmation(self) -> None:
         argv = [
             "slimblade_usb.py",
@@ -393,6 +443,46 @@ class CarrierGuardTests(unittest.TestCase):
 
 
 class LoaderReopenTests(unittest.TestCase):
+    def test_guard_silence_requires_disappearance_without_reenumeration(self) -> None:
+        previous = {
+            "sysfs": "/sys/devices/fake",
+            "vendor": 0x25A7,
+            "product": 0xFABE,
+            "devnum": "30",
+        }
+        old = dict(previous)
+        with mock.patch.object(
+            slimblade_usb, "sysfs_usb_identities", side_effect=[[old], [], []]
+        ):
+            with mock.patch.object(slimblade_usb.time, "sleep"):
+                times = iter((0.0, 0.1, 0.2, 0.3, 1.1))
+                with mock.patch.object(
+                    slimblade_usb.time, "monotonic", side_effect=lambda: next(times)
+                ):
+                    self.assertTrue(
+                        slimblade_usb.observe_expected_usb_silence(previous, 1.0)
+                    )
+
+    def test_guard_silence_rejects_reenumeration(self) -> None:
+        previous = {
+            "sysfs": "/sys/devices/fake",
+            "vendor": 0x25A7,
+            "product": 0xFABE,
+            "devnum": "30",
+        }
+        new = dict(previous, vendor=0x047D, product=0x80D7, devnum="31")
+        with mock.patch.object(
+            slimblade_usb, "sysfs_usb_identities", side_effect=[[], [new]]
+        ):
+            with mock.patch.object(slimblade_usb.time, "sleep"):
+                times = iter((0.0, 0.1, 0.2))
+                with mock.patch.object(
+                    slimblade_usb.time, "monotonic", side_effect=lambda: next(times)
+                ):
+                    self.assertFalse(
+                        slimblade_usb.observe_expected_usb_silence(previous, 1.0)
+                    )
+
     def test_stub_result_requires_changed_loader_device_number(self) -> None:
         previous = {
             "sysfs": "/sys/devices/fake",
