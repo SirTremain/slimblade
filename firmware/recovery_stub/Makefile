@@ -1,6 +1,7 @@
 ROOT := ../..
 BUILD := build
 TARGET := $(BUILD)/DO_NOT_FLASH-recovery-stub
+CARRIER ?= ../recovery_carrier/build/DO_NOT_FLASH-stock-recovery-carrier.container.bin
 CLANG ?= clang
 OBJCOPY ?= llvm-objcopy
 
@@ -15,6 +16,9 @@ all: $(TARGET).container.bin inspect
 
 $(BUILD):
 	mkdir -p $@
+
+$(CARRIER):
+	$(MAKE) -C ../recovery_carrier all
 
 $(BUILD)/startup.o: startup.S | $(BUILD)
 	$(CLANG) $(ASFLAGS) -c $< -o $@
@@ -41,8 +45,8 @@ inspect: $(TARGET).container.bin
 	python3 $(ROOT)/tools/firmware_image.py inspect $<
 	llvm-readelf -h -S $(TARGET).elf
 
-preflight: all
-	python3 $(ROOT)/tools/verify_recovery_stub.py /tmp/slimblade-v449.bin $(TARGET).container.bin $(TARGET).code.bin $(TARGET).elf
+preflight: all $(CARRIER)
+	python3 $(ROOT)/tools/verify_recovery_stub.py /tmp/slimblade-v449.bin $(TARGET).container.bin $(TARGET).code.bin $(TARGET).elf $(CARRIER)
 	python3 -m unittest discover -s $(ROOT)/tests -p 'test_*.py'
 
 clean:

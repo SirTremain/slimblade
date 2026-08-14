@@ -7,6 +7,7 @@ Compact notes on the Kensington SlimBlade Pro sensor and firmware interface.
 - [Recovery-stub path](docs/recovery-stub.md)
 - [Stock recovery carrier](docs/recovery-carrier.md)
 - [Reset trampoline](docs/reset-trampoline.md)
+- [Startup trampoline](docs/startup-trampoline.md)
 - [Development tooling](docs/development-tooling.md)
 - [Board observations](docs/board-observations.md)
 
@@ -17,4 +18,5 @@ Linux development support:
 - [`tools/verify_recovery_stub.py`](tools/verify_recovery_stub.py): hash-locked, offline stock/stub comparison and pre-flight checks.
 - [`tools/verify_recovery_carrier.py`](tools/verify_recovery_carrier.py): verifies the safer stock-hosted staged MMIO probes.
 - [`tools/verify_reset_trampoline.py`](tools/verify_reset_trampoline.py): verifies the two-instruction stock reset hook and exact return target.
+- [`tools/verify_startup_trampoline.py`](tools/verify_startup_trampoline.py): verifies CPU-mode, stack, and ARM/Thumb transition probes.
 - [`udev/70-slimblade-research.rules`](udev/70-slimblade-research.rules): scoped permissions plus stable vendor-interface and loader symlinks.

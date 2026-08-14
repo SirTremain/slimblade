@@ -29,6 +29,9 @@ AUDITED_CODE_SHA256 = (
 AUDITED_CONTAINER_SHA256 = (
     "34daf13778a79034cc3a35917fbe6cfacc0b2f93db650e50f1f4df98ecf7e618"
 )
+AUDITED_CARRIER_SHA256 = (
+    "e555d5e17edc84cb8799d035d6193f6f664c1df9116bcba3c49faef1609221e8"
+)
 AUDITED_CODE_SIZE = 420
 EXPECTED_PAYLOAD_SIZE = OFFICIAL_V449_SIZE - APPLICATION_PREFIX_OFFSET
 EXPECTED_BLOCK_COUNT = (EXPECTED_PAYLOAD_SIZE + 31) // 32
@@ -97,12 +100,16 @@ def _elf_sections(elf: bytes) -> tuple[dict[str, int], list[dict[str, int | str]
 
 
 def verify_artifacts_data(
-    stock: bytes, container: bytes, code: bytes, elf: bytes
+    stock: bytes, container: bytes, code: bytes, elf: bytes, carrier: bytes
 ) -> dict[str, object]:
     """Verify exact audited artifacts and return a compact comparison report."""
     stock_sha = _sha256(stock)
     _require(len(stock) == OFFICIAL_V449_SIZE, "stock v4.49 size is wrong")
     _require(stock_sha == OFFICIAL_V449_SHA256, "stock input is not official v4.49")
+    _require(
+        _sha256(carrier) == AUDITED_CARRIER_SHA256,
+        "carrier is not the exact live-proven v4.51 image",
+    )
 
     stock_header = parse_header(stock, APPLICATION_HEADER_OFFSET)
     stub_header = parse_header(container, APPLICATION_HEADER_OFFSET)
@@ -173,6 +180,10 @@ def verify_artifacts_data(
             "0120104348604868c007fcd1002008600860086148617047"
         ),
         "emitted storage-controller instruction sequence changed",
+    )
+    _require(
+        container[0x2142:0x216C] == carrier[0x224C:0x2276],
+        "storage-controller core differs from the live-proven carrier bytes",
     )
 
     _require(
@@ -265,6 +276,7 @@ def verify_artifacts_data(
             "vector_opcodes_and_reset_target_match_stock": True,
             "storage_unlock_order_matches_stock": ["0x58a9", "0xa958"],
             "marker_and_watchdog_sequences_match_audited_disassembly": True,
+            "storage_core_matches_live_carrier": True,
             "wire_geometry_matches_successful_4.50_probe": True,
         },
     }
@@ -276,6 +288,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("container", type=Path)
     parser.add_argument("code", type=Path)
     parser.add_argument("elf", type=Path)
+    parser.add_argument("carrier", type=Path, help="exact live-proven v4.51 carrier")
     return parser
 
 
@@ -287,6 +300,7 @@ def main() -> int:
             args.container.read_bytes(),
             args.code.read_bytes(),
             args.elf.read_bytes(),
+            args.carrier.read_bytes(),
         )
     except (OSError, VerificationError, ValueError) as error:
         print(f"FAIL: {error}", file=sys.stderr)

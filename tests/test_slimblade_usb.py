@@ -179,6 +179,76 @@ class PacketTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "not the recorded"):
                 slimblade_usb.load_reset_trampoline(path)
 
+    def test_recovery_stub_payload_constants(self) -> None:
+        image = (
+            MODULE_PATH.parents[1]
+            / "firmware"
+            / "recovery_stub"
+            / "build"
+            / "DO_NOT_FLASH-recovery-stub.container.bin"
+        )
+        if not image.exists():
+            self.skipTest("recovery stub has not been built")
+        payload = slimblade_usb.load_recovery_stub(image)
+        self.assertEqual(len(payload), slimblade_usb.RECOVERY_STUB_PAYLOAD_SIZE)
+        self.assertEqual(
+            slimblade_usb.updater_crc32(payload),
+            slimblade_usb.RECOVERY_STUB_PAYLOAD_CRC,
+        )
+
+    def test_recovery_stub_rejects_one_byte_corruption(self) -> None:
+        image = (
+            MODULE_PATH.parents[1]
+            / "firmware"
+            / "recovery_stub"
+            / "build"
+            / "DO_NOT_FLASH-recovery-stub.container.bin"
+        )
+        if not image.exists():
+            self.skipTest("recovery stub has not been built")
+        corrupted = bytearray(image.read_bytes())
+        corrupted[0x2064] ^= 1
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "corrupted.bin"
+            path.write_bytes(corrupted)
+            with self.assertRaisesRegex(ValueError, "not the recorded"):
+                slimblade_usb.load_recovery_stub(path)
+
+    def test_startup_trampoline_payload_constants(self) -> None:
+        image = (
+            MODULE_PATH.parents[1]
+            / "firmware"
+            / "startup_trampoline"
+            / "build"
+            / "DO_NOT_FLASH-stock-startup-trampoline.container.bin"
+        )
+        if not image.exists():
+            self.skipTest("startup trampoline has not been built")
+        payload = slimblade_usb.load_startup_trampoline(image)
+        self.assertEqual(len(payload), slimblade_usb.STARTUP_TRAMPOLINE_PAYLOAD_SIZE)
+        self.assertEqual(
+            slimblade_usb.updater_crc32(payload),
+            slimblade_usb.STARTUP_TRAMPOLINE_PAYLOAD_CRC,
+        )
+
+    def test_startup_trampoline_rejects_one_byte_corruption(self) -> None:
+        image = (
+            MODULE_PATH.parents[1]
+            / "firmware"
+            / "startup_trampoline"
+            / "build"
+            / "DO_NOT_FLASH-stock-startup-trampoline.container.bin"
+        )
+        if not image.exists():
+            self.skipTest("startup trampoline has not been built")
+        corrupted = bytearray(image.read_bytes())
+        corrupted[0x22E4] ^= 1
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "corrupted.bin"
+            path.write_bytes(corrupted)
+            with self.assertRaisesRegex(ValueError, "not the recorded"):
+                slimblade_usb.load_startup_trampoline(path)
+
 
 class CarrierGuardTests(unittest.TestCase):
     def test_read_probe_accepts_only_valid_checksummed_command_reply(self) -> None:
@@ -278,6 +348,36 @@ class CarrierGuardTests(unittest.TestCase):
                     self.assertEqual(slimblade_usb.main(), 2)
                 flash.assert_not_called()
 
+    def test_recovery_stub_needs_exact_hash_confirmation(self) -> None:
+        argv = [
+            "slimblade_usb.py",
+            "flash-recovery-stub",
+            "--firmware",
+            "stub.bin",
+            "--confirm-sha256",
+            "wrong",
+        ]
+        with mock.patch.object(sys, "argv", argv):
+            with mock.patch.object(slimblade_usb, "flash_recovery_stub") as flash:
+                with mock.patch("sys.stderr", new=io.StringIO()):
+                    self.assertEqual(slimblade_usb.main(), 2)
+                flash.assert_not_called()
+
+    def test_startup_trampoline_needs_exact_hash_confirmation(self) -> None:
+        argv = [
+            "slimblade_usb.py",
+            "flash-startup-trampoline",
+            "--firmware",
+            "startup.bin",
+            "--confirm-sha256",
+            "wrong",
+        ]
+        with mock.patch.object(sys, "argv", argv):
+            with mock.patch.object(slimblade_usb, "flash_startup_trampoline") as flash:
+                with mock.patch("sys.stderr", new=io.StringIO()):
+                    self.assertEqual(slimblade_usb.main(), 2)
+                flash.assert_not_called()
+
     def test_full_recovery_needs_exact_action_confirmation(self) -> None:
         argv = [
             "slimblade_usb.py",
@@ -293,6 +393,22 @@ class CarrierGuardTests(unittest.TestCase):
 
 
 class LoaderReopenTests(unittest.TestCase):
+    def test_stub_result_requires_changed_loader_device_number(self) -> None:
+        previous = {
+            "sysfs": "/sys/devices/fake",
+            "vendor": 0x25A7,
+            "product": 0xFABE,
+            "devnum": "30",
+        }
+        old = dict(previous)
+        new = dict(previous, devnum="31")
+        with mock.patch.object(
+            slimblade_usb, "sysfs_usb_identities", side_effect=[[old], [new]]
+        ):
+            with mock.patch.object(slimblade_usb.time, "sleep"):
+                result = slimblade_usb.wait_for_boot_reenumeration(previous, 1.0)
+        self.assertEqual(result, new)
+
     def test_pre_erase_wait_retries_disappearing_loader(self) -> None:
         candidate = Path("/dev/hidraw3")
         selector = mock.Mock()

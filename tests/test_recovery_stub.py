@@ -26,6 +26,13 @@ class RecoveryStubTests(unittest.TestCase):
             "container": build / "DO_NOT_FLASH-recovery-stub.container.bin",
             "code": build / "DO_NOT_FLASH-recovery-stub.code.bin",
             "elf": build / "DO_NOT_FLASH-recovery-stub.elf",
+            "carrier": (
+                ROOT
+                / "firmware"
+                / "recovery_carrier"
+                / "build"
+                / "DO_NOT_FLASH-stock-recovery-carrier.container.bin"
+            ),
         }
         missing = [str(path) for path in cls.paths.values() if not path.exists()]
         if missing:
@@ -35,7 +42,11 @@ class RecoveryStubTests(unittest.TestCase):
     def verify(self, **changes: bytes) -> dict[str, object]:
         data = self.data | changes
         return verify_recovery_stub.verify_artifacts_data(
-            data["stock"], data["container"], data["code"], data["elf"]
+            data["stock"],
+            data["container"],
+            data["code"],
+            data["elf"],
+            data["carrier"],
         )
 
     def test_audited_build_passes(self) -> None:
@@ -78,6 +89,12 @@ class RecoveryStubTests(unittest.TestCase):
         stock[-1] ^= 1
         with self.assertRaises(verify_recovery_stub.VerificationError):
             self.verify(stock=bytes(stock))
+
+    def test_wrong_live_carrier_reference_is_rejected(self) -> None:
+        carrier = bytearray(self.data["carrier"])
+        carrier[0x224C] ^= 1
+        with self.assertRaises(verify_recovery_stub.VerificationError):
+            self.verify(carrier=bytes(carrier))
 
 
 if __name__ == "__main__":

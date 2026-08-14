@@ -73,6 +73,16 @@ RECOVERY_STUB_PAYLOAD_SHA256 = (
     "67415f19bf43ea3f91fe1ec223bad5c69d3e6975cf42aba60219a8bfd1457ea6"
 )
 RECOVERY_STUB_PAYLOAD_CRC = 0x6E473ED7
+STARTUP_TRAMPOLINE_SIZE = 128_112
+STARTUP_TRAMPOLINE_SHA256 = (
+    "dccea5665710e9aebe039a83d49d07a1a0b32efc3826c7367814f5512ececa7b"
+)
+STARTUP_TRAMPOLINE_PAYLOAD_SIZE = 119_920
+STARTUP_TRAMPOLINE_PAYLOAD_SHA256 = (
+    "da04628aa7e05ee253b63a4984b2ceb138d91029f239f11efd6914b0da9afc8a"
+)
+STARTUP_TRAMPOLINE_PAYLOAD_CRC = 0x4E9C5E53
+STARTUP_TRAMPOLINE_BCD_DEVICE = "0453"
 BOOT_REPORT_LENGTH = 49
 BOOT_REPORT_ID = 0x06
 NORMAL_REPORT_LENGTH = 17
@@ -242,6 +252,26 @@ def load_recovery_stub(path: Path) -> bytes:
         or payload_crc != RECOVERY_STUB_PAYLOAD_CRC
     ):
         raise ValueError("standalone recovery-stub payload validation failed")
+    return payload
+
+
+def load_startup_trampoline(path: Path) -> bytes:
+    image = path.read_bytes()
+    digest = hashlib.sha256(image).hexdigest()
+    if len(image) != STARTUP_TRAMPOLINE_SIZE or digest != STARTUP_TRAMPOLINE_SHA256:
+        raise ValueError(
+            "firmware is not the recorded stock startup trampoline: "
+            f"size={len(image)}, sha256={digest}"
+        )
+    payload = image[OFFICIAL_V449_PAYLOAD_OFFSET:]
+    payload_digest = hashlib.sha256(payload).hexdigest()
+    payload_crc = updater_crc32(payload)
+    if (
+        len(payload) != STARTUP_TRAMPOLINE_PAYLOAD_SIZE
+        or payload_digest != STARTUP_TRAMPOLINE_PAYLOAD_SHA256
+        or payload_crc != STARTUP_TRAMPOLINE_PAYLOAD_CRC
+    ):
+        raise ValueError("stock startup-trampoline payload validation failed")
     return payload
 
 
@@ -898,6 +928,22 @@ def flash_recovery_stub(device: Path, firmware: Path, timeout: float) -> int:
     )
 
 
+def flash_startup_trampoline(device: Path, firmware: Path, timeout: float) -> int:
+    try:
+        payload = load_startup_trampoline(firmware)
+    except (OSError, ValueError) as error:
+        print(f"refusing startup-trampoline flash: {error}", file=sys.stderr)
+        return 2
+    return flash_application_payload(
+        device,
+        payload,
+        timeout,
+        STARTUP_TRAMPOLINE_SHA256,
+        "stock startup-trampoline flash",
+        STARTUP_TRAMPOLINE_BCD_DEVICE,
+    )
+
+
 def carrier_read_probe(device: Path, timeout: float) -> int:
     try:
         usb_identity = require_recovery_carrier(device)
@@ -984,7 +1030,12 @@ def carrier_full_recovery(device: Path, timeout: float) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--device", type=Path, default=Path("/dev/hidraw4"))
+    parser.add_argument(
+        "--device",
+        type=Path,
+        default=Path("/dev/slimblade-vendor"),
+        help="hidraw path (default: stable application vendor link)",
+    )
     subparsers = parser.add_subparsers(dest="command", required=True)
     subparsers.add_parser("identify", help="query identity and descriptor read-only")
     subparsers.add_parser(
@@ -1066,6 +1117,17 @@ def build_parser() -> argparse.ArgumentParser:
         "--confirm-sha256",
         metavar="SHA256",
         help="must exactly match the recorded standalone-stub image hash",
+    )
+    startup = subparsers.add_parser(
+        "flash-startup-trampoline",
+        help="write only the exact hash-locked CPU/stack/interworking trampoline",
+    )
+    startup.add_argument("--firmware", type=Path, required=True)
+    startup.add_argument("--timeout", type=float, default=3.0)
+    startup.add_argument(
+        "--confirm-sha256",
+        metavar="SHA256",
+        help="must exactly match the recorded startup-trampoline image hash",
     )
     carrier_read = subparsers.add_parser(
         "carrier-read-probe",
@@ -1171,6 +1233,15 @@ def main() -> int:
             )
             return 2
         return flash_recovery_stub(args.device, args.firmware, args.timeout)
+    if args.command == "flash-startup-trampoline":
+        if args.confirm_sha256 != STARTUP_TRAMPOLINE_SHA256:
+            print(
+                "refusing startup-trampoline flash without the exact "
+                "--confirm-sha256 value",
+                file=sys.stderr,
+            )
+            return 2
+        return flash_startup_trampoline(args.device, args.firmware, args.timeout)
     if args.command == "carrier-read-probe":
         if not args.confirm:
             print("refusing carrier read probe without --confirm", file=sys.stderr)
