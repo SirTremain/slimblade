@@ -54,6 +54,16 @@ RECOVERY_CARRIER_PAYLOAD_SHA256 = (
 )
 RECOVERY_CARRIER_PAYLOAD_CRC = 0xCBD4F74B
 RECOVERY_CARRIER_BCD_DEVICE = "0451"
+RESET_TRAMPOLINE_SIZE = 128_112
+RESET_TRAMPOLINE_SHA256 = (
+    "bad4a3a7bdf3610e8b6cf0d9b1bb27f4d147ffa0efb242f24c0257bb454c6905"
+)
+RESET_TRAMPOLINE_PAYLOAD_SIZE = 119_920
+RESET_TRAMPOLINE_PAYLOAD_SHA256 = (
+    "0bae1c229db988c03f6eb55b78a726d69fdf1f42048694a404335f00b950028a"
+)
+RESET_TRAMPOLINE_PAYLOAD_CRC = 0xDB034CD6
+RESET_TRAMPOLINE_BCD_DEVICE = "0452"
 BOOT_REPORT_LENGTH = 49
 BOOT_REPORT_ID = 0x06
 NORMAL_REPORT_LENGTH = 17
@@ -183,6 +193,26 @@ def load_recovery_carrier(path: Path) -> bytes:
         or payload_crc != RECOVERY_CARRIER_PAYLOAD_CRC
     ):
         raise ValueError("stock recovery-carrier payload validation failed")
+    return payload
+
+
+def load_reset_trampoline(path: Path) -> bytes:
+    image = path.read_bytes()
+    digest = hashlib.sha256(image).hexdigest()
+    if len(image) != RESET_TRAMPOLINE_SIZE or digest != RESET_TRAMPOLINE_SHA256:
+        raise ValueError(
+            "firmware is not the recorded stock reset trampoline: "
+            f"size={len(image)}, sha256={digest}"
+        )
+    payload = image[OFFICIAL_V449_PAYLOAD_OFFSET:]
+    payload_digest = hashlib.sha256(payload).hexdigest()
+    payload_crc = updater_crc32(payload)
+    if (
+        len(payload) != RESET_TRAMPOLINE_PAYLOAD_SIZE
+        or payload_digest != RESET_TRAMPOLINE_PAYLOAD_SHA256
+        or payload_crc != RESET_TRAMPOLINE_PAYLOAD_CRC
+    ):
+        raise ValueError("stock reset-trampoline payload validation failed")
     return payload
 
 
@@ -701,6 +731,22 @@ def flash_recovery_carrier(device: Path, firmware: Path, timeout: float) -> int:
     )
 
 
+def flash_reset_trampoline(device: Path, firmware: Path, timeout: float) -> int:
+    try:
+        payload = load_reset_trampoline(firmware)
+    except (OSError, ValueError) as error:
+        print(f"refusing reset-trampoline flash: {error}", file=sys.stderr)
+        return 2
+    return flash_application_payload(
+        device,
+        payload,
+        timeout,
+        RESET_TRAMPOLINE_SHA256,
+        "stock reset-trampoline flash",
+        RESET_TRAMPOLINE_BCD_DEVICE,
+    )
+
+
 def carrier_read_probe(device: Path, timeout: float) -> int:
     try:
         usb_identity = require_recovery_carrier(device)
@@ -848,6 +894,17 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="SHA256",
         help="must exactly match the recorded recovery-carrier image hash",
     )
+    trampoline = subparsers.add_parser(
+        "flash-reset-trampoline",
+        help="write only the exact hash-locked stock reset trampoline",
+    )
+    trampoline.add_argument("--firmware", type=Path, required=True)
+    trampoline.add_argument("--timeout", type=float, default=3.0)
+    trampoline.add_argument(
+        "--confirm-sha256",
+        metavar="SHA256",
+        help="must exactly match the recorded reset-trampoline image hash",
+    )
     carrier_read = subparsers.add_parser(
         "carrier-read-probe",
         help="send carrier command 0x0e and require its checksummed reply",
@@ -934,6 +991,15 @@ def main() -> int:
             )
             return 2
         return flash_recovery_carrier(args.device, args.firmware, args.timeout)
+    if args.command == "flash-reset-trampoline":
+        if args.confirm_sha256 != RESET_TRAMPOLINE_SHA256:
+            print(
+                "refusing reset-trampoline flash without the exact "
+                "--confirm-sha256 value",
+                file=sys.stderr,
+            )
+            return 2
+        return flash_reset_trampoline(args.device, args.firmware, args.timeout)
     if args.command == "carrier-read-probe":
         if not args.confirm:
             print("refusing carrier read probe without --confirm", file=sys.stderr)

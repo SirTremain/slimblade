@@ -144,6 +144,41 @@ class PacketTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "not the recorded"):
                 slimblade_usb.load_recovery_carrier(path)
 
+    def test_reset_trampoline_payload_constants(self) -> None:
+        image = (
+            MODULE_PATH.parents[1]
+            / "firmware"
+            / "reset_trampoline"
+            / "build"
+            / "DO_NOT_FLASH-stock-reset-trampoline.container.bin"
+        )
+        if not image.exists():
+            self.skipTest("reset trampoline has not been built")
+        payload = slimblade_usb.load_reset_trampoline(image)
+        self.assertEqual(len(payload), slimblade_usb.RESET_TRAMPOLINE_PAYLOAD_SIZE)
+        self.assertEqual(
+            slimblade_usb.updater_crc32(payload),
+            slimblade_usb.RESET_TRAMPOLINE_PAYLOAD_CRC,
+        )
+
+    def test_reset_trampoline_rejects_one_byte_corruption(self) -> None:
+        image = (
+            MODULE_PATH.parents[1]
+            / "firmware"
+            / "reset_trampoline"
+            / "build"
+            / "DO_NOT_FLASH-stock-reset-trampoline.container.bin"
+        )
+        if not image.exists():
+            self.skipTest("reset trampoline has not been built")
+        corrupted = bytearray(image.read_bytes())
+        corrupted[0x2064] ^= 1
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "corrupted.bin"
+            path.write_bytes(corrupted)
+            with self.assertRaisesRegex(ValueError, "not the recorded"):
+                slimblade_usb.load_reset_trampoline(path)
+
 
 class CarrierGuardTests(unittest.TestCase):
     def test_read_probe_accepts_only_valid_checksummed_command_reply(self) -> None:
@@ -224,6 +259,21 @@ class CarrierGuardTests(unittest.TestCase):
         ]
         with mock.patch.object(sys, "argv", argv):
             with mock.patch.object(slimblade_usb, "flash_recovery_carrier") as flash:
+                with mock.patch("sys.stderr", new=io.StringIO()):
+                    self.assertEqual(slimblade_usb.main(), 2)
+                flash.assert_not_called()
+
+    def test_reset_trampoline_needs_exact_hash_confirmation(self) -> None:
+        argv = [
+            "slimblade_usb.py",
+            "flash-reset-trampoline",
+            "--firmware",
+            "trampoline.bin",
+            "--confirm-sha256",
+            "wrong",
+        ]
+        with mock.patch.object(sys, "argv", argv):
+            with mock.patch.object(slimblade_usb, "flash_reset_trampoline") as flash:
                 with mock.patch("sys.stderr", new=io.StringIO()):
                     self.assertEqual(slimblade_usb.main(), 2)
                 flash.assert_not_called()

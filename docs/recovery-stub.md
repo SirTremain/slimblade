@@ -15,7 +15,7 @@ Last checked: 2026-08-14
 
 ## CPU and build contract
 
-The stock vector/startup code is ARM state with later ARM/Thumb interworking. A closely related Beken BK3633 SDK specifies `arm968e-s`, ARMv5TE, Thumb, and `arm-none-eabi-gcc`. Clang 22 on the research host accepts the same target. [`firmware/recovery_stub/`](../firmware/recovery_stub/) builds a minimal candidate using that contract. It has passed offline pre-flight checks but has not run on hardware.
+The stock vector/startup code is ARM state with later ARM/Thumb interworking. A closely related Beken BK3633 SDK specifies `arm968e-s`, ARMv5TE, Thumb, and `arm-none-eabi-gcc`. Clang 22 on the research host accepts the same target. [`firmware/recovery_stub/`](../firmware/recovery_stub/) builds a minimal candidate using that contract. It has passed offline pre-flight checks but has not run as a standalone image on hardware.
 
 The BK3635 product page only calls the core a 32-bit RISC MCU; ARM968E-S is therefore a strong family/source and binary inference, not an explicit BK3635 datasheet statement.
 
@@ -51,9 +51,9 @@ The hash-locked verifier compares the output against the exact official v4.49 im
 
 Application CRC is `f96b816e`; updater payload CRC is `6e473ed7`. The payload uses the same 3,748-block path as the successful stock-derived v4.50 probe. `make preflight` currently passes 19 tests.
 
-This is strong static evidence, not proof that the direct MMIO path works on this individual chip. A failure before the marker and reset would leave no custom USB recovery interface. Until a live test succeeds, hardware debug/download remains the only fallback for that failure mode.
+The [stock recovery carrier](recovery-carrier.md) has now live-proven this exact direct MMIO sequence, including loader entry and a complete application reflash. The remaining standalone-stub risk is earlier: its custom vector, CPU-mode, stack, and entry code must execute before the proven routine is reached. A failure there would leave no custom USB recovery interface.
 
-The next candidate is therefore the [stock recovery carrier](recovery-carrier.md), not this standalone image. It exercises the same direct MMIO path while retaining stock application startup and the original command-`0x0d` recovery function.
+The carrier gate is complete. The [reset trampoline](reset-trampoline.md) now isolates the first custom ARM branch and return while retaining stock startup and all carrier recovery commands. After that passes, a standalone-stub test can isolate the remaining CPU-mode, stack, ARM/Thumb transition, and entry behavior: flash the stub, require immediate resident-loader entry, query loader type `d2`, then restore the carrier.
 
 ## Lowest-risk acceptance probe
 

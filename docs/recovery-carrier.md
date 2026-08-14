@@ -39,6 +39,8 @@ Carrier command `0x0f` then ran the direct watchdog-reset sequence. The same phy
 
 Carrier command `0x10` then ran the direct sector erase, marker writes, delay, and watchdog reset. The same physical path enumerated as resident loader `25a7:fabe` with device number 23. Its `B2` query returned BK3635 type `d2`. The exact carrier was reflashed through that recovered loader; all 3,748 blocks echoed, payload CRC `cbd4f74b` passed, and carrier `0451` returned with device number 25. This live test verifies the complete custom-code MMIO recovery path and subsequent USB restoration.
 
+After restoration, normal movement, buttons, and scrolling were confirmed again.
+
 The USB utility rejects any container or payload differing from the audited values above. It also requires the full container hash as an explicit confirmation before reaching the loader erase step.
 
 ## Guarded live sequence

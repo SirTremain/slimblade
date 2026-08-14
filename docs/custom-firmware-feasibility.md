@@ -9,8 +9,9 @@ Last checked: 2026-08-14
 | Can a custom image be delivered? | **Yes.** A modified, correctly checksummed stock-derived image was accepted and booted. | High |
 | Can an interrupted official update be recovered over USB? | **Yes, while the resident loader remains active.** | High |
 | Does a cold boot with an invalid application force the USB loader? | **Unknown.** | Low |
+| Can custom code directly force the resident loader? | **Yes.** Direct MMIO recovery and subsequent reflash passed. | High |
 
-Firmware analysis is still worthwhile: the update path is not cryptographically locked. Official USB recovery has been demonstrated after application erase, and the minimal recovery candidate now passes hash-locked offline checks. Its direct MMIO recovery path has not yet run on hardware.
+Firmware analysis is still worthwhile: the update path is not cryptographically locked. Official USB recovery has been demonstrated after application erase, and custom code has directly entered that loader through the reconstructed MMIO path. The minimal standalone candidate still needs its reset/vector/startup path tested on hardware.
 
 ## Required scope
 
@@ -19,6 +20,10 @@ Only wired USB operation needs to survive. A custom implementation may omit Blue
 ## Intended development workflow
 
 The preferred workflow is closed-case USB development: compile an application, upload it through the resident USB loader, reset, and stream raw sensor data and diagnostic logs back over USB. A USB HID or CDC debug channel can provide Arduino-like iteration without JTAG. True live breakpoints and memory inspection would still normally require the rear JTAG pads.
+
+Updater compatibility is a custom-firmware requirement. A standalone application should retain normal USB identity `047d:80d7`, the updater-facing vendor HID interface with 17-byte report ID `0x08`, its one-byte checksum, and command `0x0d` semantics. That allows Kensington's updater to request the resident loader and restore stock firmware. Sensor processing and diagnostics can use other commands or an additional interface without changing this recovery contract.
+
+This requirement does not force the custom firmware to reproduce Bluetooth, 2.4 GHz operation, Kensington's mouse-processing code, or the complete vendor command set. It only preserves the small host-to-loader handoff interface. The resident loader remains below application address `0x2000` and must never be included in custom application writes.
 
 A robust custom layout could retain the vendor loader below `0x2000`, place a small recovery shim first in the application region, and put experimental sensor code after that shim. The shim should enter USB recovery before experimental code when a button is held, when a host command is received, or after repeated watchdog failures. This is a design target, not yet a demonstrated capability on this board.
 
@@ -73,8 +78,9 @@ Read-out protection may prevent making a complete backup. It does not by itself 
 1. The stock-derived USB `bcdDevice 4.50` acceptance probe passed.
 2. The exact [stock recovery carrier](recovery-carrier.md) passed its direct read, watchdog reset, full marker/recovery, loader query, and complete reflash tests.
 3. The minimal stub passes offline stock/disassembly and corruption tests, and its critical MMIO recovery path is now independently proven on hardware by the carrier.
-4. Preserve the first 8 KiB boot region in every USB update.
-5. Keep pad mapping/JTAG/SPI recovery as a separate hardware fallback investigation.
+4. The [reset trampoline](reset-trampoline.md) booted successfully as version `4.52`, proving custom ARM code at reset while retaining the stock application and all carrier recovery commands.
+5. Preserve the first 8 KiB boot region in every USB update.
+6. Keep pad mapping/JTAG/SPI recovery as a separate hardware fallback investigation.
 
 ## Rotatrix fallback distinction
 
