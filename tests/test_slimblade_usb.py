@@ -292,5 +292,104 @@ class CarrierGuardTests(unittest.TestCase):
                 action.assert_not_called()
 
 
+class LoaderReopenTests(unittest.TestCase):
+    def test_pre_erase_wait_retries_disappearing_loader(self) -> None:
+        candidate = Path("/dev/hidraw3")
+        selector = mock.Mock()
+        session = (
+            candidate,
+            (0x25A7, 0xFABE),
+            {"sysfs": "/sys/devices/fake"},
+            12,
+            selector,
+        )
+        with mock.patch.object(
+            slimblade_usb, "loader_candidate_paths", return_value=[candidate]
+        ):
+            with mock.patch.object(
+                slimblade_usb,
+                "open_queried_loader_candidate",
+                side_effect=[FileNotFoundError(candidate), session],
+            ) as probe:
+                with mock.patch.object(slimblade_usb.time, "sleep"):
+                    result = slimblade_usb.wait_for_queried_loader(candidate, 1.0)
+        self.assertIs(result, session)
+        self.assertEqual(probe.call_count, 2)
+
+    def test_unexpected_loader_protocol_is_not_retried(self) -> None:
+        candidate = Path("/dev/hidraw3")
+        with mock.patch.object(
+            slimblade_usb, "loader_candidate_paths", return_value=[candidate]
+        ):
+            with mock.patch.object(
+                slimblade_usb,
+                "open_queried_loader_candidate",
+                side_effect=ValueError("unexpected B2 device type"),
+            ) as probe:
+                with self.assertRaisesRegex(ValueError, "unexpected B2"):
+                    slimblade_usb.wait_for_queried_loader(candidate, 1.0)
+        probe.assert_called_once()
+
+    def test_no_erase_when_loader_never_opens(self) -> None:
+        with mock.patch.object(
+            slimblade_usb,
+            "wait_for_queried_loader",
+            side_effect=RuntimeError("loader absent"),
+        ):
+            with mock.patch.object(slimblade_usb, "write_report") as write:
+                with mock.patch("sys.stderr", new=io.StringIO()):
+                    result = slimblade_usb.flash_application_payload(
+                        Path("/dev/slimblade-loader"),
+                        b"\0" * 32,
+                        0.1,
+                        "hash",
+                        "test flash",
+                        "0000",
+                    )
+        self.assertEqual(result, 3)
+        write.assert_not_called()
+
+    def test_b0_failure_is_not_automatically_retried(self) -> None:
+        selector = mock.Mock()
+        session = (
+            Path("/dev/hidraw3"),
+            (0x25A7, 0xFABE),
+            {"sysfs": "/sys/devices/fake"},
+            12,
+            selector,
+        )
+        with mock.patch.object(
+            slimblade_usb, "wait_for_queried_loader", return_value=session
+        ) as wait:
+            with mock.patch.object(
+                slimblade_usb, "write_report", side_effect=OSError("B0 failed")
+            ) as write:
+                with mock.patch.object(slimblade_usb.os, "close"):
+                    with mock.patch("sys.stderr", new=io.StringIO()):
+                        with mock.patch("sys.stdout", new=io.StringIO()):
+                            result = slimblade_usb.flash_application_payload(
+                                Path("/dev/slimblade-loader"),
+                                b"\0" * 32,
+                                0.1,
+                                "hash",
+                                "test flash",
+                                "0000",
+                            )
+        self.assertEqual(result, 3)
+        wait.assert_called_once()
+        write.assert_called_once()
+        selector.close.assert_called_once()
+
+
+class UdevRuleTests(unittest.TestCase):
+    def test_stable_symlinks_are_scoped_to_correct_interfaces(self) -> None:
+        rules = (
+            MODULE_PATH.parents[1] / "udev" / "70-slimblade-research.rules"
+        ).read_text()
+        self.assertIn('ENV{ID_USB_INTERFACE_NUM}=="01"', rules)
+        self.assertIn('SYMLINK+="slimblade-vendor"', rules)
+        self.assertEqual(rules.count('SYMLINK+="slimblade-loader"'), 3)
+
+
 if __name__ == "__main__":
     unittest.main()

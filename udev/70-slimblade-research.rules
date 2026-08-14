@@ -1,7 +1,9 @@
-# Kensington SlimBlade Pro normal wired application.
+# Kensington SlimBlade Pro normal wired application. Interface 01 is the
+# 170-byte vendor/updater HID interface; interface 00 is the mouse HID.
 ACTION=="add", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="047d", ATTRS{idProduct}=="80d7", MODE:="0666"
+ACTION=="add", SUBSYSTEM=="hidraw", ENV{ID_VENDOR_ID}=="047d", ENV{ID_MODEL_ID}=="80d7", ENV{ID_USB_INTERFACE_NUM}=="01", SYMLINK+="slimblade-vendor"
 
 # BK3635 USB loader identities recognized by Kensington's updater.
-ACTION=="add", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="25a7", ATTRS{idProduct}=="fabe", MODE:="0666"
-ACTION=="add", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="3554", ATTRS{idProduct}=="f600", MODE:="0666"
-ACTION=="add", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="3554", ATTRS{idProduct}=="f800", MODE:="0666"
+ACTION=="add", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="25a7", ATTRS{idProduct}=="fabe", MODE:="0666", SYMLINK+="slimblade-loader"
+ACTION=="add", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="3554", ATTRS{idProduct}=="f600", MODE:="0666", SYMLINK+="slimblade-loader"
+ACTION=="add", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="3554", ATTRS{idProduct}=="f800", MODE:="0666", SYMLINK+="slimblade-loader"

@@ -64,6 +64,15 @@ RESET_TRAMPOLINE_PAYLOAD_SHA256 = (
 )
 RESET_TRAMPOLINE_PAYLOAD_CRC = 0xDB034CD6
 RESET_TRAMPOLINE_BCD_DEVICE = "0452"
+RECOVERY_STUB_SIZE = 128_112
+RECOVERY_STUB_SHA256 = (
+    "34daf13778a79034cc3a35917fbe6cfacc0b2f93db650e50f1f4df98ecf7e618"
+)
+RECOVERY_STUB_PAYLOAD_SIZE = 119_920
+RECOVERY_STUB_PAYLOAD_SHA256 = (
+    "67415f19bf43ea3f91fe1ec223bad5c69d3e6975cf42aba60219a8bfd1457ea6"
+)
+RECOVERY_STUB_PAYLOAD_CRC = 0x6E473ED7
 BOOT_REPORT_LENGTH = 49
 BOOT_REPORT_ID = 0x06
 NORMAL_REPORT_LENGTH = 17
@@ -216,6 +225,26 @@ def load_reset_trampoline(path: Path) -> bytes:
     return payload
 
 
+def load_recovery_stub(path: Path) -> bytes:
+    image = path.read_bytes()
+    digest = hashlib.sha256(image).hexdigest()
+    if len(image) != RECOVERY_STUB_SIZE or digest != RECOVERY_STUB_SHA256:
+        raise ValueError(
+            "firmware is not the recorded standalone recovery stub: "
+            f"size={len(image)}, sha256={digest}"
+        )
+    payload = image[OFFICIAL_V449_PAYLOAD_OFFSET:]
+    payload_digest = hashlib.sha256(payload).hexdigest()
+    payload_crc = updater_crc32(payload)
+    if (
+        len(payload) != RECOVERY_STUB_PAYLOAD_SIZE
+        or payload_digest != RECOVERY_STUB_PAYLOAD_SHA256
+        or payload_crc != RECOVERY_STUB_PAYLOAD_CRC
+    ):
+        raise ValueError("standalone recovery-stub payload validation failed")
+    return payload
+
+
 def identity_dict(device: Path) -> dict[str, Any]:
     fd = os.open(device, os.O_RDONLY | os.O_NONBLOCK)
     try:
@@ -270,8 +299,9 @@ def sysfs_usb_identities() -> list[dict[str, str | int]]:
 
 def usb_identity_for_hidraw(device: Path) -> dict[str, str | int] | None:
     """Return the USB parent identity for this exact hidraw node."""
-    hidraw_device = Path("/sys/class/hidraw") / device.name / "device"
     try:
+        actual_device = device.resolve(strict=True)
+        hidraw_device = Path("/sys/class/hidraw") / actual_device.name / "device"
         resolved = hidraw_device.resolve(strict=True)
     except OSError:
         return None
@@ -280,6 +310,96 @@ def usb_identity_for_hidraw(device: Path) -> dict[str, str | int] | None:
         if identity is not None:
             return identity
     return None
+
+
+def loader_candidate_paths(preferred: Path) -> list[Path]:
+    """Return current hidraw nodes, preferring the requested/stable loader path."""
+    requested = [preferred, Path("/dev/slimblade-loader")]
+    requested.extend(sorted(Path("/dev").glob("hidraw*")))
+    candidates: list[Path] = []
+    seen: set[str] = set()
+    for path in requested:
+        try:
+            resolved = path.resolve(strict=True)
+        except OSError:
+            continue
+        if not resolved.name.startswith("hidraw"):
+            continue
+        key = str(resolved)
+        if key in seen:
+            continue
+        seen.add(key)
+        candidates.append(resolved)
+    return candidates
+
+
+def open_queried_loader_candidate(
+    device: Path, query_timeout: float
+) -> tuple[
+    Path,
+    tuple[int, int],
+    dict[str, str | int],
+    int,
+    selectors.BaseSelector,
+] | None:
+    """Open a loader and prove BK3635 type d2 without issuing an erase."""
+    details = identity_dict(device)
+    identity = details["identity"]
+    actual = (int(identity["vendor"]), int(identity["product"]))
+    if actual not in BOOT_IDENTITIES:
+        return None
+    boot_usb_identity = usb_identity_for_hidraw(device)
+    if boot_usb_identity is None:
+        raise OSError(f"could not resolve the USB parent of {device}")
+    parent_actual = (
+        int(boot_usb_identity["vendor"]),
+        int(boot_usb_identity["product"]),
+    )
+    if parent_actual != actual:
+        raise ValueError("hidraw loader identity and USB parent disagree")
+
+    fd = os.open(device, os.O_RDWR)
+    selector = selectors.DefaultSelector()
+    try:
+        selector.register(fd, selectors.EVENT_READ)
+        write_report(fd, boot_query_packet())
+        response = read_boot_report(fd, selector, query_timeout)
+        if response is None:
+            raise TimeoutError("loader disappeared or did not answer B2")
+        if response[1] != 0xB2 or response[2] != 0xD2:
+            raise ValueError("loader returned an unexpected B2 device type")
+    except BaseException:
+        selector.close()
+        os.close(fd)
+        raise
+    return device, actual, boot_usb_identity, fd, selector
+
+
+def wait_for_queried_loader(
+    preferred: Path, timeout: float
+) -> tuple[
+    Path,
+    tuple[int, int],
+    dict[str, str | int],
+    int,
+    selectors.BaseSelector,
+]:
+    """Retry loader discovery/B2 only while no erase has been attempted."""
+    deadline = time.monotonic() + timeout
+    last_error = "no recognized loader hidraw node appeared"
+    while time.monotonic() < deadline:
+        for candidate in loader_candidate_paths(preferred):
+            try:
+                session = open_queried_loader_candidate(
+                    candidate, min(1.0, max(0.05, deadline - time.monotonic()))
+                )
+            except OSError as error:
+                last_error = str(error)
+                continue
+            if session is not None:
+                return session
+        time.sleep(0.05)
+    raise RuntimeError(f"loader unavailable before erase: {last_error}")
 
 
 def wait_for_boot_identity(timeout: float) -> dict[str, str | int] | None:
@@ -405,6 +525,29 @@ def wait_for_boot_identity_at_path(
             identity = (int(device["vendor"]), int(device["product"]))
             if device["sysfs"] == sysfs_path and identity in BOOT_IDENTITIES:
                 return device
+        time.sleep(0.05)
+    return None
+
+
+def wait_for_boot_reenumeration(
+    previous: dict[str, str | int], timeout: float
+) -> dict[str, str | int] | None:
+    """Require a new loader enumeration, not the pre-flash loader instance."""
+    previous_path = previous["sysfs"]
+    previous_devnum = previous.get("devnum")
+    saw_absence = False
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        same_path = None
+        for device in sysfs_usb_identities():
+            identity = (int(device["vendor"]), int(device["product"]))
+            if device["sysfs"] == previous_path and identity in BOOT_IDENTITIES:
+                same_path = device
+                break
+        if same_path is None:
+            saw_absence = True
+        elif saw_absence or same_path.get("devnum") != previous_devnum:
+            return same_path
         time.sleep(0.05)
     return None
 
@@ -537,39 +680,31 @@ def flash_application_payload(
     image_sha256: str,
     operation: str,
     expected_bcd_device: str,
+    expect_loader_after_flash: bool = False,
 ) -> int:
-    details = identity_dict(device)
-    identity = details["identity"]
-    actual = (identity["vendor"], identity["product"])
-    if actual not in BOOT_IDENTITIES:
+    try:
+        (
+            selected_device,
+            actual,
+            boot_usb_identity,
+            fd,
+            selector,
+        ) = wait_for_queried_loader(device, max(timeout, 8.0))
+    except ValueError as error:
+        print(f"refusing {operation}: {error}", file=sys.stderr)
+        return 2
+    except (OSError, RuntimeError) as error:
         print(
-            f"refusing {operation}: {device} is {actual[0]:04x}:{actual[1]:04x}, "
-            "not a recognized boot identity",
+            f"{operation} did not start; no erase was attempted: {error}",
             file=sys.stderr,
         )
-        return 2
-    boot_usb_identity = usb_identity_for_hidraw(device)
-    if boot_usb_identity is None:
-        print(
-            f"refusing {operation}: could not resolve the USB parent of {device}",
-            file=sys.stderr,
-        )
-        return 2
-    parent_actual = (
-        int(boot_usb_identity["vendor"]),
-        int(boot_usb_identity["product"]),
-    )
-    if parent_actual != actual:
-        print(
-            f"refusing {operation}: hidraw identity and USB parent disagree",
-            file=sys.stderr,
-        )
-        return 2
+        return 3
 
     print(
         json.dumps(
             {
-                "device": str(device),
+                "device": str(selected_device),
+                "requested_device": str(device),
                 "boot_identity": f"{actual[0]:04x}:{actual[1]:04x}",
                 "firmware_sha256": image_sha256,
                 "operation": operation,
@@ -582,23 +717,10 @@ def flash_application_payload(
         flush=True,
     )
 
-    fd = os.open(device, os.O_RDWR)
-    selector = selectors.DefaultSelector()
-    selector.register(fd, selectors.EVENT_READ)
     try:
-        # Prove that this is the expected BK3635 loader immediately before erase.
-        write_report(fd, boot_query_packet())
-        query_response = read_boot_report(fd, selector, timeout)
-        if (
-            query_response is None
-            or query_response[1] != 0xB2
-            or query_response[2] != 0xD2
-        ):
-            raise RuntimeError(
-                "loader identity query failed or returned an unexpected device type"
-            )
         print("loader query: BK3635 device type d2", flush=True)
 
+        # This is the erase boundary. Discovery and B2 retries stop here.
         prepare = prepare_download_packet(payload)
         write_report(fd, prepare)
         saw_prepare_echo = False
@@ -661,6 +783,18 @@ def flash_application_payload(
     finally:
         selector.close()
         os.close(fd)
+
+    if expect_loader_after_flash:
+        boot_device = wait_for_boot_reenumeration(boot_usb_identity, 20.0)
+        if boot_device is None:
+            print(
+                "stub data completed, but a known resident-loader identity "
+                "did not appear on the same USB path",
+                file=sys.stderr,
+            )
+            return 4
+        print(json.dumps({"boot_device": boot_device}, sort_keys=True), flush=True)
+        return 0
 
     expected = (KENSINGTON_VENDOR_ID, SLIMBLADE_PRO_WIRED_PRODUCT_ID)
     application = wait_for_identity_at_path(
@@ -744,6 +878,23 @@ def flash_reset_trampoline(device: Path, firmware: Path, timeout: float) -> int:
         RESET_TRAMPOLINE_SHA256,
         "stock reset-trampoline flash",
         RESET_TRAMPOLINE_BCD_DEVICE,
+    )
+
+
+def flash_recovery_stub(device: Path, firmware: Path, timeout: float) -> int:
+    try:
+        payload = load_recovery_stub(firmware)
+    except (OSError, ValueError) as error:
+        print(f"refusing recovery-stub flash: {error}", file=sys.stderr)
+        return 2
+    return flash_application_payload(
+        device,
+        payload,
+        timeout,
+        RECOVERY_STUB_SHA256,
+        "standalone recovery-stub flash",
+        "",
+        expect_loader_after_flash=True,
     )
 
 
@@ -905,6 +1056,17 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="SHA256",
         help="must exactly match the recorded reset-trampoline image hash",
     )
+    stub = subparsers.add_parser(
+        "flash-recovery-stub",
+        help="write the exact one-shot stub and require resident-loader return",
+    )
+    stub.add_argument("--firmware", type=Path, required=True)
+    stub.add_argument("--timeout", type=float, default=3.0)
+    stub.add_argument(
+        "--confirm-sha256",
+        metavar="SHA256",
+        help="must exactly match the recorded standalone-stub image hash",
+    )
     carrier_read = subparsers.add_parser(
         "carrier-read-probe",
         help="send carrier command 0x0e and require its checksummed reply",
@@ -1000,6 +1162,15 @@ def main() -> int:
             )
             return 2
         return flash_reset_trampoline(args.device, args.firmware, args.timeout)
+    if args.command == "flash-recovery-stub":
+        if args.confirm_sha256 != RECOVERY_STUB_SHA256:
+            print(
+                "refusing recovery-stub flash without the exact "
+                "--confirm-sha256 value",
+                file=sys.stderr,
+            )
+            return 2
+        return flash_recovery_stub(args.device, args.firmware, args.timeout)
     if args.command == "carrier-read-probe":
         if not args.confirm:
             print("refusing carrier read probe without --confirm", file=sys.stderr)
