@@ -32,6 +32,9 @@ AUDITED_CONTAINER_SHA256 = (
 AUDITED_CARRIER_SHA256 = (
     "e555d5e17edc84cb8799d035d6193f6f664c1df9116bcba3c49faef1609221e8"
 )
+AUDITED_STARTUP_TRAMPOLINE_SHA256 = (
+    "dccea5665710e9aebe039a83d49d07a1a0b32efc3826c7367814f5512ececa7b"
+)
 AUDITED_CODE_SIZE = 420
 EXPECTED_PAYLOAD_SIZE = OFFICIAL_V449_SIZE - APPLICATION_PREFIX_OFFSET
 EXPECTED_BLOCK_COUNT = (EXPECTED_PAYLOAD_SIZE + 31) // 32
@@ -53,6 +56,87 @@ def _require(condition: bool, message: str) -> None:
 def _u32(data: bytes, offset: int) -> int:
     _require(offset >= 0 and offset + 4 <= len(data), f"no word at {offset:#x}")
     return struct.unpack_from("<I", data, offset)[0]
+
+
+def _arm_pc_literal(image: bytes, address: int, register: int) -> tuple[int, int]:
+    instruction = _u32(image, address)
+    _require(
+        instruction & 0xFFFFF000 == 0xE59F0000 | register << 12,
+        f"expected ARM PC-relative load into r{register} at {address:#x}",
+    )
+    literal_address = address + 8 + (instruction & 0xFFF)
+    return literal_address, _u32(image, literal_address)
+
+
+def _thumb_bl_target(image: bytes, address: int) -> int:
+    _require(address >= 0 and address + 4 <= len(image), f"no Thumb BL at {address:#x}")
+    high, low = struct.unpack_from("<HH", image, address)
+    _require(high & 0xF800 == 0xF000, f"bad Thumb BL first half at {address:#x}")
+    _require(low & 0xF800 == 0xF800, f"bad Thumb BL second half at {address:#x}")
+    delta = ((high & 0x7FF) << 12) | ((low & 0x7FF) << 1)
+    if delta & (1 << 22):
+        delta -= 1 << 23
+    return address + 4 + delta
+
+
+def verify_startup_equivalence(
+    stub: bytes, startup_trampoline: bytes
+) -> dict[str, object]:
+    """Compare address-independent reset operations with the audited trampoline."""
+    _require(
+        len(startup_trampoline) == OFFICIAL_V449_SIZE,
+        "startup-trampoline image size is wrong",
+    )
+    _require(
+        _sha256(startup_trampoline) == AUDITED_STARTUP_TRAMPOLINE_SHA256,
+        "startup trampoline is not the exact live-tested v4.53 image",
+    )
+
+    # Both paths execute mov mode, msr CPSR, load SP, load entry, bx entry.
+    # Only the two PC-relative literal displacements may differ with placement.
+    stub_words = [_u32(stub, address) for address in range(0x2064, 0x2078, 4)]
+    trampoline_words = [
+        _u32(startup_trampoline, address) for address in range(0x22BC, 0x22D0, 4)
+    ]
+    masks = [0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFF000, 0xFFFFF000, 0xFFFFFFFF]
+    _require(
+        [word & mask for word, mask in zip(stub_words, masks)]
+        == [word & mask for word, mask in zip(trampoline_words, masks)],
+        "standalone reset operations differ from the live-tested trampoline",
+    )
+
+    stub_stack_address, stub_stack = _arm_pc_literal(stub, 0x206C, 13)
+    reference_stack_address, reference_stack = _arm_pc_literal(
+        startup_trampoline, 0x22C4, 13
+    )
+    stub_entry_address, stub_entry = _arm_pc_literal(stub, 0x2070, 0)
+    reference_entry_address, reference_entry = _arm_pc_literal(
+        startup_trampoline, 0x22C8, 0
+    )
+    _require(
+        (stub_stack_address, reference_stack_address) == (0x2078, 0x22E0),
+        "startup stack literal placement changed",
+    )
+    _require(
+        stub_stack == reference_stack == 0x00407F00,
+        "startup stack differs from live-tested trampoline",
+    )
+    _require(
+        (stub_entry_address, reference_entry_address) == (0x207C, 0x22E4),
+        "startup entry literal placement changed",
+    )
+    _require(stub_entry == 0x2081, "standalone Thumb entry is not stub_main")
+    _require(reference_entry == 0x22E9, "live trampoline Thumb entry changed")
+    _require(
+        stub_entry & reference_entry & 1 == 1,
+        "startup entry does not request Thumb state",
+    )
+    return {
+        "normalized_operations": ["mov mode", "msr CPSR", "load SP", "load entry", "bx"],
+        "stack": f"0x{stub_stack:08x}",
+        "standalone_thumb_entry": f"0x{stub_entry:x}",
+        "reference_thumb_entry": f"0x{reference_entry:x}",
+    }
 
 
 def _elf_sections(elf: bytes) -> tuple[dict[str, int], list[dict[str, int | str]]]:
@@ -100,7 +184,12 @@ def _elf_sections(elf: bytes) -> tuple[dict[str, int], list[dict[str, int | str]
 
 
 def verify_artifacts_data(
-    stock: bytes, container: bytes, code: bytes, elf: bytes, carrier: bytes
+    stock: bytes,
+    container: bytes,
+    code: bytes,
+    elf: bytes,
+    carrier: bytes,
+    startup_trampoline: bytes,
 ) -> dict[str, object]:
     """Verify exact audited artifacts and return a compact comparison report."""
     stock_sha = _sha256(stock)
@@ -166,6 +255,33 @@ def verify_artifacts_data(
         "d300a0e300f021e104d09fe504009fe510ff2fe1007f400081200000"
     )
     _require(container[0x2064:0x2080] == expected_reset, "minimal reset sequence changed")
+    startup_equivalence = verify_startup_equivalence(
+        container, startup_trampoline
+    )
+    call_targets = {
+        "stub_main_to_recovery": _thumb_bl_target(container, 0x2080),
+        "recovery_to_erase": _thumb_bl_target(container, 0x2098),
+        "recovery_to_first_write": _thumb_bl_target(container, 0x20A2),
+        "recovery_to_second_write": _thumb_bl_target(container, 0x20AA),
+        "recovery_to_delay": _thumb_bl_target(container, 0x20B2),
+        "recovery_to_watchdog_reset": _thumb_bl_target(container, 0x20B6),
+        "erase_to_storage": _thumb_bl_target(container, 0x20DC),
+        "write_to_storage": _thumb_bl_target(container, 0x20F2),
+    }
+    _require(
+        call_targets
+        == {
+            "stub_main_to_recovery": 0x2084,
+            "recovery_to_erase": 0x20D0,
+            "recovery_to_first_write": 0x20E8,
+            "recovery_to_second_write": 0x20E8,
+            "recovery_to_delay": 0x2178,
+            "recovery_to_watchdog_reset": 0x20FC,
+            "erase_to_storage": 0x2138,
+            "write_to_storage": 0x2138,
+        },
+        "standalone recovery call graph changed",
+    )
 
     # These are literal words consumed in order by the stock and stub instructions.
     stock_unlock = [_u32(stock, 0x177E4), _u32(stock, 0x177EC)]
@@ -276,7 +392,11 @@ def verify_artifacts_data(
             "vector_opcodes_and_reset_target_match_stock": True,
             "storage_unlock_order_matches_stock": ["0x58a9", "0xa958"],
             "marker_and_watchdog_sequences_match_audited_disassembly": True,
+            "standalone_call_graph": {
+                name: f"0x{target:x}" for name, target in call_targets.items()
+            },
             "storage_core_matches_live_carrier": True,
+            "startup_matches_live_trampoline": startup_equivalence,
             "wire_geometry_matches_successful_4.50_probe": True,
         },
     }
@@ -289,6 +409,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("code", type=Path)
     parser.add_argument("elf", type=Path)
     parser.add_argument("carrier", type=Path, help="exact live-proven v4.51 carrier")
+    parser.add_argument(
+        "startup_trampoline", type=Path, help="exact live-tested v4.53 image"
+    )
     return parser
 
 
@@ -301,6 +424,7 @@ def main() -> int:
             args.code.read_bytes(),
             args.elf.read_bytes(),
             args.carrier.read_bytes(),
+            args.startup_trampoline.read_bytes(),
         )
     except (OSError, VerificationError, ValueError) as error:
         print(f"FAIL: {error}", file=sys.stderr)

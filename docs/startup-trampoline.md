@@ -30,4 +30,22 @@ Updater payload CRC is `4e9c5e53`; USB `bcdDevice` is `4.53`. The verifier requi
 
 The first draft accidentally applied the Thumb low bit twice, producing even pointer `0x22ea`. Disassembly caught it before hash locking or hardware access. The corrected pointer is odd `0x22e9`.
 
-No startup-trampoline image has been sent to hardware. Passing this test would reduce the standalone risk further, but it cannot make the device unbrickable: a failure in this unconditional early path could still leave the intact resident loader unreachable over USB.
+## Live result
+
+Before the planned standalone recovery-stub test on 2026-08-14, the application
+reported `bcdDevice 0452`, proving that this gate had not yet run. That attempt
+stopped after a non-writing loader `B2 d2` response and before `B0`, so it did
+not erase or write application flash.
+
+The user then explicitly selected this startup gate. Resident loader
+`25a7:fabe` again answered BK3635 type `d2`, accepted erase, echoed all 3,748
+payload blocks byte-for-byte, and accepted payload CRC `4e9c5e53`. The same
+physical USB path returned with a new device number as `047d:80d7`,
+`bcdDevice 0453`. The 170-byte vendor HID descriptor and stable vendor symlink
+also returned.
+
+Because the hook runs unconditionally before stock startup, reaching the stock
+USB application proves that the supervisor-mode switch, standalone stack
+selection, ARM-to-Thumb-to-ARM transitions, state restoration, and branch back
+to stock executed successfully on the BK3635. The user subsequently confirmed
+normal ball movement, scrolling, and button operation.

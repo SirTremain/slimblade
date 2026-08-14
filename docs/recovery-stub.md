@@ -41,7 +41,16 @@ The 2026-08-14 audit found and fixed two differences before any custom flash:
 - The storage unlock words had been reversed. The emitted order now matches stock exactly: `0x58a9`, then `0xa958`.
 - The C delay had matching loop counts but fewer cycles. It is now assembly with the stock executed instruction path for `(200, 0)`.
 
-The hash-locked verifier compares the output against the exact official v4.49 image and the live-proven v4.51 carrier. It checks the application header/CRC, vector geometry, ARM-to-Thumb entry, loader marker, erase/write commands, storage unlock and polling sequence, watchdog reset, absence of writable allocated sections, erased padding, and wire geometry. The address-independent 42-byte storage-controller core must be byte-for-byte identical to the carrier code that passed on hardware. Negative tests corrupt the CRC, padding, stock/carrier references, and unlock order and require rejection.
+The hash-locked verifier compares the output against the exact official v4.49
+image, live-proven v4.51 carrier, and live-tested v4.53 startup trampoline. It
+checks the application header/CRC, vector geometry, normalized startup
+operations, ARM-to-Thumb entry, complete internal call graph, loader marker,
+erase/write commands, storage unlock and polling sequence, watchdog reset,
+absence of writable allocated sections, erased padding, and wire geometry. The
+address-independent 42-byte storage-controller core must be byte-for-byte
+identical to the carrier code that passed on hardware. Negative tests corrupt
+the CRC, padding, startup/stock/carrier references, reset stack load, call graph,
+and unlock order and require rejection.
 
 | Artifact | Bytes | SHA-256 |
 | --- | ---: | --- |
@@ -49,11 +58,43 @@ The hash-locked verifier compares the output against the exact official v4.49 im
 | Full container | 128,112 | `34daf13778a79034cc3a35917fbe6cfacc0b2f93db650e50f1f4df98ecf7e618` |
 | Transmitted payload | 119,920 | `67415f19bf43ea3f91fe1ec223bad5c69d3e6975cf42aba60219a8bfd1457ea6` |
 
-Application CRC is `f96b816e`; updater payload CRC is `6e473ed7`. The payload uses the same 3,748-block path as the successful stock-derived v4.50 probe. `make preflight` currently passes 56 tests.
+Application CRC is `f96b816e`; updater payload CRC is `6e473ed7`. The payload
+uses the same 3,748-block path as the successful stock-derived v4.50 probe.
+`make preflight` currently passes 73 tests.
 
-The [stock recovery carrier](recovery-carrier.md) has now live-proven this exact direct MMIO sequence, including loader entry and a complete application reflash. The remaining standalone-stub risk is earlier: its custom vector, CPU-mode, stack, and entry code must execute before the proven routine is reached. A failure there would leave no custom USB recovery interface.
+Three clean builds on 2026-08-14 produced identical raw-code, container, and
+ELF bytes. The ELF SHA-256 is
+`d97354a17c57b5e78160bf6313001ecff15b55edbd4d94e3aa1e85d2b166c679`.
+The standalone reset and live startup trampoline normalize to the same five
+operations—select supervisor mode, write CPSR, load stack, load entry, and
+branch—with the same stack `0x00407f00`. Only their placement-dependent literal
+offsets and intended Thumb destinations differ.
 
-The carrier and [reset-trampoline](reset-trampoline.md) gates are complete. The [startup trampoline](startup-trampoline.md) is the next optional gate for CPU-mode, stack, and ARM/Thumb transition behavior while stock recovery remains available after a successful boot. It is still unconditional and cannot be skipped if its early code fails. After that, the standalone stub should immediately enter the resident loader, return type `d2`, and be replaced with a proven stock-derived image.
+The [stock recovery carrier](recovery-carrier.md) live-proved the exact direct
+MMIO sequence, including loader entry and a complete application reflash. The
+startup trampoline subsequently live-proved the CPU-mode, stack, and
+interworking assumptions.
+
+The carrier, [reset trampoline](reset-trampoline.md), and
+[startup trampoline](startup-trampoline.md) gates are complete. Together they
+live-prove the direct recovery MMIO sequence, earliest reset hook,
+supervisor-mode switch, standalone stack, and ARM/Thumb transitions. Only their
+composition as the 420-byte standalone image remains untested.
+
+## Readiness assessment
+
+Offline audit is complete for the existing 420-byte candidate. Modified-image
+acceptance and transfer geometry are live-proven by v4.50, recovery MMIO and
+complete restore by v4.51, earliest reset entry by v4.52, and
+CPU-mode/stack/interworking behavior by v4.53. The final image also has a
+decoded, fixed internal call graph and reproducible hashes.
+
+The planned standalone attempt stopped safely after the normal application
+entered loader `25a7:fabe` and answered `B2` as BK3635 type `d2`. Inspection
+showed that the preceding application was still v4.52, so no `B0` erase or
+firmware data was sent. The v4.53 startup gate was then flashed separately and
+returned successfully as `047d:80d7`, `bcdDevice 0453`. No standalone
+recovery-stub flash has yet been performed.
 
 The guarded host command now accepts only the exact container and payload hashes above. After the final block, it requires a *new* known loader enumeration on the same physical USB path, with disappearance or a changed USB device number; the pre-flash loader instance cannot satisfy the result check. The intended live sequence uses `/dev/slimblade-vendor` to enter the loader, validates `/dev/slimblade-loader`, flashes the one-shot stub, queries the returned loader, and restores the proven reset-trampoline image. No standalone stub has been sent to hardware.
 
