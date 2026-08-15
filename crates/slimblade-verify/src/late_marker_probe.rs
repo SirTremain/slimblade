@@ -1,9 +1,9 @@
 use core::fmt;
 
 use slimblade_image::{
-    APPLICATION_HEADER_OFFSET, FirmwareIdentityError, ImageError, LATE_MARKER_PROBE,
-    LATE_MARKER_PROBE_ARTIFACT, STACK_HEADER_OFFSET, STARTUP_TRAMPOLINE, V449_BCD_DEVICE_OFFSET,
-    parse_header, refresh_header_crc, sha256,
+    APPLICATION_HEADER_OFFSET, ArtifactIdentity, FirmwareIdentity, FirmwareIdentityError,
+    ImageError, LATE_MARKER_PROBE, LATE_MARKER_PROBE_ARTIFACT, STACK_HEADER_OFFSET,
+    STARTUP_TRAMPOLINE, V449_BCD_DEVICE_OFFSET, parse_header, refresh_header_crc, sha256,
 };
 
 use crate::{
@@ -22,13 +22,28 @@ pub const STOCK_RESUME_POINTER: u32 = 0x2213;
 const FINAL_BRANCH_OFFSET: usize = 0x0148;
 const CARRIER_EXECUTABLE_BYTES: usize = 0x0114;
 const CARRIER_EXECUTABLE_SIZE: u32 = 0x0114;
-const DEVICE_VERSION_LOW: u8 = 0x56;
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) struct ProbeSpec {
+    pub artifact: ArtifactIdentity,
+    pub identity: FirmwareIdentity,
+    pub marker_entry_tail: [u8; 2],
+    pub device_version_low: u8,
+    pub usb_bcd_device: u16,
+}
+
+const LATE_MARKER_SPEC: ProbeSpec = ProbeSpec {
+    artifact: LATE_MARKER_PROBE_ARTIFACT,
+    identity: LATE_MARKER_PROBE,
+    marker_entry_tail: [0x10, 0xbd],
+    device_version_low: 0x56,
+    usb_bcd_device: 0x0456,
+};
 
 const DISPATCH: [u8; 18] = [
     0x0d, 0x28, 0x04, 0xd0, 0x0e, 0x28, 0x04, 0xd0, 0x0f, 0x28, 0x06, 0xd0, 0x06, 0xe0, 0x31, 0x4b,
     0x18, 0x47,
 ];
-const LATE_MARKER_RETURN: [u8; 8] = [0x10, 0xb5, 0x00, 0xf0, 0x05, 0xf8, 0x10, 0xbd];
+const MARKER_ENTRY_PREFIX: [u8; 6] = [0x10, 0xb5, 0x00, 0xf0, 0x05, 0xf8];
 const STOCK_RESUME: [u8; 4] = [0x23, 0x48, 0x00, 0x47];
 const CRITICAL_WORDS: [(usize, u32); 17] = [
     (0x00d4, 0x0001_895d),
@@ -81,10 +96,10 @@ impl fmt::Display for BuildError {
             Self::InjectionSize { actual } => {
                 write!(
                     formatter,
-                    "late-marker injection is {actual} bytes, not {INJECTION_SIZE}"
+                    "stock-marker injection is {actual} bytes, not {INJECTION_SIZE}"
                 )
             },
-            Self::InjectionIdentity => formatter.write_str("late-marker injection hash changed"),
+            Self::InjectionIdentity => formatter.write_str("stock-marker injection hash changed"),
             Self::ImageLayout => formatter.write_str("v4.53 image layout is truncated"),
             Self::Branch(error) => write!(formatter, "reset branch: {error}"),
             Self::Image(error) => write!(formatter, "container header: {error}"),
@@ -128,9 +143,11 @@ pub enum VerificationError {
 impl fmt::Display for VerificationError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Build(error) => write!(formatter, "could not rebuild late-marker probe: {error}"),
+            Self::Build(error) => {
+                write!(formatter, "could not rebuild stock-marker probe: {error}")
+            },
             Self::DerivedImage => formatter.write_str("image is not an exact v4.53 derivation"),
-            Self::ContainerIdentity(error) => write!(formatter, "late-marker probe: {error}"),
+            Self::ContainerIdentity(error) => write!(formatter, "stock-marker probe: {error}"),
             Self::BytesChanged { offset } => write!(formatter, "bytes changed at +{offset:#x}"),
             Self::WordUnavailable { offset } => write!(formatter, "no word at +{offset:#x}"),
             Self::WordChanged { offset, actual } => {
@@ -146,7 +163,7 @@ impl fmt::Display for VerificationError {
             Self::InterruptWrappers => formatter.write_str("stock IRQ/FIQ wrappers changed"),
             Self::StockDispatch => formatter.write_str("stock USB dispatcher patch changed"),
             Self::DeviceVersion { actual } => {
-                write!(formatter, "bcdDevice low byte is {actual:#04x}, not 0x56")
+                write!(formatter, "unexpected bcdDevice low byte {actual:#04x}")
             },
             Self::Header(error) => write!(formatter, "container header: {error}"),
             Self::HeaderCrc { offset } => write!(formatter, "header CRC at {offset:#x} is invalid"),
@@ -189,6 +206,14 @@ pub struct LateMarkerReport {
 ///
 /// Returns an error for any identity, size, branch, layout, or header mismatch.
 pub fn build(base: &[u8], injection: &[u8]) -> Result<Vec<u8>, BuildError> {
+    build_with_spec(base, injection, LATE_MARKER_SPEC)
+}
+
+pub(crate) fn build_with_spec(
+    base: &[u8],
+    injection: &[u8],
+    spec: ProbeSpec,
+) -> Result<Vec<u8>, BuildError> {
     STARTUP_TRAMPOLINE
         .validate(base)
         .map_err(BuildError::BaseIdentity)?;
@@ -197,7 +222,7 @@ pub fn build(base: &[u8], injection: &[u8]) -> Result<Vec<u8>, BuildError> {
             actual: injection.len(),
         });
     }
-    if !LATE_MARKER_PROBE_ARTIFACT.code_matches(injection) {
+    if !spec.artifact.code_matches(injection) {
         return Err(BuildError::InjectionIdentity);
     }
     let mut image = base.to_vec();
@@ -217,7 +242,7 @@ pub fn build(base: &[u8], injection: &[u8]) -> Result<Vec<u8>, BuildError> {
         .copy_from_slice(&branch);
     *image
         .get_mut(V449_BCD_DEVICE_OFFSET)
-        .ok_or(BuildError::ImageLayout)? = DEVICE_VERSION_LOW;
+        .ok_or(BuildError::ImageLayout)? = spec.device_version_low;
     refresh_header_crc(&mut image, APPLICATION_HEADER_OFFSET).map_err(BuildError::Image)?;
     refresh_header_crc(&mut image, STACK_HEADER_OFFSET).map_err(BuildError::Image)?;
     Ok(image)
@@ -238,12 +263,27 @@ pub fn verify(
     injection: &[u8],
     elf_bytes: &[u8],
 ) -> Result<LateMarkerReport, VerificationError> {
-    let expected = build(base, injection).map_err(VerificationError::Build)?;
+    verify_with_spec(base, image, injection, elf_bytes, LATE_MARKER_SPEC)
+}
+
+#[allow(
+    clippy::too_many_lines,
+    reason = "a contiguous ordered audit keeps the recovery boundary reviewable"
+)]
+pub(crate) fn verify_with_spec(
+    base: &[u8],
+    image: &[u8],
+    injection: &[u8],
+    elf_bytes: &[u8],
+    spec: ProbeSpec,
+) -> Result<LateMarkerReport, VerificationError> {
+    let expected = build_with_spec(base, injection, spec).map_err(VerificationError::Build)?;
     if image != expected {
         return Err(VerificationError::DerivedImage);
     }
     require_bytes(injection, 0, &DISPATCH)?;
-    require_bytes(injection, 0x12, &LATE_MARKER_RETURN)?;
+    require_bytes(injection, 0x12, &MARKER_ENTRY_PREFIX)?;
+    require_bytes(injection, 0x18, &spec.marker_entry_tail)?;
     require_bytes(injection, 0x66, &STOCK_RESUME)?;
     for (offset, expected) in CRITICAL_WORDS.into_iter().chain(ARM_WORDS) {
         let actual = read_u32(injection, offset)?;
@@ -288,7 +328,7 @@ pub fn verify(
         .get(V449_BCD_DEVICE_OFFSET)
         .copied()
         .ok_or(VerificationError::DeviceVersion { actual: 0 })?;
-    if version != DEVICE_VERSION_LOW {
+    if version != spec.device_version_low {
         return Err(VerificationError::DeviceVersion { actual: version });
     }
     for offset in [STACK_HEADER_OFFSET, APPLICATION_HEADER_OFFSET] {
@@ -301,7 +341,8 @@ pub fn verify(
         }
     }
     verify_elf(elf_bytes)?;
-    let payload = LATE_MARKER_PROBE
+    let payload = spec
+        .identity
         .validate(image)
         .map_err(VerificationError::ContainerIdentity)?;
     Ok(LateMarkerReport {
@@ -314,7 +355,7 @@ pub fn verify(
         payload_crc: slimblade_protocol::updater_crc32(payload),
         late_marker_entry: 0x21be,
         stock_resume_pointer: STOCK_RESUME_POINTER,
-        usb_bcd_device: 0x0456,
+        usb_bcd_device: spec.usb_bcd_device,
     })
 }
 

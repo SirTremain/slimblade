@@ -1,7 +1,7 @@
 use slimblade_image::{
-    FirmwareIdentity, LATE_MARKER_PROBE, OFFICIAL_V449, RECOVERY_CARRIER, RECOVERY_GUARD,
-    RECOVERY_STUB, RESET_TRAMPOLINE, STARTUP_TRAMPOLINE, STOCK_HARNESS, USB_RECOVERY_PROBE,
-    V449_DESCRIPTOR_PROBE,
+    EXPERIMENT_ENTRY_PROBE, FirmwareIdentity, LATE_MARKER_PROBE, OFFICIAL_V449, RECOVERY_CARRIER,
+    RECOVERY_GUARD, RECOVERY_STUB, RESET_TRAMPOLINE, STARTUP_TRAMPOLINE, STOCK_HARNESS,
+    USB_RECOVERY_PROBE, V449_DESCRIPTOR_PROBE,
 };
 use slimblade_protocol::NormalReport;
 
@@ -24,6 +24,7 @@ pub enum FlashArtifact {
     UsbRecoveryProbe,
     StockHarness,
     LateMarkerProbe,
+    ExperimentEntryProbe,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -47,6 +48,7 @@ impl FlashArtifact {
             Self::UsbRecoveryProbe => USB_RECOVERY_PROBE,
             Self::StockHarness => STOCK_HARNESS,
             Self::LateMarkerProbe => LATE_MARKER_PROBE,
+            Self::ExperimentEntryProbe => EXPERIMENT_ENTRY_PROBE,
         }
     }
 
@@ -73,6 +75,7 @@ impl FlashArtifact {
             Self::UsbRecoveryProbe => PostFlashExpectation::Application { bcd_device: "0454" },
             Self::StockHarness => PostFlashExpectation::Application { bcd_device: "0455" },
             Self::LateMarkerProbe => PostFlashExpectation::Application { bcd_device: "0456" },
+            Self::ExperimentEntryProbe => PostFlashExpectation::Application { bcd_device: "0457" },
         }
     }
 }
@@ -178,6 +181,18 @@ mod tests {
         assert_eq!(
             FlashArtifact::LateMarkerProbe.post_flash_expectation(),
             PostFlashExpectation::Application { bcd_device: "0456" }
+        );
+    }
+
+    #[test]
+    fn experiment_entry_probe_needs_exact_hash_confirmation() {
+        assert!(!FlashArtifact::ExperimentEntryProbe.confirmation_matches("wrong"));
+        assert!(FlashArtifact::ExperimentEntryProbe.confirmation_matches(
+            "bc3275a95a0ebd4f3c12863ed2607d5f9ce026903ef19f145e177834f1a988b3"
+        ));
+        assert_eq!(
+            FlashArtifact::ExperimentEntryProbe.post_flash_expectation(),
+            PostFlashExpectation::Application { bcd_device: "0457" }
         );
     }
 

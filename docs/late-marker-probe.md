@@ -74,9 +74,10 @@ Cold-boot fallback therefore passed.
 
 ## Later architecture
 
-After this compatibility gate, an experiment-entry probe will write the marker
-and enter deliberately hanging custom code without returning to stock. Once
-that cold-boot recovery passes, the development image can write the marker
-automatically at a verified post-initialization hook before every custom-code
-iteration. USB command `0x0d` remains the primary loader interface; power-cycle
-marker recovery remains independent fallback.
+The compatibility gate is complete. The next build-only artifact writes the
+marker and enters deliberately hanging custom code without returning to stock;
+see [`experiment-entry-probe.md`](experiment-entry-probe.md). Once that
+cold-boot recovery passes, the two-byte hang can be replaced by incremental
+custom code while retaining marker-before-experiment ordering. USB command
+`0x0d` remains the primary loader interface while the stock dispatcher is
+alive; power-cycle marker recovery remains the independent fallback.

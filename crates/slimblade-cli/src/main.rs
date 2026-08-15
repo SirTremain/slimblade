@@ -25,6 +25,9 @@ enum Command {
     SetLateMarker {
         confirmed: bool,
     },
+    StartExperiment {
+        confirmed: bool,
+    },
     QueryLoader,
     Flash {
         artifact: FlashArtifact,
@@ -41,7 +44,7 @@ struct Arguments {
 }
 
 const fn usage() -> &'static str {
-    "usage:\n  slimblade [--device PATH] identify\n  slimblade [--device PATH] [--timeout-seconds N] enter-loader --confirm\n  slimblade [--device PATH] [--timeout-seconds N] set-late-marker --confirm\n  slimblade [--device PATH] [--timeout-seconds N] query-loader\n  slimblade [--device PATH] [--timeout-seconds N] FLASH_COMMAND --firmware PATH --confirm-sha256 HASH\n\nFLASH_COMMAND: restore-official-v449, flash-descriptor-probe, flash-recovery-carrier, flash-reset-trampoline, flash-recovery-stub, flash-startup-trampoline, flash-rust-guard, flash-usb-recovery-probe, flash-stock-harness, or flash-late-marker-probe"
+    "usage:\n  slimblade [--device PATH] identify\n  slimblade [--device PATH] [--timeout-seconds N] enter-loader --confirm\n  slimblade [--device PATH] [--timeout-seconds N] set-late-marker --confirm\n  slimblade [--device PATH] [--timeout-seconds N] start-experiment --confirm\n  slimblade [--device PATH] [--timeout-seconds N] query-loader\n  slimblade [--device PATH] [--timeout-seconds N] FLASH_COMMAND --firmware PATH --confirm-sha256 HASH\n\nFLASH_COMMAND: restore-official-v449, flash-descriptor-probe, flash-recovery-carrier, flash-reset-trampoline, flash-recovery-stub, flash-startup-trampoline, flash-rust-guard, flash-usb-recovery-probe, flash-stock-harness, flash-late-marker-probe, or flash-experiment-entry-probe"
 }
 
 fn take_value(arguments: &[String], index: &mut usize, option: &str) -> Result<String, String> {
@@ -96,6 +99,7 @@ fn parse_arguments() -> Result<Arguments, String> {
         "identify" => Command::Identify,
         "enter-loader" => Command::EnterLoader { confirmed },
         "set-late-marker" => Command::SetLateMarker { confirmed },
+        "start-experiment" => Command::StartExperiment { confirmed },
         "query-loader" => Command::QueryLoader,
         "restore-official-v449"
         | "flash-descriptor-probe"
@@ -106,7 +110,8 @@ fn parse_arguments() -> Result<Arguments, String> {
         | "flash-rust-guard"
         | "flash-usb-recovery-probe"
         | "flash-stock-harness"
-        | "flash-late-marker-probe" => Command::Flash {
+        | "flash-late-marker-probe"
+        | "flash-experiment-entry-probe" => Command::Flash {
             artifact: match command_name.as_str() {
                 "restore-official-v449" => FlashArtifact::OfficialV449,
                 "flash-descriptor-probe" => FlashArtifact::DescriptorProbe,
@@ -118,6 +123,7 @@ fn parse_arguments() -> Result<Arguments, String> {
                 "flash-usb-recovery-probe" => FlashArtifact::UsbRecoveryProbe,
                 "flash-stock-harness" => FlashArtifact::StockHarness,
                 "flash-late-marker-probe" => FlashArtifact::LateMarkerProbe,
+                "flash-experiment-entry-probe" => FlashArtifact::ExperimentEntryProbe,
                 _ => return Err("unreachable flash command mapping".to_owned()),
             },
             firmware: firmware.ok_or_else(|| "flash command requires --firmware".to_owned())?,
@@ -127,9 +133,10 @@ fn parse_arguments() -> Result<Arguments, String> {
         value => return Err(format!("unknown command {value:?}")),
     };
     let default_device = match command {
-        Command::Identify | Command::EnterLoader { .. } | Command::SetLateMarker { .. } => {
-            DEFAULT_APPLICATION_DEVICE
-        },
+        Command::Identify
+        | Command::EnterLoader { .. }
+        | Command::SetLateMarker { .. }
+        | Command::StartExperiment { .. } => DEFAULT_APPLICATION_DEVICE,
         Command::QueryLoader | Command::Flash { .. } => DEFAULT_LOADER_DEVICE,
     };
     Ok(Arguments {
@@ -235,6 +242,47 @@ fn set_late_marker(device: &Path, timeout: Duration, confirmed: bool) -> Result<
     }
     println!(
         "late_marker=ack command=0e status=01 sysfs={}",
+        parent.sysfs
+    );
+    Ok(())
+}
+
+fn start_experiment(device: &Path, timeout: Duration, confirmed: bool) -> Result<(), String> {
+    if !confirmed {
+        return Err("refusing marker-then-hang experiment without --confirm".to_owned());
+    }
+    let parent = usb_parent_for_hidraw(device, Path::new(HIDRAW_SYSFS_ROOT))
+        .map_err(|error| format!("could not resolve USB parent: {error}"))?
+        .ok_or_else(|| "could not find USB parent".to_owned())?;
+    if parent.identity != KENSINGTON_WIRED_IDENTITY || parent.bcd_device.as_deref() != Some("0457")
+    {
+        return Err(format!(
+            "refusing experiment command for identity {:04x}:{:04x} bcdDevice={:?}; expected 047d:80d7/0457",
+            parent.identity.vendor_id, parent.identity.product_id, parent.bcd_device
+        ));
+    }
+    let mut hidraw = Hidraw::open_read_write(device)
+        .map_err(|error| format!("could not open {}: {error}", device.display()))?;
+    let (_, identity) = hidraw
+        .identity()
+        .map_err(|error| format!("could not query HID identity: {error}"))?;
+    if identity != parent.identity {
+        return Err("HID identity and USB parent disagree".to_owned());
+    }
+    hidraw
+        .write_report(NormalReport::command(0x0e).as_bytes())
+        .map_err(|error| format!("experiment-entry report failed: {error}"))?;
+    if hidraw
+        .read_normal_report(timeout.max(Duration::from_secs(3)))
+        .map_err(|error| format!("experiment-entry observation failed: {error}"))?
+        .is_some()
+    {
+        return Err(
+            "experiment returned an unexpected vendor response instead of hanging".to_owned(),
+        );
+    }
+    println!(
+        "experiment_entry=sent command=0e response=none expected=marker-then-hang sysfs={}",
         parent.sysfs
     );
     Ok(())
@@ -353,6 +401,9 @@ fn run() -> Result<(), String> {
         },
         Command::SetLateMarker { confirmed } => {
             set_late_marker(&arguments.device, arguments.timeout, confirmed)
+        },
+        Command::StartExperiment { confirmed } => {
+            start_experiment(&arguments.device, arguments.timeout, confirmed)
         },
         Command::QueryLoader => query_loader(&arguments.device, arguments.timeout),
         Command::Flash {

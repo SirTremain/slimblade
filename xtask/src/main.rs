@@ -5,10 +5,12 @@ use std::process::{self, Command, ExitCode};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use slimblade_image::{
+    APPLICATION_PREFIX_OFFSET, ArtifactIdentity, EXPERIMENT_ENTRY_PROBE_ARTIFACT,
     LATE_MARKER_PROBE_ARTIFACT, OFFICIAL_V449, RECOVERY_GUARD, RECOVERY_GUARD_ARTIFACT,
     STOCK_HARNESS_ARTIFACT, USB_RECOVERY_PROBE, USB_RECOVERY_PROBE_ARTIFACT, sha256,
 };
 use slimblade_protocol::updater_crc32;
+use slimblade_verify::experiment_entry_probe;
 use slimblade_verify::late_marker_probe;
 use slimblade_verify::post_link::audit_nm_outputs;
 use slimblade_verify::stock_harness;
@@ -20,6 +22,7 @@ const POST_LINK_ELFS: &[&str] =
 const USB_PROBE_BINARY: &str = "slimblade-usb-recovery-probe";
 const STOCK_HARNESS_BINARY: &str = "slimblade-stock-harness";
 const LATE_MARKER_PROBE_BINARY: &str = "slimblade-late-marker-probe";
+const EXPERIMENT_ENTRY_PROBE_BINARY: &str = "slimblade-experiment-entry-probe";
 const USB_PROBE_MAX_STACK_BYTES: usize = 256;
 const USB_PROBE_CODE_ADDRESS: u32 = 0x0000_2020;
 const SYSTEM_MMIO_START: u32 = 0x0080_0000;
@@ -35,6 +38,15 @@ const ALLOWED_USB_PROBE_MMIO: &[u32] = &[
     0x0080_6520,
     0x0080_6524,
 ];
+
+type StockMarkerBuild = fn(&[u8], &[u8]) -> Result<Vec<u8>, late_marker_probe::BuildError>;
+type StockMarkerVerify =
+    fn(
+        &[u8],
+        &[u8],
+        &[u8],
+        &[u8],
+    ) -> Result<late_marker_probe::LateMarkerReport, late_marker_probe::VerificationError>;
 
 fn repository_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..")
@@ -105,7 +117,8 @@ fn host_checks(root: &Path) -> Result<(), String> {
     post_link_checks(root)?;
     build_usb_probe(root)?;
     build_stock_harness(root)?;
-    build_late_marker_probe(root)
+    build_late_marker_probe(root)?;
+    build_experiment_entry_probe(root)
 }
 
 fn build_rust_guard(root: &Path) -> Result<(), String> {
@@ -405,7 +418,7 @@ fn pack_usb_probe(code: &[u8], artifact_dir: &Path) -> Result<PackedProbeReport,
         return Err("packed USB probe code differs from the audited binary".to_owned());
     }
     let payload = container
-        .get(slimblade_image::APPLICATION_PREFIX_OFFSET..)
+        .get(APPLICATION_PREFIX_OFFSET..)
         .ok_or_else(|| "packed USB probe has no updater payload".to_owned())?;
     let report = PackedProbeReport {
         container_bytes: container.len(),
@@ -644,6 +657,45 @@ fn build_stock_harness(root: &Path) -> Result<(), String> {
 }
 
 fn build_late_marker_probe(root: &Path) -> Result<(), String> {
+    build_stock_marker_probe(
+        root,
+        LATE_MARKER_PROBE_BINARY,
+        "late-marker",
+        "late-marker-probe",
+        "late marker",
+        LATE_MARKER_PROBE_ARTIFACT,
+        late_marker_probe::build,
+        late_marker_probe::verify,
+    )
+}
+
+fn build_experiment_entry_probe(root: &Path) -> Result<(), String> {
+    build_stock_marker_probe(
+        root,
+        EXPERIMENT_ENTRY_PROBE_BINARY,
+        "experiment-entry",
+        "experiment-entry-probe",
+        "experiment entry",
+        EXPERIMENT_ENTRY_PROBE_ARTIFACT,
+        experiment_entry_probe::build,
+        experiment_entry_probe::verify,
+    )
+}
+
+#[allow(
+    clippy::too_many_arguments,
+    reason = "the probe builder keeps each locked artifact parameter explicit at its call site"
+)]
+fn build_stock_marker_probe(
+    root: &Path,
+    binary: &str,
+    artifact_directory: &str,
+    artifact_stem: &str,
+    label: &str,
+    artifact: ArtifactIdentity,
+    build: StockMarkerBuild,
+    verify: StockMarkerVerify,
+) -> Result<(), String> {
     let firmware = root.join("firmware/bk3635-stock-harness");
     run(&firmware, "cargo", &[FIRMWARE_TOOLCHAIN, "fmt", "--check"])?;
     run(
@@ -653,7 +705,7 @@ fn build_late_marker_probe(root: &Path) -> Result<(), String> {
             FIRMWARE_TOOLCHAIN,
             "clippy",
             "--bin",
-            LATE_MARKER_PROBE_BINARY,
+            binary,
             "--",
             "-D",
             "warnings",
@@ -662,23 +714,17 @@ fn build_late_marker_probe(root: &Path) -> Result<(), String> {
     run(
         &firmware,
         "cargo",
-        &[
-            FIRMWARE_TOOLCHAIN,
-            "build",
-            "--release",
-            "--bin",
-            LATE_MARKER_PROBE_BINARY,
-        ],
+        &[FIRMWARE_TOOLCHAIN, "build", "--release", "--bin", binary],
     )?;
 
     let elf = firmware
         .join("target/thumbv5te-none-eabi/release")
-        .join(LATE_MARKER_PROBE_BINARY);
-    let artifact_dir = firmware.join("target/late-marker");
+        .join(binary);
+    let artifact_dir = firmware.join("target").join(artifact_directory);
     fs::create_dir_all(&artifact_dir)
         .map_err(|error| format!("could not create {}: {error}", artifact_dir.display()))?;
-    let injection_path = artifact_dir.join("DO_NOT_FLASH-late-marker-probe.injection.bin");
-    let container_path = artifact_dir.join("DO_NOT_FLASH-late-marker-probe.container.bin");
+    let injection_path = artifact_dir.join(format!("DO_NOT_FLASH-{artifact_stem}.injection.bin"));
+    let container_path = artifact_dir.join(format!("DO_NOT_FLASH-{artifact_stem}.container.bin"));
     eprintln!(
         "+ llvm-objcopy -O binary {} {}",
         elf.display(),
@@ -696,14 +742,16 @@ fn build_late_marker_probe(root: &Path) -> Result<(), String> {
     }
     let injection = fs::read(&injection_path)
         .map_err(|error| format!("could not read {}: {error}", injection_path.display()))?;
-    if !LATE_MARKER_PROBE_ARTIFACT.code_matches(&injection) {
-        return Err("late-marker injection differs from its reviewed identity".to_owned());
+    if !artifact.code_matches(&injection) {
+        return Err(format!(
+            "{label} injection differs from its reviewed identity"
+        ));
     }
     let elf_text = elf.to_string_lossy().into_owned();
     let defined = llvm_nm(root, &elf_text, "--defined-only")?;
     let undefined = llvm_nm(root, &elf_text, "--undefined-only")?;
     let symbols = audit_nm_outputs(&defined, &undefined)
-        .map_err(|error| format!("late-marker symbol audit failed: {error}"))?;
+        .map_err(|error| format!("{label} symbol audit failed: {error}"))?;
 
     let base_path = root.join(
         "firmware/startup_trampoline/build/DO_NOT_FLASH-stock-startup-trampoline.container.bin",
@@ -714,22 +762,32 @@ fn build_late_marker_probe(root: &Path) -> Result<(), String> {
             base_path.display()
         )
     })?;
-    let container = late_marker_probe::build(&base, &injection)
-        .map_err(|error| format!("could not pack late-marker probe: {error}"))?;
+    let container = build(&base, &injection)
+        .map_err(|error| format!("could not pack {label} probe: {error}"))?;
+    let payload = container
+        .get(APPLICATION_PREFIX_OFFSET..)
+        .ok_or_else(|| format!("{label} container has no updater payload"))?;
+    eprintln!(
+        "{label} candidate: {} bytes, SHA-256 {}, payload SHA-256 {}, payload CRC {:08x}",
+        container.len(),
+        format_sha256(sha256(&container))?,
+        format_sha256(sha256(payload))?,
+        updater_crc32(payload)
+    );
     let elf_bytes =
         fs::read(&elf).map_err(|error| format!("could not read {}: {error}", elf.display()))?;
-    let report = late_marker_probe::verify(&base, &container, &injection, &elf_bytes)
-        .map_err(|error| format!("late-marker audit failed: {error}"))?;
+    let report = verify(&base, &container, &injection, &elf_bytes)
+        .map_err(|error| format!("{label} audit failed: {error}"))?;
     fs::write(&container_path, &container)
         .map_err(|error| format!("could not write {}: {error}", container_path.display()))?;
     eprintln!(
-        "late marker PASS: {} injection bytes, {} defined symbols, injection SHA-256 {}",
+        "{label} PASS: {} injection bytes, {} defined symbols, injection SHA-256 {}",
         report.injection_bytes,
         symbols.defined_symbols,
         format_sha256(report.injection_sha256)?
     );
     eprintln!(
-        "late marker container: {} bytes, SHA-256 {}, payload SHA-256 {}, payload CRC {:08x}",
+        "{label} container: {} bytes, SHA-256 {}, payload SHA-256 {}, payload CRC {:08x}",
         report.container_bytes,
         format_sha256(report.container_sha256)?,
         format_sha256(report.payload_sha256)?,
@@ -810,7 +868,7 @@ fn disassemble_stock(
 
 fn usage() {
     eprintln!(
-        "usage:\n  cargo xtask <check|rust-guard|usb-probe|stock-harness|late-marker-probe|postlink|all>\n  cargo xtask disassemble-stock FIRMWARE START STOP <arm|thumb>"
+        "usage:\n  cargo xtask <check|rust-guard|usb-probe|stock-harness|late-marker-probe|experiment-entry-probe|postlink|all>\n  cargo xtask disassemble-stock FIRMWARE START STOP <arm|thumb>"
     );
 }
 
@@ -825,6 +883,7 @@ fn main() -> ExitCode {
         },
         [command] if command == "stock-harness" => build_stock_harness(&root),
         [command] if command == "late-marker-probe" => build_late_marker_probe(&root),
+        [command] if command == "experiment-entry-probe" => build_experiment_entry_probe(&root),
         [command] if command == "postlink" => post_link_checks(&root),
         [command, firmware, start, stop, state] if command == "disassemble-stock" => {
             disassemble_stock(&root, firmware, start, stop, state)

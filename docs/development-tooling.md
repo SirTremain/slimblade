@@ -26,6 +26,9 @@ Rust 1.97.1; the isolated `thumbv5te-none-eabi` firmware workspace pins nightly
 - `cargo xtask late-marker-probe`: build and audit the distinct `0456` image
   whose reset path skips the marker and whose command `0x0e` writes it only
   after stock initialization. It does not access or flash the device.
+- `cargo xtask experiment-entry-probe`: build and audit the `0457` image whose
+  post-startup command `0x0e` runs the verified marker writer and then enters a
+  two-byte hang. It does not access or flash the device.
 - `cargo xtask postlink`: rerun the Rust guard ELF symbol audit.
 - `cargo xtask all`: alias the complete Rust-only `check` gate.
 - `cargo xtask disassemble-stock FIRMWARE START STOP arm|thumb`: hash-lock an
@@ -72,6 +75,13 @@ to `25a7:fabe`, whose non-writing query returned `d2`. After an exact reflash,
 a cold boot returned as application `0455`, proving that full stock startup
 invalidates the early marker. The proposed late-marker replacement is tracked
 in [`late-marker-probe.md`](late-marker-probe.md).
+
+The subsequent build-only `0457` experiment-entry probe is tracked in
+[`experiment-entry-probe.md`](experiment-entry-probe.md). Its 340-byte
+injection differs from live-tested `0456` only where the marker routine would
+return: bytes `10 bd` become the Thumb self-loop `fe e7`. Its locked container
+SHA-256 is
+`bc3275a95a0ebd4f3c12863ed2607d5f9ce026903ef19f145e177834f1a988b3`.
 
 The protocol crate is dependency-free and `no_std`. It reproduces the existing
 17-byte and 49-byte command reports, updater CRC, preparation report and B1

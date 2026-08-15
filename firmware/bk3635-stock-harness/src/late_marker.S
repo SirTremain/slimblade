@@ -35,7 +35,12 @@ carrier_dispatch:
 carrier_late_marker:
     push {r4, lr}
     bl marker_set
+    .ifdef EXPERIMENT_ENTRY_HANG
+.Lexperiment_hang:
+    b .Lexperiment_hang
+    .else
     pop {r4, pc}
+    .endif
     .size carrier_late_marker, . - carrier_late_marker
 
     .thumb_func

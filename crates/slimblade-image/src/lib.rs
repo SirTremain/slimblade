@@ -45,7 +45,7 @@ impl ArtifactIdentity {
     }
 }
 
-pub const REFERENCE_ARTIFACTS: [ArtifactIdentity; 10] = [
+pub const REFERENCE_ARTIFACTS: [ArtifactIdentity; 11] = [
     ArtifactIdentity {
         name: "stock-startup-reference",
         code_sha256: parse_sha256(
@@ -132,6 +132,15 @@ pub const REFERENCE_ARTIFACTS: [ArtifactIdentity; 10] = [
             "76669e150983725954fec510eb0c6717f84e08ef2a1a8ef3fb59cb49f7566905",
         )),
     },
+    ArtifactIdentity {
+        name: "marker-first-experiment-entry-probe",
+        code_sha256: parse_sha256(
+            "f8f97b226a2d293560bb2103ee6d0c0cd9a026c3260798795946c2b3c05f6897",
+        ),
+        container_sha256: Some(parse_sha256(
+            "bc3275a95a0ebd4f3c12863ed2607d5f9ce026903ef19f145e177834f1a988b3",
+        )),
+    },
 ];
 
 pub const STOCK_STARTUP_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[0];
@@ -144,6 +153,7 @@ pub const RECOVERY_GUARD_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[6];
 pub const USB_RECOVERY_PROBE_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[7];
 pub const STOCK_HARNESS_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[8];
 pub const LATE_MARKER_PROBE_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[9];
+pub const EXPERIMENT_ENTRY_PROBE_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[10];
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct FirmwareIdentity {
@@ -315,8 +325,14 @@ pub const LATE_MARKER_PROBE: FirmwareIdentity = firmware_identity(
     "5131a96feeab48e5b492034ac436b0bb8c2996642eb8032a957aed273177573e",
     0xf3ce_f231,
 );
+pub const EXPERIMENT_ENTRY_PROBE: FirmwareIdentity = firmware_identity(
+    "marker-first-experiment-entry-probe-v4.57",
+    "bc3275a95a0ebd4f3c12863ed2607d5f9ce026903ef19f145e177834f1a988b3",
+    "08a4201ef3d9656b720914ac86447fdae27463e0302f7edd6f4641186b3e8fa9",
+    0x2381_ed73,
+);
 
-pub const FLASHABLE_IMAGES: [FirmwareIdentity; 10] = [
+pub const FLASHABLE_IMAGES: [FirmwareIdentity; 11] = [
     OFFICIAL_V449,
     V449_DESCRIPTOR_PROBE,
     RECOVERY_CARRIER,
@@ -327,6 +343,7 @@ pub const FLASHABLE_IMAGES: [FirmwareIdentity; 10] = [
     USB_RECOVERY_PROBE,
     STOCK_HARNESS,
     LATE_MARKER_PROBE,
+    EXPERIMENT_ENTRY_PROBE,
 ];
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -897,14 +914,31 @@ mod tests {
     }
 
     #[test]
+    fn experiment_entry_probe_payload_constants() {
+        assert_fixture(
+            EXPERIMENT_ENTRY_PROBE,
+            "firmware/bk3635-stock-harness/target/experiment-entry/DO_NOT_FLASH-experiment-entry-probe.container.bin",
+        );
+    }
+
+    #[test]
+    fn experiment_entry_probe_rejects_one_byte_corruption() {
+        assert_corruption_rejected(
+            EXPERIMENT_ENTRY_PROBE,
+            "firmware/bk3635-stock-harness/target/experiment-entry/DO_NOT_FLASH-experiment-entry-probe.container.bin",
+            0x21c4,
+        );
+    }
+
+    #[test]
     fn reference_artifact_manifest_is_unique_and_complete() {
-        assert_eq!(REFERENCE_ARTIFACTS.len(), 10);
+        assert_eq!(REFERENCE_ARTIFACTS.len(), 11);
         assert_eq!(
             REFERENCE_ARTIFACTS
                 .iter()
                 .filter(|artifact| artifact.container_sha256.is_some())
                 .count(),
-            8
+            9
         );
         for (index, artifact) in REFERENCE_ARTIFACTS.iter().enumerate() {
             assert_ne!(artifact.code_sha256, [0; 32]);
@@ -982,6 +1016,13 @@ mod tests {
                 "firmware/bk3635-stock-harness/target/late-marker/DO_NOT_FLASH-late-marker-probe.injection.bin",
                 Some(
                     "firmware/bk3635-stock-harness/target/late-marker/DO_NOT_FLASH-late-marker-probe.container.bin",
+                ),
+            ),
+            (
+                10,
+                "firmware/bk3635-stock-harness/target/experiment-entry/DO_NOT_FLASH-experiment-entry-probe.injection.bin",
+                Some(
+                    "firmware/bk3635-stock-harness/target/experiment-entry/DO_NOT_FLASH-experiment-entry-probe.container.bin",
                 ),
             ),
         ];
