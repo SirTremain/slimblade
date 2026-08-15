@@ -240,16 +240,19 @@ fn open_queried_candidate(
     path: &Path,
     timeout: Duration,
 ) -> Result<Option<QueriedLoader>, LoaderOpenError> {
+    let Some(parent) =
+        usb_parent_for_hidraw(path, Path::new(HIDRAW_SYSFS_ROOT)).map_err(LoaderOpenError::Io)?
+    else {
+        return Ok(None);
+    };
+    if !BOOT_IDENTITIES.contains(&parent.identity) {
+        return Ok(None);
+    }
     let mut hidraw = Hidraw::open_read_write(path).map_err(LoaderOpenError::Io)?;
     let (_, identity) = hidraw.identity().map_err(LoaderOpenError::Io)?;
     if !BOOT_IDENTITIES.contains(&identity) {
         return Ok(None);
     }
-    let parent = usb_parent_for_hidraw(path, Path::new(HIDRAW_SYSFS_ROOT))
-        .map_err(LoaderOpenError::Io)?
-        .ok_or(LoaderOpenError::UnexpectedProtocol(
-            "could not resolve loader USB parent",
-        ))?;
     if parent.identity != identity {
         return Err(LoaderOpenError::UnexpectedProtocol(
             "hidraw loader identity and USB parent disagree",

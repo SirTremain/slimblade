@@ -61,8 +61,14 @@ reproducing them. Its 340-byte injection SHA-256 is
 `a26b3d8d9d2b45a79ccb80792d3dd8b5e40d47a07e539bc0e88ef72c9fc7c981`;
 the 128,112-byte derived container SHA-256 is
 `cac3bab34545a2e20ad545af5b91c4a55db1c9cacfdcb0f45e4a348b65e3b356`.
-See [`stock-harness.md`](stock-harness.md). It is audited but has not been
-flashed.
+See [`stock-harness.md`](stock-harness.md). Its exact container was flashed on
+2026-08-15 and returned as `047d:80d7`, `bcdDevice 0455`, with the expected
+170-byte descriptor. Normal ball movement, scrolling, and buttons were also
+confirmed. Stock command `0x0d` subsequently returned the same physical port
+to `25a7:fabe`, whose non-writing query returned `d2`. After an exact reflash,
+a cold boot returned as application `0455`, proving that full stock startup
+invalidates the early marker. The proposed late-marker replacement is tracked
+there.
 
 The protocol crate is dependency-free and `no_std`. It reproduces the existing
 17-byte and 49-byte command reports, updater CRC, preparation report and B1

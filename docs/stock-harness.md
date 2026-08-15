@@ -46,22 +46,46 @@ literal, both ARM branches, ARM/Thumb tagging, header CRCs, IRQ/FIQ bytes,
 stock command-dispatch bytes, and the resulting container identity. Corruption
 tests cover the base, injection, reset branch, and container.
 
+## Live result
+
+The exact `cac3bab3…e3b356` container was flashed on 2026-08-15. Stock v4.53
+first entered resident loader `25a7:fabe` through command `0x0d`; the loader's
+non-writing query returned `d2`. All 3,748 blocks echoed successfully and the
+loader accepted payload CRC `2b53d16e`. The same physical USB path returned as
+`047d:80d7`, `bcdDevice 0455`, with the expected 170-byte vendor descriptor.
+
+This verifies the combined marker writer, ARM/Thumb transitions, return to
+Kensington startup, and normal stock USB enumeration. The user then confirmed
+normal ball movement, scrolling, and button behavior.
+
+Stock command `0x0d` was then sent from the live `0455` vendor interface. The
+same physical USB path returned as resident loader `25a7:fabe` with a changed
+device number, and its non-writing query returned `d2`. No erase or flash was
+performed during this command test. This verifies the fast software recovery
+route while the application USB stack remains functional.
+
+The exact harness was reflashed from that loader; all 3,748 blocks echoed,
+payload CRC `2b53d16e` passed, and application `0455` returned. After complete
+USB power removal for five seconds, the same physical path returned as working
+application `047d:80d7`, `bcdDevice 0455`, rather than resident loader. The
+170-byte descriptor remained intact.
+
+Verified result: complete Kensington startup makes the early marker ineffective
+for the next cold boot. The harness remains recoverable through software
+command `0x0d` while USB works, but it is not a permanent fallback for a later
+custom-code hang.
+
 ## Not yet verified
 
-- The `0455` container has not been flashed.
-- Marker completion followed by full Kensington startup has not run on the
-  BK3635 as one combined path.
-- It is not yet verified that complete stock startup leaves the newly written
-  marker intact. After successful `0455` enumeration, a separate cold-boot
-  stage must return to `25a7:fabe` before this can be called a permanent
-  post-startup fallback.
-- Successful stock enumeration and command `0x0d` remain the live acceptance
-  criteria. If enumeration fails, the expected recovery is resident loader
-  `25a7:fabe` after complete USB power removal and reconnection.
+- Whether the early storage transaction failed before stock initialization or
+  stock initialization later replaced its contents.
+- Whether a late marker written from an explicit USB-triggered experimental
+  entry remains effective across a subsequent cold boot.
 
 No current build or test command accesses hardware.
 
-The safest live sequence therefore has two independent stages: first verify
-`0455` enumeration and stock command `0x0d`; then reflash the exact same image,
-allow full startup, and cold-boot it to verify marker persistence through stock
-initialization. Failure in either stage stops custom-hook development.
+The next safer design should boot stock normally, then use an explicit USB
+command to write the marker immediately before entering experimental code. A
+hang after that late marker can be cold-boot tested without allowing stock
+startup to run between the marker write and the failure. This remains an
+unbuilt design, not a verified recovery path.
