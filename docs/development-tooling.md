@@ -40,17 +40,17 @@ active gate audits the Rust-built marker-first guard and USB probe. Typed
 binary verifiers retain the exact constraints and hashes of the earlier
 recovery milestones.
 
-The 2026-08-15 build-only USB probe is 3,556 bytes with SHA-256
-`9bd0c0d1e6b57583be3ad91f9f444101bdf693359e499a0e4f417ca0e51c9b67`.
-Its first 420 bytes match the live-tested marker-first prefix; the 3,136-byte
-experiment has 11 decoded, allowlisted MMIO loads, 22 defined symbols, no
-undefined symbols, and a maximum recorded stack frame of 176 bytes. This is a
+The corrected 2026-08-15 build-only USB probe is 3,632 bytes with SHA-256
+`cbe5bbbb119885f9d5b861b5548371a80672ada9b0ad9014069f12c8e41a9eca`.
+Its first 420 bytes match the live-tested marker-first prefix; the 3,212-byte
+experiment has 14 decoded, allowlisted MMIO loads, 22 defined symbols, no
+undefined symbols, and a maximum recorded stack frame of 184 bytes. This is a
 host audit result, not a hardware result.
 The resulting 128,112-byte container has SHA-256
-`d08395311afb43a289b05bbd0fb31a750c62371e957eedde4c08f0e7c78560e8`,
+`3ce23e3b9af4a1e713bad622f56fc9055cb178ca1ec198c7556c1dee44169e5a`,
 payload SHA-256
-`faccf0e7cf43f460c7241a08f92b11cc74f6c302f05eb177d8f3931e3b94522b`,
-and payload CRC `8bb70620`. See
+`6e14eedaa65930bca93fa60febd43f966f310743c9c4c7c79084865990192f7d`,
+and payload CRC `2da6b921`. See
 [`usb-recovery-probe.md`](usb-recovery-probe.md) for its staged hardware gate.
 
 The protocol crate is dependency-free and `no_std`. It reproduces the existing

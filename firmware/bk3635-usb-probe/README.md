@@ -9,10 +9,10 @@ live-tested guard, requires an exact 420-byte prefix, and audits actual
 PC-relative MMIO loads, symbols, control flow, stack sizes, storage/marker
 words, byte count, and SHA-256.
 
-Verified host build on 2026-08-15: 3,556 bytes, 3,136 experimental bytes,
-maximum stack frame 176 bytes, SHA-256
-`9bd0c0d1e6b57583be3ad91f9f444101bdf693359e499a0e4f417ca0e51c9b67`.
+Verified corrected host build on 2026-08-15: 3,632 bytes, 3,212 experimental
+bytes, maximum stack frame 184 bytes, SHA-256
+`cbe5bbbb119885f9d5b861b5548371a80672ada9b0ad9014069f12c8e41a9eca`.
 The 128,112-byte container SHA-256 is
-`d08395311afb43a289b05bbd0fb31a750c62371e957eedde4c08f0e7c78560e8`.
-No hardware test has been performed. See
+`3ce23e3b9af4a1e713bad622f56fc9055cb178ca1ec198c7556c1dee44169e5a`.
+This corrected candidate has not run on hardware. See
 [`../../docs/usb-recovery-probe.md`](../../docs/usb-recovery-probe.md).

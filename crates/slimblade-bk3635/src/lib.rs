@@ -6,7 +6,15 @@ use slimblade_usb::endpoint::{ControlEndpoint, DeviceAction, EndpointResponse, M
 pub const SYSTEM_BASE: usize = 0x0080_0000;
 pub const USB_BASE: usize = 0x0080_4000;
 
-const USB_POWER_DOWN: u32 = 1 << 11;
+const USB_PLATFORM_BASE: usize = 0x0080_6500;
+const PLATFORM_CONTROL_ZERO_SET: u32 = 0x0000_4040;
+const PLATFORM_CONTROL_ZERO_CLEAR: u32 = 0x4040_0000;
+const PLATFORM_CONTROL_ONE_SET: u32 = 1 << 22;
+const USB_CLOCK_DISABLE: u32 = 0x01;
+const USB_CLOCK_SECONDARY_DISABLE: u32 = 0x80;
+const USB_MODULE_ENABLE: u32 = 1 << 11;
+const GLOBAL_IRQ_FIQ_ENABLE: u32 = 0x03;
+const STOCK_DELAY_ITERATIONS: u16 = 499;
 const RESET_INTERRUPT: u8 = 0x04;
 const ENDPOINT_ZERO_INTERRUPT: u8 = 0x01;
 const CSR_RX_PACKET_READY: u8 = 0x01;
@@ -20,14 +28,22 @@ const CSR_SERVICE_SETUP_END: u8 = 0x80;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum SystemRegister {
-    PowerControl,
+    UsbPlatformControlZero,
+    UsbPlatformControlOne,
+    UsbClockControl,
+    ModuleEnable,
+    GlobalInterruptEnable,
 }
 
 impl SystemRegister {
     #[must_use]
     pub const fn address(self) -> usize {
         match self {
-            Self::PowerControl => SYSTEM_BASE + 0x0c,
+            Self::UsbPlatformControlZero => USB_PLATFORM_BASE + 0x20,
+            Self::UsbPlatformControlOne => USB_PLATFORM_BASE + 0x24,
+            Self::UsbClockControl => SYSTEM_BASE + 0x20,
+            Self::ModuleEnable => SYSTEM_BASE + 0x40,
+            Self::GlobalInterruptEnable => SYSTEM_BASE + 0x44,
         }
     }
 }
@@ -35,24 +51,28 @@ impl SystemRegister {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum UsbRegister {
     FunctionAddress,
+    Power,
     InterruptTxLow,
     InterruptTxHigh,
     InterruptRxLow,
     InterruptRxHigh,
     InterruptUsb,
     InterruptTxEnableLow,
+    InterruptTxEnableHigh,
     InterruptRxEnableLow,
+    InterruptRxEnableHigh,
     InterruptUsbEnable,
     Index,
+    DeviceControl,
     ControlStatusZero,
     ControlStatusZeroHigh,
     CountZero,
     FifoZero,
     OtgConfiguration,
+    DmaEndpoint,
     VoltageThreshold,
     GeneralControl,
     AhbInterrupt,
-    Reset,
     DeviceConfiguration,
 }
 
@@ -61,24 +81,28 @@ impl UsbRegister {
     pub const fn address(self) -> usize {
         match self {
             Self::FunctionAddress => USB_BASE,
+            Self::Power => USB_BASE + 0x01,
             Self::InterruptTxLow => USB_BASE + 0x02,
             Self::InterruptTxHigh => USB_BASE + 0x03,
             Self::InterruptRxLow => USB_BASE + 0x04,
             Self::InterruptRxHigh => USB_BASE + 0x05,
             Self::InterruptUsb => USB_BASE + 0x06,
             Self::InterruptTxEnableLow => USB_BASE + 0x07,
+            Self::InterruptTxEnableHigh => USB_BASE + 0x08,
             Self::InterruptRxEnableLow => USB_BASE + 0x09,
+            Self::InterruptRxEnableHigh => USB_BASE + 0x0a,
             Self::InterruptUsbEnable => USB_BASE + 0x0b,
             Self::Index => USB_BASE + 0x0e,
+            Self::DeviceControl => USB_BASE + 0x0f,
             Self::ControlStatusZero => USB_BASE + 0x11,
             Self::ControlStatusZeroHigh => USB_BASE + 0x12,
             Self::CountZero => USB_BASE + 0x16,
             Self::FifoZero => USB_BASE + 0x20,
             Self::OtgConfiguration => USB_BASE + 0x80,
+            Self::DmaEndpoint => USB_BASE + 0x84,
             Self::VoltageThreshold => USB_BASE + 0x88,
             Self::GeneralControl => USB_BASE + 0x8c,
             Self::AhbInterrupt => USB_BASE + 0x94,
-            Self::Reset => USB_BASE + 0x98,
             Self::DeviceConfiguration => USB_BASE + 0x9c,
         }
     }
@@ -197,19 +221,50 @@ impl<R: RegisterIo> UsbController<R> {
         Self { registers }
     }
 
-    /// Replays the stock-proven device initialization without enabling IRQ/FIQ.
+    /// Replays Kensington's v4.48/v4.49 BK3635 USB-device initialization.
+    ///
+    /// The CPU remains in the marker guard's interrupt-masked state, so the
+    /// controller is serviced by polling despite the stock module-enable writes.
     pub fn initialize_polling(&mut self) {
-        let power = self.registers.read_system(SystemRegister::PowerControl);
+        let platform_zero = self
+            .registers
+            .read_system(SystemRegister::UsbPlatformControlZero);
+        self.registers.write_system(
+            SystemRegister::UsbPlatformControlZero,
+            platform_zero | PLATFORM_CONTROL_ZERO_SET,
+        );
+        let platform_one = self
+            .registers
+            .read_system(SystemRegister::UsbPlatformControlOne);
+        self.registers.write_system(
+            SystemRegister::UsbPlatformControlOne,
+            platform_one | PLATFORM_CONTROL_ONE_SET,
+        );
+        let platform_zero = self
+            .registers
+            .read_system(SystemRegister::UsbPlatformControlZero);
+        self.registers.write_system(
+            SystemRegister::UsbPlatformControlZero,
+            platform_zero & !PLATFORM_CONTROL_ZERO_CLEAR,
+        );
+
+        let clock = self.registers.read_system(SystemRegister::UsbClockControl);
         self.registers
-            .write_system(SystemRegister::PowerControl, power | USB_POWER_DOWN);
-        self.registers.delay_cycles(500);
-        self.registers
-            .write_system(SystemRegister::PowerControl, power & !USB_POWER_DOWN);
+            .write_system(SystemRegister::UsbClockControl, clock & !USB_CLOCK_DISABLE);
+        let clock = self.registers.read_system(SystemRegister::UsbClockControl);
+        self.registers.write_system(
+            SystemRegister::UsbClockControl,
+            clock & !USB_CLOCK_SECONDARY_DISABLE,
+        );
 
         self.registers
             .write_usb(UsbRegister::InterruptRxEnableLow, 0);
         self.registers
+            .write_usb(UsbRegister::InterruptRxEnableHigh, 0);
+        self.registers
             .write_usb(UsbRegister::InterruptTxEnableLow, 0);
+        self.registers
+            .write_usb(UsbRegister::InterruptTxEnableHigh, 0);
         self.registers.write_usb(UsbRegister::InterruptUsbEnable, 0);
 
         let threshold = self.registers.read_usb(UsbRegister::VoltageThreshold);
@@ -218,26 +273,48 @@ impl<R: RegisterIo> UsbController<R> {
         self.registers
             .write_usb(UsbRegister::InterruptRxEnableLow, 0x07);
         self.registers
+            .write_usb(UsbRegister::InterruptRxEnableHigh, 0);
+        self.registers
             .write_usb(UsbRegister::InterruptTxEnableLow, 0x07);
         self.registers
-            .write_usb(UsbRegister::InterruptUsbEnable, 0x3f);
+            .write_usb(UsbRegister::InterruptTxEnableHigh, 0);
         self.registers
-            .write_usb(UsbRegister::OtgConfiguration, 0x08);
+            .write_usb(UsbRegister::InterruptUsbEnable, 0x3f);
+        self.registers.write_usb(UsbRegister::OtgConfiguration, 0);
+        self.registers.write_usb(UsbRegister::DmaEndpoint, 0);
         self.registers
             .write_usb(UsbRegister::DeviceConfiguration, 0xf4);
         let otg = self.registers.read_usb(UsbRegister::OtgConfiguration);
         self.registers
             .write_usb(UsbRegister::OtgConfiguration, otg | 0x01);
 
+        self.registers.delay_cycles(STOCK_DELAY_ITERATIONS);
         let interrupt = self.registers.read_usb(UsbRegister::AhbInterrupt);
-        self.registers.delay_cycles(500);
+        self.registers.delay_cycles(STOCK_DELAY_ITERATIONS);
         self.registers
             .write_usb(UsbRegister::AhbInterrupt, interrupt);
-        self.registers.delay_cycles(500);
+        self.registers.delay_cycles(STOCK_DELAY_ITERATIONS);
 
         self.registers.write_usb(UsbRegister::GeneralControl, 0x77);
-        let reset = self.registers.read_usb(UsbRegister::Reset);
-        self.registers.write_usb(UsbRegister::Reset, reset | 1);
+        self.registers.write_usb(UsbRegister::FunctionAddress, 0);
+        self.registers.write_usb(UsbRegister::DeviceControl, 1);
+
+        let modules = self.registers.read_system(SystemRegister::ModuleEnable);
+        self.registers
+            .write_system(SystemRegister::ModuleEnable, modules | USB_MODULE_ENABLE);
+        let global = self
+            .registers
+            .read_system(SystemRegister::GlobalInterruptEnable);
+        self.registers.write_system(
+            SystemRegister::GlobalInterruptEnable,
+            global | GLOBAL_IRQ_FIQ_ENABLE,
+        );
+
+        let otg = self.registers.read_usb(UsbRegister::OtgConfiguration);
+        self.registers
+            .write_usb(UsbRegister::OtgConfiguration, otg | 0x08);
+        let power = self.registers.read_usb(UsbRegister::Power);
+        self.registers.write_usb(UsbRegister::Power, power | 0x01);
     }
 
     /// Reads the same interrupt registers as the stock USB service routine.
@@ -471,6 +548,10 @@ impl<R: RegisterIo> PollingUsbDevice<R> {
 }
 
 #[cfg(test)]
+#[allow(
+    clippy::indexing_slicing,
+    reason = "the private test register bank maps a closed five-variant enum to a five-element array"
+)]
 mod tests {
     extern crate alloc;
 
@@ -494,6 +575,9 @@ mod tests {
     #[derive(Debug)]
     struct FakeRegisters {
         operations: Vec<Operation>,
+        system_values: [u32; 5],
+        otg_configuration: u8,
+        power: u8,
         interrupt_usb: u8,
         control_status: u8,
         byte_count: u8,
@@ -504,6 +588,9 @@ mod tests {
         fn default() -> Self {
             Self {
                 operations: Vec::new(),
+                system_values: [u32::MAX, 0, 0xff, 0x100, 0x10],
+                otg_configuration: 0,
+                power: 0,
                 interrupt_usb: 0xc4,
                 control_status: 0,
                 byte_count: 0,
@@ -515,21 +602,22 @@ mod tests {
     impl RegisterIo for FakeRegisters {
         fn read_system(&mut self, register: SystemRegister) -> u32 {
             self.operations.push(Operation::ReadSystem(register));
-            0x1234_5000
+            self.system_values[system_value_index(register)]
         }
 
         fn write_system(&mut self, register: SystemRegister, value: u32) {
             self.operations
                 .push(Operation::WriteSystem(register, value));
+            self.system_values[system_value_index(register)] = value;
         }
 
         fn read_usb(&mut self, register: UsbRegister) -> u8 {
             self.operations.push(Operation::ReadUsb(register));
             match register {
                 UsbRegister::VoltageThreshold => 0xaa,
-                UsbRegister::OtgConfiguration => 0x08,
+                UsbRegister::OtgConfiguration => self.otg_configuration,
+                UsbRegister::Power => self.power,
                 UsbRegister::AhbInterrupt => 0x55,
-                UsbRegister::Reset => 0x10,
                 UsbRegister::InterruptUsb => self.interrupt_usb,
                 UsbRegister::InterruptTxLow => 0x01,
                 UsbRegister::InterruptTxHigh => 0x02,
@@ -544,10 +632,25 @@ mod tests {
 
         fn write_usb(&mut self, register: UsbRegister, value: u8) {
             self.operations.push(Operation::WriteUsb(register, value));
+            match register {
+                UsbRegister::OtgConfiguration => self.otg_configuration = value,
+                UsbRegister::Power => self.power = value,
+                _ => {},
+            }
         }
 
         fn delay_cycles(&mut self, cycles: u16) {
             self.operations.push(Operation::Delay(cycles));
+        }
+    }
+
+    const fn system_value_index(register: SystemRegister) -> usize {
+        match register {
+            SystemRegister::UsbPlatformControlZero => 0,
+            SystemRegister::UsbPlatformControlOne => 1,
+            SystemRegister::UsbClockControl => 2,
+            SystemRegister::ModuleEnable => 3,
+            SystemRegister::GlobalInterruptEnable => 4,
         }
     }
 
@@ -567,28 +670,45 @@ mod tests {
     }
 
     #[test]
-    fn typed_addresses_cover_only_system_power_and_usb() {
-        assert_eq!(SystemRegister::PowerControl.address(), SYSTEM_BASE + 0x0c);
+    fn typed_addresses_cover_only_stock_usb_platform_and_controller_registers() {
+        assert_eq!(
+            SystemRegister::UsbPlatformControlZero.address(),
+            0x0080_6520
+        );
+        assert_eq!(SystemRegister::UsbPlatformControlOne.address(), 0x0080_6524);
+        assert_eq!(
+            SystemRegister::UsbClockControl.address(),
+            SYSTEM_BASE + 0x20
+        );
+        assert_eq!(SystemRegister::ModuleEnable.address(), SYSTEM_BASE + 0x40);
+        assert_eq!(
+            SystemRegister::GlobalInterruptEnable.address(),
+            SYSTEM_BASE + 0x44
+        );
         for register in [
             UsbRegister::FunctionAddress,
+            UsbRegister::Power,
             UsbRegister::InterruptTxLow,
             UsbRegister::InterruptTxHigh,
             UsbRegister::InterruptRxLow,
             UsbRegister::InterruptRxHigh,
             UsbRegister::InterruptUsb,
             UsbRegister::InterruptTxEnableLow,
+            UsbRegister::InterruptTxEnableHigh,
             UsbRegister::InterruptRxEnableLow,
+            UsbRegister::InterruptRxEnableHigh,
             UsbRegister::InterruptUsbEnable,
             UsbRegister::Index,
+            UsbRegister::DeviceControl,
             UsbRegister::ControlStatusZero,
             UsbRegister::ControlStatusZeroHigh,
             UsbRegister::CountZero,
             UsbRegister::FifoZero,
             UsbRegister::OtgConfiguration,
+            UsbRegister::DmaEndpoint,
             UsbRegister::VoltageThreshold,
             UsbRegister::GeneralControl,
             UsbRegister::AhbInterrupt,
-            UsbRegister::Reset,
             UsbRegister::DeviceConfiguration,
         ] {
             assert!((USB_BASE..USB_BASE + 0xa0).contains(&register.address()));
@@ -596,7 +716,7 @@ mod tests {
     }
 
     #[test]
-    fn polling_initialization_matches_the_stock_register_sequence() {
+    fn polling_initialization_matches_the_kensington_register_sequence() {
         let mut controller = UsbController::new(FakeRegisters::default());
         controller.initialize_polling();
         let registers = controller.into_registers();
@@ -604,29 +724,49 @@ mod tests {
         assert_eq!(
             registers.operations,
             vec![
-                Operation::ReadSystem(SystemRegister::PowerControl),
-                Operation::WriteSystem(SystemRegister::PowerControl, 0x1234_5800),
-                Operation::Delay(500),
-                Operation::WriteSystem(SystemRegister::PowerControl, 0x1234_5000),
+                Operation::ReadSystem(SystemRegister::UsbPlatformControlZero),
+                Operation::WriteSystem(SystemRegister::UsbPlatformControlZero, u32::MAX),
+                Operation::ReadSystem(SystemRegister::UsbPlatformControlOne),
+                Operation::WriteSystem(SystemRegister::UsbPlatformControlOne, 0x0040_0000),
+                Operation::ReadSystem(SystemRegister::UsbPlatformControlZero),
+                Operation::WriteSystem(SystemRegister::UsbPlatformControlZero, 0xbfbf_ffff,),
+                Operation::ReadSystem(SystemRegister::UsbClockControl),
+                Operation::WriteSystem(SystemRegister::UsbClockControl, 0xfe),
+                Operation::ReadSystem(SystemRegister::UsbClockControl),
+                Operation::WriteSystem(SystemRegister::UsbClockControl, 0x7e),
                 Operation::WriteUsb(UsbRegister::InterruptRxEnableLow, 0),
+                Operation::WriteUsb(UsbRegister::InterruptRxEnableHigh, 0),
                 Operation::WriteUsb(UsbRegister::InterruptTxEnableLow, 0),
+                Operation::WriteUsb(UsbRegister::InterruptTxEnableHigh, 0),
                 Operation::WriteUsb(UsbRegister::InterruptUsbEnable, 0),
                 Operation::ReadUsb(UsbRegister::VoltageThreshold),
                 Operation::WriteUsb(UsbRegister::VoltageThreshold, 0x2a),
                 Operation::WriteUsb(UsbRegister::InterruptRxEnableLow, 0x07),
+                Operation::WriteUsb(UsbRegister::InterruptRxEnableHigh, 0),
                 Operation::WriteUsb(UsbRegister::InterruptTxEnableLow, 0x07),
+                Operation::WriteUsb(UsbRegister::InterruptTxEnableHigh, 0),
                 Operation::WriteUsb(UsbRegister::InterruptUsbEnable, 0x3f),
-                Operation::WriteUsb(UsbRegister::OtgConfiguration, 0x08),
+                Operation::WriteUsb(UsbRegister::OtgConfiguration, 0),
+                Operation::WriteUsb(UsbRegister::DmaEndpoint, 0),
                 Operation::WriteUsb(UsbRegister::DeviceConfiguration, 0xf4),
                 Operation::ReadUsb(UsbRegister::OtgConfiguration),
-                Operation::WriteUsb(UsbRegister::OtgConfiguration, 0x09),
+                Operation::WriteUsb(UsbRegister::OtgConfiguration, 0x01),
+                Operation::Delay(499),
                 Operation::ReadUsb(UsbRegister::AhbInterrupt),
-                Operation::Delay(500),
+                Operation::Delay(499),
                 Operation::WriteUsb(UsbRegister::AhbInterrupt, 0x55),
-                Operation::Delay(500),
+                Operation::Delay(499),
                 Operation::WriteUsb(UsbRegister::GeneralControl, 0x77),
-                Operation::ReadUsb(UsbRegister::Reset),
-                Operation::WriteUsb(UsbRegister::Reset, 0x11),
+                Operation::WriteUsb(UsbRegister::FunctionAddress, 0),
+                Operation::WriteUsb(UsbRegister::DeviceControl, 1),
+                Operation::ReadSystem(SystemRegister::ModuleEnable),
+                Operation::WriteSystem(SystemRegister::ModuleEnable, 0x900),
+                Operation::ReadSystem(SystemRegister::GlobalInterruptEnable),
+                Operation::WriteSystem(SystemRegister::GlobalInterruptEnable, 0x13),
+                Operation::ReadUsb(UsbRegister::OtgConfiguration),
+                Operation::WriteUsb(UsbRegister::OtgConfiguration, 0x09),
+                Operation::ReadUsb(UsbRegister::Power),
+                Operation::WriteUsb(UsbRegister::Power, 1),
             ]
         );
     }

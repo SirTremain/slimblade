@@ -132,10 +132,11 @@ descriptor packetization. The crate has no MMIO and is not linked into the
 live-tested guard yet.
 
 `slimblade-bk3635` now adds the hardware boundary. Its typed register set can
-represent only system power and USB addresses, while the sole live backend
-contains four reviewed volatile operations behind an unsafe constructor. A
-fake backend verifies the stock device-mode initialization order, clear-on-read
-interrupt snapshot, descriptor CSR/FIFO order, the full synthetic
+represent only stock-observed USB platform, clock, interrupt-control, and
+controller addresses, while the sole live backend contains four reviewed
+volatile operations behind an unsafe constructor. A fake backend verifies the
+complete Kensington device-mode initialization order, clear-on-read interrupt
+snapshot, descriptor CSR/FIFO order, the full synthetic
 enumeration/address/configuration path, and status-gated loader result. The
 OUT-status boundary now matches Kensington helper `0x170e8`: CSR0-high `0x01`
 then CSR0-low `0x0a`.
@@ -147,17 +148,23 @@ transaction, and then use the proven watchdog reset. Experimental USB code
 must not access the nonvolatile controller or marker storage after the prefix.
 
 The separate `bk3635-usb-probe` package links that path after the exact
-live-tested 420-byte marker prefix. On 2026-08-15 its host-only audit passed at
-3,556 bytes (3,136 experimental), SHA-256
-`9bd0c0d1e6b57583be3ad91f9f444101bdf693359e499a0e4f417ca0e51c9b67`.
-It has 11 decoded allowlisted MMIO loads, no undefined/runtime symbols, and a
-176-byte maximum stack frame. Its hash-locked 128,112-byte container has
-SHA-256
-`d08395311afb43a289b05bbd0fb31a750c62371e957eedde4c08f0e7c78560e8`.
-It ran on hardware on 2026-08-15. All 3,748 loader blocks echoed with the
+live-tested 420-byte marker prefix. Its first candidate ran on hardware on
+2026-08-15. All 3,748 loader blocks echoed with the
 expected CRC, but the probe did not enumerate. Removing USB power for five
 seconds returned the same port to resident loader `25a7:fabe`, whose query
 returned `d2`; the marker-first recovery path therefore worked as designed.
+
+Comparison against Kensington's byte-identical v4.48/v4.49 initializer exposed
+that the first probe followed the related BK3633 SDK sequence, not the exact
+BK3635 sequence. It asserted a non-stock USB reset bit and omitted the
+Kensington platform, clock, `DEVCTL`, POWER, and related activation writes. The
+corrected candidate reproduces the complete Kensington operation transcript.
+Its host-only audit passes at 3,632 bytes (3,212 experimental), SHA-256
+`cbe5bbbb119885f9d5b861b5548371a80672ada9b0ad9014069f12c8e41a9eca`.
+It has 14 decoded allowlisted MMIO loads, no undefined/runtime symbols, and a
+184-byte maximum stack frame. Its hash-locked 128,112-byte container SHA-256 is
+`3ce23e3b9af4a1e713bad622f56fc9055cb178ca1ec198c7556c1dee44169e5a`.
+This corrected candidate has not run on hardware.
 
 Inference: a tight polling loop can replace FIQ dispatch for a first probe,
 avoiding new interrupt-controller and FIQ-state dependencies. The endpoint
@@ -166,8 +173,6 @@ unverified hardware assumption.
 
 Open before the next probe candidate:
 
-- determine which controller, clock, or system initialization omitted from the
-  polling probe prevented enumeration;
 - first observe enumeration without sending the already present command
   `0x0d`, then test that command only as a separate explicit stage;
 - rerun the complete gate and review the new exact hash immediately before any
@@ -177,8 +182,8 @@ Hardware result on 2026-08-15: the exact hash-locked container passed `B2/d2`
 and all 3,748 loader echoes, but did not enumerate as `047d:80d7`/`0454` after
 the loader exited. No `0x0d` command was sent. This falsifies the first polling
 probe as a working USB application; it does not yet distinguish initialization
-failure from endpoint-zero polling failure. Power-cycle recovery remained the
-next required check.
+failure from endpoint-zero polling failure. The subsequent power-cycle recovery
+and exact v4.53 restoration both succeeded.
 
 Source for the CSR comparison: vendored [Beken BK3633 BLE SDK](https://gitee.com/beken-corp/bk3633_ble_sdk)
 commit `0a461f8ed4a4f17ff6889d6f9d34e521b92b8243`, retrieved 2026-08-14. The

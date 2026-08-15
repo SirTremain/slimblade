@@ -140,7 +140,7 @@ mod tests {
     fn usb_probe_needs_exact_hash_confirmation() {
         assert!(!FlashArtifact::UsbRecoveryProbe.confirmation_matches("wrong"));
         assert!(FlashArtifact::UsbRecoveryProbe.confirmation_matches(
-            "d08395311afb43a289b05bbd0fb31a750c62371e957eedde4c08f0e7c78560e8"
+            "3ce23e3b9af4a1e713bad622f56fc9055cb178ca1ec198c7556c1dee44169e5a"
         ));
     }
 }

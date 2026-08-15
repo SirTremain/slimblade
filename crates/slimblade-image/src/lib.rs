@@ -108,10 +108,10 @@ pub const REFERENCE_ARTIFACTS: [ArtifactIdentity; 8] = [
     ArtifactIdentity {
         name: "marker-first-usb-recovery-probe",
         code_sha256: parse_sha256(
-            "9bd0c0d1e6b57583be3ad91f9f444101bdf693359e499a0e4f417ca0e51c9b67",
+            "cbe5bbbb119885f9d5b861b5548371a80672ada9b0ad9014069f12c8e41a9eca",
         ),
         container_sha256: Some(parse_sha256(
-            "d08395311afb43a289b05bbd0fb31a750c62371e957eedde4c08f0e7c78560e8",
+            "3ce23e3b9af4a1e713bad622f56fc9055cb178ca1ec198c7556c1dee44169e5a",
         )),
     },
 ];
@@ -279,9 +279,9 @@ pub const RECOVERY_GUARD: FirmwareIdentity = firmware_identity(
 );
 pub const USB_RECOVERY_PROBE: FirmwareIdentity = firmware_identity(
     "marker-first-usb-recovery-probe",
-    "d08395311afb43a289b05bbd0fb31a750c62371e957eedde4c08f0e7c78560e8",
-    "faccf0e7cf43f460c7241a08f92b11cc74f6c302f05eb177d8f3931e3b94522b",
-    0x8bb7_0620,
+    "3ce23e3b9af4a1e713bad622f56fc9055cb178ca1ec198c7556c1dee44169e5a",
+    "6e14eedaa65930bca93fa60febd43f966f310743c9c4c7c79084865990192f7d",
+    0x2da6_b921,
 );
 
 pub const FLASHABLE_IMAGES: [FirmwareIdentity; 8] = [

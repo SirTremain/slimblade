@@ -21,11 +21,15 @@ const USB_PROBE_CODE_ADDRESS: u32 = 0x0000_2020;
 const SYSTEM_MMIO_START: u32 = 0x0080_0000;
 const SYSTEM_MMIO_END: u32 = 0x0081_0000;
 const ALLOWED_USB_PROBE_MMIO: &[u32] = &[
-    0x0080_000c,
+    0x0080_0020,
+    0x0080_0040,
+    0x0080_0044,
     0x0080_4000,
     0x0080_4011,
     0x0080_4020,
     0x0080_4080,
+    0x0080_6520,
+    0x0080_6524,
 ];
 
 fn repository_root() -> PathBuf {
@@ -210,8 +214,9 @@ fn audit_probe_disassembly(
     const FORBIDDEN_MNEMONICS: &[&str] = &["svc", "swi", "udf"];
 
     let mut mmio_literals = 0_usize;
-    let mut has_system_power = false;
+    let mut has_usb_clock_control = false;
     let mut has_usb_controller = false;
+    let mut has_usb_platform_control = false;
     for line in disassembly.lines() {
         let mut columns = line.split_whitespace();
         let Some(address) = columns.next() else {
@@ -290,15 +295,19 @@ fn audit_probe_disassembly(
                 ));
             }
             mmio_literals = mmio_literals.saturating_add(1);
-            has_system_power |= value == 0x0080_000c;
+            has_usb_clock_control |= value == 0x0080_0020;
             has_usb_controller |= value == 0x0080_4000;
+            has_usb_platform_control |= value == 0x0080_6520;
         }
     }
-    if !has_system_power {
-        return Err("experiment does not load the reviewed system-power address".to_owned());
+    if !has_usb_clock_control {
+        return Err("experiment does not load the stock USB clock-control address".to_owned());
     }
     if !has_usb_controller {
         return Err("experiment does not load the reviewed USB base address".to_owned());
+    }
+    if !has_usb_platform_control {
+        return Err("experiment does not load the stock USB platform-control address".to_owned());
     }
     Ok(mmio_literals)
 }
@@ -392,15 +401,20 @@ fn pack_usb_probe(code: &[u8], artifact_dir: &Path) -> Result<PackedProbeReport,
     let payload = container
         .get(slimblade_image::APPLICATION_PREFIX_OFFSET..)
         .ok_or_else(|| "packed USB probe has no updater payload".to_owned())?;
-    USB_RECOVERY_PROBE
-        .validate(&container)
-        .map_err(|error| format!("USB probe container identity failed: {error}"))?;
     let report = PackedProbeReport {
         container_bytes: container.len(),
         container_sha256: sha256(&container),
         payload_sha256: sha256(payload),
         payload_crc: updater_crc32(payload),
     };
+    USB_RECOVERY_PROBE.validate(&container).map_err(|error| {
+        format!(
+            "USB probe container identity failed: {error}; actual container SHA-256 {}, payload SHA-256 {}, payload CRC {:08x}",
+            format_sha256(report.container_sha256).unwrap_or_else(|_| "unavailable".to_owned()),
+            format_sha256(report.payload_sha256).unwrap_or_else(|_| "unavailable".to_owned()),
+            report.payload_crc,
+        )
+    })?;
     let path = artifact_dir.join("DO_NOT_FLASH-usb-recovery-probe.container.bin");
     fs::write(&path, container)
         .map_err(|error| format!("could not write {}: {error}", path.display()))?;
@@ -635,8 +649,9 @@ mod tests {
 
     fn literal_code(second: u32) -> Vec<u8> {
         let mut code = vec![0; 16];
-        code.extend_from_slice(&0x0080_000c_u32.to_le_bytes());
+        code.extend_from_slice(&0x0080_0020_u32.to_le_bytes());
         code.extend_from_slice(&second.to_le_bytes());
+        code.extend_from_slice(&0x0080_6520_u32.to_le_bytes());
         code
     }
 
@@ -645,12 +660,13 @@ mod tests {
         let disassembly = "\
 21c4: 4802 ldr r0, [pc, #0x8] @ 0x2030\n\
 21c6: 4903 ldr r1, [pc, #0xc] @ 0x2034\n\
-21c8: 9005 str r0, [sp, #0x14]\n\
-21ca: 0080 lsls r0, r0, #0x2\n";
+21c8: 4a04 ldr r2, [pc, #0x10] @ 0x2038\n\
+21ca: 9005 str r0, [sp, #0x14]\n\
+21cc: 0080 lsls r0, r0, #0x2\n";
 
         assert_eq!(
             audit_probe_disassembly(disassembly, &literal_code(0x0080_4000), 0x2200),
-            Ok(2)
+            Ok(3)
         );
     }
 
@@ -658,7 +674,8 @@ mod tests {
     fn disassembly_audit_rejects_unreviewed_mmio_and_computed_pc() {
         let loads = "\
 21c4: 4802 ldr r0, [pc, #0x8] @ 0x2030\n\
-21c6: 4903 ldr r1, [pc, #0xc] @ 0x2034\n";
+21c6: 4903 ldr r1, [pc, #0xc] @ 0x2034\n\
+21c8: 4a04 ldr r2, [pc, #0x10] @ 0x2038\n";
         assert!(audit_probe_disassembly(loads, &literal_code(0x0080_6000), 0x2200).is_err());
         assert!(audit_probe_disassembly("21c4: 4687 mov pc, r0\n", &[], 0x2200).is_err());
         assert!(audit_probe_disassembly("21c4: f000 f800 bl 0x2084\n", &[], 0x2200).is_err());
