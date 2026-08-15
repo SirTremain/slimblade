@@ -21,6 +21,10 @@ path = "src/experiment_entry.rs"
 name = "slimblade-rust-response-probe"
 path = "src/rust_response.rs"
 
+[[bin]]
+name = "slimblade-post-init-hook-probe"
+path = "src/post_init_hook.rs"
+
 [profile.dev]
 panic = "abort"
 

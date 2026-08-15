@@ -7,6 +7,8 @@ pub mod elf;
 pub mod experiment_entry_probe;
 #[cfg(feature = "std")]
 pub mod late_marker_probe;
+#[cfg(feature = "std")]
+pub mod post_init_hook_probe;
 pub mod post_link;
 #[cfg(feature = "std")]
 pub mod recovery_carrier;

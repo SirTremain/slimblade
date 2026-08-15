@@ -45,7 +45,7 @@ impl ArtifactIdentity {
     }
 }
 
-pub const REFERENCE_ARTIFACTS: [ArtifactIdentity; 12] = [
+pub const REFERENCE_ARTIFACTS: [ArtifactIdentity; 13] = [
     ArtifactIdentity {
         name: "stock-startup-reference",
         code_sha256: parse_sha256(
@@ -150,6 +150,15 @@ pub const REFERENCE_ARTIFACTS: [ArtifactIdentity; 12] = [
             "93e939ffdf19a7d862108182528fac7d9b066e59fa853b21327bedd6260b14d4",
         )),
     },
+    ArtifactIdentity {
+        name: "post-init-hook-probe",
+        code_sha256: parse_sha256(
+            "24be6b6c2ae93694216d61043f54e0b7840a70f332e450888cc28773a252f7b5",
+        ),
+        container_sha256: Some(parse_sha256(
+            "133f5241efecc23c7cc2fffcc0fdb34c37f5a3f840362938c27a2bc5353c1de1",
+        )),
+    },
 ];
 
 pub const STOCK_STARTUP_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[0];
@@ -164,6 +173,7 @@ pub const STOCK_HARNESS_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[8];
 pub const LATE_MARKER_PROBE_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[9];
 pub const EXPERIMENT_ENTRY_PROBE_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[10];
 pub const RUST_RESPONSE_PROBE_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[11];
+pub const POST_INIT_HOOK_PROBE_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[12];
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct FirmwareIdentity {
@@ -346,6 +356,12 @@ pub const RUST_RESPONSE_PROBE: FirmwareIdentity = firmware_identity(
     "93e939ffdf19a7d862108182528fac7d9b066e59fa853b21327bedd6260b14d4",
     "1b1a76c85e0a94345ff54c47389f93fd9038a1c23a9755ace956c87f907fd24b",
     0x671c_f8a7,
+);
+pub const POST_INIT_HOOK_PROBE: FirmwareIdentity = firmware_identity(
+    "post-init-hook-probe-v4.59",
+    "133f5241efecc23c7cc2fffcc0fdb34c37f5a3f840362938c27a2bc5353c1de1",
+    "612e188cf000d7ecdabd0dd5e030b0066c93f59a2abef21ac03e496c38559c20",
+    0x8065_29df,
 );
 
 pub const FLASHABLE_IMAGES: [FirmwareIdentity; 12] = [
@@ -965,14 +981,31 @@ mod tests {
     }
 
     #[test]
+    fn post_init_hook_probe_payload_constants() {
+        assert_fixture(
+            POST_INIT_HOOK_PROBE,
+            "firmware/bk3635-stock-harness/target/post-init-hook/DO_NOT_FLASH-post-init-hook-probe.container.bin",
+        );
+    }
+
+    #[test]
+    fn post_init_hook_probe_rejects_one_byte_corruption() {
+        assert_corruption_rejected(
+            POST_INIT_HOOK_PROBE,
+            "firmware/bk3635-stock-harness/target/post-init-hook/DO_NOT_FLASH-post-init-hook-probe.container.bin",
+            0x22c0,
+        );
+    }
+
+    #[test]
     fn reference_artifact_manifest_is_unique_and_complete() {
-        assert_eq!(REFERENCE_ARTIFACTS.len(), 12);
+        assert_eq!(REFERENCE_ARTIFACTS.len(), 13);
         assert_eq!(
             REFERENCE_ARTIFACTS
                 .iter()
                 .filter(|artifact| artifact.container_sha256.is_some())
                 .count(),
-            10
+            11
         );
         for (index, artifact) in REFERENCE_ARTIFACTS.iter().enumerate() {
             assert_ne!(artifact.code_sha256, [0; 32]);
@@ -985,6 +1018,10 @@ mod tests {
     }
 
     #[test]
+    #[allow(
+        clippy::too_many_lines,
+        reason = "the flat fixture table keeps every artifact index and generated path reviewable"
+    )]
     fn reference_artifact_hashes_match_available_builds() {
         let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
         let fixtures = [
@@ -1064,6 +1101,13 @@ mod tests {
                 "firmware/bk3635-stock-harness/target/rust-response/DO_NOT_FLASH-rust-response-probe.injection.bin",
                 Some(
                     "firmware/bk3635-stock-harness/target/rust-response/DO_NOT_FLASH-rust-response-probe.container.bin",
+                ),
+            ),
+            (
+                12,
+                "firmware/bk3635-stock-harness/target/post-init-hook/DO_NOT_FLASH-post-init-hook-probe.injection.bin",
+                Some(
+                    "firmware/bk3635-stock-harness/target/post-init-hook/DO_NOT_FLASH-post-init-hook-probe.container.bin",
                 ),
             ),
         ];

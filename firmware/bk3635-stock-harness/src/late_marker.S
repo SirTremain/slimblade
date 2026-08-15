@@ -8,6 +8,8 @@
     .equ MARKER_ADDRESS,           0x0000807c
     .equ STOCK_RECOVERY_COMMAND,   0x0001895d
     .equ STOCK_DELAY,              0x000178eb
+    .equ STOCK_MODE_ADDRESS,       0x00400282
+    .equ STOCK_MAIN_LOOP,          0x00019bf3
 
     .section .text.carrier, "ax", %progbits
     .thumb
@@ -17,6 +19,18 @@
     .global carrier_dispatch
     .type carrier_dispatch, %function
 carrier_dispatch:
+    .ifdef POST_INIT_HOOK_PROBE
+    cmp r0, #0x0d
+    beq .Lstock_recovery
+    cmp r0, #0x0e
+    beq carrier_late_marker
+    cmp r0, #0x0f
+    beq carrier_hook_state
+    bx lr
+.Lstock_recovery:
+    ldr r3, =STOCK_RECOVERY_COMMAND
+    bx r3
+    .else
     .ifdef RUST_RESPONSE_PROBE
     cmp r0, #0x0d
     beq .Lstock_recovery
@@ -40,6 +54,7 @@ carrier_dispatch:
     ldr r3, =STOCK_RECOVERY_COMMAND
     bx r3
     .endif
+    .endif
     .size carrier_dispatch, . - carrier_dispatch
 
     .thumb_func
@@ -48,6 +63,14 @@ carrier_dispatch:
 carrier_late_marker:
     push {r4, lr}
     bl marker_set
+    .ifdef POST_INIT_HOOK_PROBE
+    ldr r0, =STOCK_MODE_ADDRESS
+    movs r1, #3
+    strb r1, [r0]
+    movs r0, #0xa3
+    strb r0, [r4, #3]
+    pop {r4, pc}
+    .else
     .ifdef EXPERIMENT_ENTRY_HANG
 .Lexperiment_hang:
     b .Lexperiment_hang
@@ -58,8 +81,20 @@ carrier_late_marker:
     pop {r4, pc}
     .endif
     .endif
+    .endif
     .size carrier_late_marker, . - carrier_late_marker
 
+    .ifdef POST_INIT_HOOK_PROBE
+    .thumb_func
+    .global carrier_hook_state
+    .type carrier_hook_state, %function
+carrier_hook_state:
+    ldr r0, =STOCK_MODE_ADDRESS
+    ldrb r0, [r0]
+    strb r0, [r4, #3]
+    bx lr
+    .size carrier_hook_state, . - carrier_hook_state
+    .else
     .ifdef RUST_RESPONSE_PROBE
     .thumb_func
     .global rust_response_shim
@@ -82,6 +117,7 @@ carrier_full_recovery:
     bl marker_set
     b watchdog_reset
     .size carrier_full_recovery, . - carrier_full_recovery
+    .endif
     .endif
 
 /* Called only from Thumb code; restore interrupt control before returning. */
@@ -150,6 +186,7 @@ watchdog_disable:
     bx lr
     .size watchdog_disable, . - watchdog_disable
 
+    .ifndef POST_INIT_HOOK_PROBE
     .thumb_func
     .type watchdog_reset, %function
 watchdog_reset:
@@ -170,6 +207,7 @@ watchdog_reset:
 .Lreset_wait:
     b .Lreset_wait
     .size watchdog_reset, . - watchdog_reset
+    .endif
 
     .thumb_func
     .type storage_operation, %function
@@ -204,6 +242,22 @@ storage_operation:
     .size storage_operation, . - storage_operation
 
     .ltorg
+
+    .ifdef POST_INIT_HOOK_PROBE
+    .section .text.rust_probe, "ax", %progbits
+    .thumb
+    .thumb_func
+    .global post_init_hook
+    .type post_init_hook, %function
+post_init_hook:
+    movs r0, #2
+    strb r0, [r4]
+    ldr r0, .Lstock_main_loop
+    bx r0
+.Lstock_main_loop:
+    .word STOCK_MAIN_LOOP
+    .size post_init_hook, . - post_init_hook
+    .endif
 
     .section .text.trampoline, "ax", %progbits
     .arm
