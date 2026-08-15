@@ -2,6 +2,7 @@
 images
 /target/
 /firmware/bk3635-rs/target/
+/firmware/bk3635-usb-probe/target/
 
 # Generated products from the vendored Beken SDK.
 vendor/bk3633_sdk/SDK/**/build/

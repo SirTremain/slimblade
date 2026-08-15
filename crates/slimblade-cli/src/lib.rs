@@ -1,6 +1,6 @@
 use slimblade_image::{
     FirmwareIdentity, OFFICIAL_V449, RECOVERY_CARRIER, RECOVERY_GUARD, RECOVERY_STUB,
-    RESET_TRAMPOLINE, STARTUP_TRAMPOLINE, V449_DESCRIPTOR_PROBE,
+    RESET_TRAMPOLINE, STARTUP_TRAMPOLINE, USB_RECOVERY_PROBE, V449_DESCRIPTOR_PROBE,
 };
 
 pub const FULL_RECOVERY_CONFIRMATION: &str = "ERASE-MARKER-RESET";
@@ -14,6 +14,7 @@ pub enum FlashArtifact {
     RecoveryStub,
     StartupTrampoline,
     RecoveryGuard,
+    UsbRecoveryProbe,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -34,6 +35,7 @@ impl FlashArtifact {
             Self::RecoveryStub => RECOVERY_STUB,
             Self::StartupTrampoline => STARTUP_TRAMPOLINE,
             Self::RecoveryGuard => RECOVERY_GUARD,
+            Self::UsbRecoveryProbe => USB_RECOVERY_PROBE,
         }
     }
 
@@ -57,6 +59,7 @@ impl FlashArtifact {
             Self::StartupTrampoline => PostFlashExpectation::Application { bcd_device: "0453" },
             Self::RecoveryStub => PostFlashExpectation::ResidentLoader,
             Self::RecoveryGuard => PostFlashExpectation::UsbSilence,
+            Self::UsbRecoveryProbe => PostFlashExpectation::Application { bcd_device: "0454" },
         }
     }
 }
@@ -131,5 +134,13 @@ mod tests {
     fn full_recovery_needs_exact_action_confirmation() {
         assert!(!full_recovery_confirmation_matches("wrong"));
         assert!(full_recovery_confirmation_matches("ERASE-MARKER-RESET"));
+    }
+
+    #[test]
+    fn usb_probe_needs_exact_hash_confirmation() {
+        assert!(!FlashArtifact::UsbRecoveryProbe.confirmation_matches("wrong"));
+        assert!(FlashArtifact::UsbRecoveryProbe.confirmation_matches(
+            "d08395311afb43a289b05bbd0fb31a750c62371e957eedde4c08f0e7c78560e8"
+        ));
     }
 }

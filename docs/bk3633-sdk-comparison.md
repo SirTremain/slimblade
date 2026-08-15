@@ -127,8 +127,18 @@ Verified constraints:
 
 The pure Rust recovery model returns `EnterLoader` only after status
 completion. A new setup packet, malformed report, unrelated valid command or
-bus reset cancels the pending action. Twelve host tests cover these cases. The
-crate has no MMIO and is not linked into the live-tested guard yet.
+bus reset cancels the pending action. Host tests cover these cases and complete
+descriptor packetization. The crate has no MMIO and is not linked into the
+live-tested guard yet.
+
+`slimblade-bk3635` now adds the hardware boundary. Its typed register set can
+represent only system power and USB addresses, while the sole live backend
+contains four reviewed volatile operations behind an unsafe constructor. A
+fake backend verifies the stock device-mode initialization order, clear-on-read
+interrupt snapshot, descriptor CSR/FIFO order, the full synthetic
+enumeration/address/configuration path, and status-gated loader result. The
+OUT-status boundary now matches Kensington helper `0x170e8`: CSR0-high `0x01`
+then CSR0-low `0x0a`.
 
 The smallest first implementation should keep the audited marker prefix,
 initialize only USB device mode, enumerate the existing two-interface
@@ -136,22 +146,33 @@ descriptor shape, service endpoint 0, acknowledge the complete `SET_REPORT`
 transaction, and then use the proven watchdog reset. Experimental USB code
 must not access the nonvolatile controller or marker storage after the prefix.
 
-Inference: a tight polling loop may replace FIQ dispatch for the first probe,
-which would avoid new interrupt-controller and FIQ-state dependencies. This
-needs confirmation against controller timing before selecting it over the
-stock FIQ structure.
+The separate `bk3635-usb-probe` package links that path after the exact
+live-tested 420-byte marker prefix. On 2026-08-15 its host-only audit passed at
+3,556 bytes (3,136 experimental), SHA-256
+`9bd0c0d1e6b57583be3ad91f9f444101bdf693359e499a0e4f417ca0e51c9b67`.
+It has 11 decoded allowlisted MMIO loads, no undefined/runtime symbols, and a
+176-byte maximum stack frame. Its hash-locked 128,112-byte container has
+SHA-256
+`d08395311afb43a289b05bbd0fb31a750c62371e957eedde4c08f0e7c78560e8`.
+It has not run on hardware.
+
+Inference: a tight polling loop can replace FIQ dispatch for a first probe,
+avoiding new interrupt-controller and FIQ-state dependencies. The endpoint
+registers latch requests until serviced, but polling latency is still the main
+unverified hardware assumption.
 
 Open before a flash candidate:
 
-- identify the minimal endpoint-0 CSR/FIFO sequence for reset, setup, data and
-  status stages;
-- decide polling versus the stock FIQ route from instruction-level evidence;
-- reproduce and test descriptor selection, address assignment and
-  configuration without linking the generic 23 KiB stack;
-- require post-link checks for the exact marker prefix, allowed USB/watchdog
-  MMIO literals, absence of storage-controller literals and unexpected calls;
-- verify the candidate disassembly and exact artifact hash before requesting a
-  hardware write.
+- confirm the polling loop meets controller timing without the stock FIQ route;
+- first observe enumeration without sending the already present command
+  `0x0d`, then test that command only as a separate explicit stage;
+- rerun the complete gate and review the new exact hash immediately before any
+  explicit hardware request.
+
+Source for the CSR comparison: vendored [Beken BK3633 BLE SDK](https://gitee.com/beken-corp/bk3633_ble_sdk)
+commit `0a461f8ed4a4f17ff6889d6f9d34e521b92b8243`, retrieved 2026-08-14. The
+initial 1,091-file SDK import is 13,718,399 bytes with deterministic tree
+SHA-256 `2df03cb56bab839de7a51b8aefdc5fc0f481e405ddc12be18ee33f4bdfffe3c6`.
 
 ## Hardware-definition evidence
 

@@ -16,6 +16,7 @@ pub mod reset_trampoline;
 pub mod sdk_startup;
 #[cfg(feature = "std")]
 pub mod startup_trampoline;
+pub mod usb_probe;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ArmAddress(u32);

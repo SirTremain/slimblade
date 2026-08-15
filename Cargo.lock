@@ -72,6 +72,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "slimblade-bk3635"
+version = "0.1.0"
+dependencies = [
+ "slimblade-protocol",
+ "slimblade-usb",
+]
+
+[[package]]
 name = "slimblade-cli"
 version = "0.1.0"
 dependencies = [
@@ -127,5 +135,6 @@ name = "xtask"
 version = "0.1.0"
 dependencies = [
  "slimblade-image",
+ "slimblade-protocol",
  "slimblade-verify",
 ]

@@ -1,0 +1,56 @@
+[package]
+name = "slimblade-usb-recovery-probe"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+publish = false
+
+[[bin]]
+name = "slimblade-usb-recovery-probe"
+path = "src/main.rs"
+
+[dependencies]
+slimblade-bk3635 = { path = "../../crates/slimblade-bk3635" }
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+panic = "abort"
+strip = false
+
+[lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+unsafe_code = "warn"
+warnings = "deny"
+
+[lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
+alloc_instead_of_core = "deny"
+allow_attributes_without_reason = "warn"
+arithmetic_side_effects = "deny"
+as_conversions = "deny"
+default_numeric_fallback = "deny"
+dbg_macro = "deny"
+expect_used = "deny"
+float_arithmetic = "deny"
+host_endian_bytes = "deny"
+indexing_slicing = "deny"
+integer_division = "deny"
+large_include_file = "deny"
+large_stack_arrays = "deny"
+large_stack_frames = "deny"
+mixed_read_write_in_expression = "deny"
+multiple_unsafe_ops_per_block = "deny"
+panic = "deny"
+std_instead_of_alloc = "deny"
+std_instead_of_core = "deny"
+todo = "deny"
+undocumented_unsafe_blocks = "deny"
+unimplemented = "deny"
+unreachable = "deny"
+unwrap_used = "deny"

@@ -6,6 +6,7 @@ use slimblade_protocol::{
 };
 
 pub mod descriptors;
+pub mod endpoint;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct SetupPacket {

@@ -16,6 +16,10 @@ Rust 1.97.1; the isolated `thumbv5te-none-eabi` firmware workspace pins nightly
   marker-first guard.
 - `cargo xtask rust-guard`: build only the Rust firmware guard and place its
   verified code/container under `firmware/bk3635-rs/target/guard/`.
+- `cargo xtask usb-probe`: rebuild the exact guard prefix and the isolated
+  build-only endpoint-zero probe, then audit its prefix, symbols, MMIO loads,
+  control flow, stack sizes, byte count, and SHA-256. It packs a hash-locked
+  `DO_NOT_FLASH` container but does not access or flash the device.
 - `cargo xtask postlink`: rerun the Rust guard ELF symbol audit.
 - `cargo xtask all`: alias the complete Rust-only `check` gate.
 - `cargo xtask disassemble-stock FIRMWARE START STOP arm|thumb`: hash-lock an
@@ -32,8 +36,22 @@ be explicitly reviewed and annotated.
 
 The post-link audit rejects empty or unresolved symbol tables and any linked
 panic, unwind, allocation, or double-underscore compiler-runtime symbol. The
-active gate audits the Rust-built marker-first guard. Typed binary verifiers
-retain the exact constraints and hashes of the earlier recovery milestones.
+active gate audits the Rust-built marker-first guard and USB probe. Typed
+binary verifiers retain the exact constraints and hashes of the earlier
+recovery milestones.
+
+The 2026-08-15 build-only USB probe is 3,556 bytes with SHA-256
+`9bd0c0d1e6b57583be3ad91f9f444101bdf693359e499a0e4f417ca0e51c9b67`.
+Its first 420 bytes match the live-tested marker-first prefix; the 3,136-byte
+experiment has 11 decoded, allowlisted MMIO loads, 22 defined symbols, no
+undefined symbols, and a maximum recorded stack frame of 176 bytes. This is a
+host audit result, not a hardware result.
+The resulting 128,112-byte container has SHA-256
+`d08395311afb43a289b05bbd0fb31a750c62371e957eedde4c08f0e7c78560e8`,
+payload SHA-256
+`faccf0e7cf43f460c7241a08f92b11cc74f6c302f05eb177d8f3931e3b94522b`,
+and payload CRC `8bb70620`. See
+[`usb-recovery-probe.md`](usb-recovery-probe.md) for its staged hardware gate.
 
 The protocol crate is dependency-free and `no_std`. It reproduces the existing
 17-byte and 49-byte command reports, updater CRC, preparation report and B1

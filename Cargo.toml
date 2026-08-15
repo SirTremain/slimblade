@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "crates/slimblade-bk3635",
     "crates/slimblade-cli",
     "crates/slimblade-image",
     "crates/slimblade-linux",
@@ -8,7 +9,7 @@ members = [
     "crates/slimblade-verify",
     "xtask",
 ]
-exclude = ["firmware/bk3635-rs"]
+exclude = ["firmware/bk3635-rs", "firmware/bk3635-usb-probe"]
 resolver = "3"
 
 [workspace.package]

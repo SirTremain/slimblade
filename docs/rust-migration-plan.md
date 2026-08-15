@@ -75,6 +75,7 @@ though those external images are absent.
 Cargo.toml                         stable host workspace
 rust-toolchain.toml               pinned stable host toolchain
 crates/
+  slimblade-bk3635/               typed USB MMIO and polling endpoint driver
   slimblade-protocol/             no_std packets and checksums
   slimblade-usb/                  pure no_std control-request/state logic
   slimblade-image/                containers, CRCs, manifests

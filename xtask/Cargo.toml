@@ -8,6 +8,7 @@ publish = false
 
 [dependencies]
 slimblade-image = { path = "../crates/slimblade-image" }
+slimblade-protocol = { path = "../crates/slimblade-protocol" }
 slimblade-verify = { path = "../crates/slimblade-verify" }
 
 [lints]

@@ -45,7 +45,7 @@ impl ArtifactIdentity {
     }
 }
 
-pub const REFERENCE_ARTIFACTS: [ArtifactIdentity; 7] = [
+pub const REFERENCE_ARTIFACTS: [ArtifactIdentity; 8] = [
     ArtifactIdentity {
         name: "stock-startup-reference",
         code_sha256: parse_sha256(
@@ -105,6 +105,15 @@ pub const REFERENCE_ARTIFACTS: [ArtifactIdentity; 7] = [
             "7bb3055bc1575bcb9ca4eab9ba2a83a3dbaba131e92cca78fffb18397cc2d19a",
         )),
     },
+    ArtifactIdentity {
+        name: "marker-first-usb-recovery-probe",
+        code_sha256: parse_sha256(
+            "9bd0c0d1e6b57583be3ad91f9f444101bdf693359e499a0e4f417ca0e51c9b67",
+        ),
+        container_sha256: Some(parse_sha256(
+            "d08395311afb43a289b05bbd0fb31a750c62371e957eedde4c08f0e7c78560e8",
+        )),
+    },
 ];
 
 pub const STOCK_STARTUP_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[0];
@@ -114,6 +123,7 @@ pub const RESET_TRAMPOLINE_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[3];
 pub const STARTUP_TRAMPOLINE_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[4];
 pub const RECOVERY_STUB_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[5];
 pub const RECOVERY_GUARD_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[6];
+pub const USB_RECOVERY_PROBE_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[7];
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct FirmwareIdentity {
@@ -267,8 +277,14 @@ pub const RECOVERY_GUARD: FirmwareIdentity = firmware_identity(
     "3c11672dca070a246202b70b743456b4b5bb32b157d2e305e2f032499e36823c",
     0x2b64_f82e,
 );
+pub const USB_RECOVERY_PROBE: FirmwareIdentity = firmware_identity(
+    "marker-first-usb-recovery-probe",
+    "d08395311afb43a289b05bbd0fb31a750c62371e957eedde4c08f0e7c78560e8",
+    "faccf0e7cf43f460c7241a08f92b11cc74f6c302f05eb177d8f3931e3b94522b",
+    0x8bb7_0620,
+);
 
-pub const FLASHABLE_IMAGES: [FirmwareIdentity; 7] = [
+pub const FLASHABLE_IMAGES: [FirmwareIdentity; 8] = [
     OFFICIAL_V449,
     V449_DESCRIPTOR_PROBE,
     RECOVERY_CARRIER,
@@ -276,6 +292,7 @@ pub const FLASHABLE_IMAGES: [FirmwareIdentity; 7] = [
     STARTUP_TRAMPOLINE,
     RECOVERY_STUB,
     RECOVERY_GUARD,
+    USB_RECOVERY_PROBE,
 ];
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -813,13 +830,13 @@ mod tests {
 
     #[test]
     fn reference_artifact_manifest_is_unique_and_complete() {
-        assert_eq!(REFERENCE_ARTIFACTS.len(), 7);
+        assert_eq!(REFERENCE_ARTIFACTS.len(), 8);
         assert_eq!(
             REFERENCE_ARTIFACTS
                 .iter()
                 .filter(|artifact| artifact.container_sha256.is_some())
                 .count(),
-            5
+            6
         );
         for (index, artifact) in REFERENCE_ARTIFACTS.iter().enumerate() {
             assert_ne!(artifact.code_sha256, [0; 32]);
@@ -876,6 +893,13 @@ mod tests {
                 "firmware/recovery_guard/build/DO_NOT_FLASH-marker-first-guard-hang-probe.code.bin",
                 Some(
                     "firmware/recovery_guard/build/DO_NOT_FLASH-marker-first-guard-hang-probe.container.bin",
+                ),
+            ),
+            (
+                7,
+                "firmware/bk3635-usb-probe/target/probe/DO_NOT_FLASH-usb-recovery-probe.code.bin",
+                Some(
+                    "firmware/bk3635-usb-probe/target/probe/DO_NOT_FLASH-usb-recovery-probe.container.bin",
                 ),
             ),
         ];

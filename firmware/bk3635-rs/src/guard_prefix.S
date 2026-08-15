@@ -103,6 +103,7 @@ eeprom_write_word:
 .Lstorage_address_write: .word 0x00803008
 
     .thumb_func
+    .global watchdog_reset
     .type watchdog_reset, %function
 watchdog_reset:
     ldr r1, .Lreset_interrupt_control
