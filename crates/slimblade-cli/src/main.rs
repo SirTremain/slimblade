@@ -38,7 +38,7 @@ struct Arguments {
 }
 
 const fn usage() -> &'static str {
-    "usage:\n  slimblade [--device PATH] identify\n  slimblade [--device PATH] [--timeout-seconds N] enter-loader --confirm\n  slimblade [--device PATH] [--timeout-seconds N] query-loader\n  slimblade [--device PATH] [--timeout-seconds N] FLASH_COMMAND --firmware PATH --confirm-sha256 HASH\n\nFLASH_COMMAND: restore-official-v449, flash-descriptor-probe, flash-recovery-carrier, flash-reset-trampoline, flash-recovery-stub, flash-startup-trampoline, flash-rust-guard, or flash-usb-recovery-probe"
+    "usage:\n  slimblade [--device PATH] identify\n  slimblade [--device PATH] [--timeout-seconds N] enter-loader --confirm\n  slimblade [--device PATH] [--timeout-seconds N] query-loader\n  slimblade [--device PATH] [--timeout-seconds N] FLASH_COMMAND --firmware PATH --confirm-sha256 HASH\n\nFLASH_COMMAND: restore-official-v449, flash-descriptor-probe, flash-recovery-carrier, flash-reset-trampoline, flash-recovery-stub, flash-startup-trampoline, flash-rust-guard, flash-usb-recovery-probe, or flash-stock-harness"
 }
 
 fn take_value(arguments: &[String], index: &mut usize, option: &str) -> Result<String, String> {
@@ -100,7 +100,8 @@ fn parse_arguments() -> Result<Arguments, String> {
         | "flash-recovery-stub"
         | "flash-startup-trampoline"
         | "flash-rust-guard"
-        | "flash-usb-recovery-probe" => Command::Flash {
+        | "flash-usb-recovery-probe"
+        | "flash-stock-harness" => Command::Flash {
             artifact: match command_name.as_str() {
                 "restore-official-v449" => FlashArtifact::OfficialV449,
                 "flash-descriptor-probe" => FlashArtifact::DescriptorProbe,
@@ -110,6 +111,7 @@ fn parse_arguments() -> Result<Arguments, String> {
                 "flash-startup-trampoline" => FlashArtifact::StartupTrampoline,
                 "flash-rust-guard" => FlashArtifact::RecoveryGuard,
                 "flash-usb-recovery-probe" => FlashArtifact::UsbRecoveryProbe,
+                "flash-stock-harness" => FlashArtifact::StockHarness,
                 _ => return Err("unreachable flash command mapping".to_owned()),
             },
             firmware: firmware.ok_or_else(|| "flash command requires --firmware".to_owned())?,

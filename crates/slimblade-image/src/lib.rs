@@ -45,7 +45,7 @@ impl ArtifactIdentity {
     }
 }
 
-pub const REFERENCE_ARTIFACTS: [ArtifactIdentity; 8] = [
+pub const REFERENCE_ARTIFACTS: [ArtifactIdentity; 9] = [
     ArtifactIdentity {
         name: "stock-startup-reference",
         code_sha256: parse_sha256(
@@ -114,6 +114,15 @@ pub const REFERENCE_ARTIFACTS: [ArtifactIdentity; 8] = [
             "3ce23e3b9af4a1e713bad622f56fc9055cb178ca1ec198c7556c1dee44169e5a",
         )),
     },
+    ArtifactIdentity {
+        name: "marker-first-stock-harness",
+        code_sha256: parse_sha256(
+            "a26b3d8d9d2b45a79ccb80792d3dd8b5e40d47a07e539bc0e88ef72c9fc7c981",
+        ),
+        container_sha256: Some(parse_sha256(
+            "cac3bab34545a2e20ad545af5b91c4a55db1c9cacfdcb0f45e4a348b65e3b356",
+        )),
+    },
 ];
 
 pub const STOCK_STARTUP_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[0];
@@ -124,6 +133,7 @@ pub const STARTUP_TRAMPOLINE_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[4]
 pub const RECOVERY_STUB_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[5];
 pub const RECOVERY_GUARD_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[6];
 pub const USB_RECOVERY_PROBE_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[7];
+pub const STOCK_HARNESS_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[8];
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct FirmwareIdentity {
@@ -283,8 +293,14 @@ pub const USB_RECOVERY_PROBE: FirmwareIdentity = firmware_identity(
     "6e14eedaa65930bca93fa60febd43f966f310743c9c4c7c79084865990192f7d",
     0x2da6_b921,
 );
+pub const STOCK_HARNESS: FirmwareIdentity = firmware_identity(
+    "marker-first-stock-harness-v4.55",
+    "cac3bab34545a2e20ad545af5b91c4a55db1c9cacfdcb0f45e4a348b65e3b356",
+    "2b2d8fa2ceacb3429e4624e19af506dcf6efb6a44614dc7bfe226f20adbe3e8b",
+    0x2b53_d16e,
+);
 
-pub const FLASHABLE_IMAGES: [FirmwareIdentity; 8] = [
+pub const FLASHABLE_IMAGES: [FirmwareIdentity; 9] = [
     OFFICIAL_V449,
     V449_DESCRIPTOR_PROBE,
     RECOVERY_CARRIER,
@@ -293,6 +309,7 @@ pub const FLASHABLE_IMAGES: [FirmwareIdentity; 8] = [
     RECOVERY_STUB,
     RECOVERY_GUARD,
     USB_RECOVERY_PROBE,
+    STOCK_HARNESS,
 ];
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -829,14 +846,31 @@ mod tests {
     }
 
     #[test]
+    fn stock_harness_payload_constants() {
+        assert_fixture(
+            STOCK_HARNESS,
+            "firmware/bk3635-stock-harness/target/harness/DO_NOT_FLASH-stock-harness.container.bin",
+        );
+    }
+
+    #[test]
+    fn stock_harness_rejects_one_byte_corruption() {
+        assert_corruption_rejected(
+            STOCK_HARNESS,
+            "firmware/bk3635-stock-harness/target/harness/DO_NOT_FLASH-stock-harness.container.bin",
+            0x21d6,
+        );
+    }
+
+    #[test]
     fn reference_artifact_manifest_is_unique_and_complete() {
-        assert_eq!(REFERENCE_ARTIFACTS.len(), 8);
+        assert_eq!(REFERENCE_ARTIFACTS.len(), 9);
         assert_eq!(
             REFERENCE_ARTIFACTS
                 .iter()
                 .filter(|artifact| artifact.container_sha256.is_some())
                 .count(),
-            6
+            7
         );
         for (index, artifact) in REFERENCE_ARTIFACTS.iter().enumerate() {
             assert_ne!(artifact.code_sha256, [0; 32]);
@@ -900,6 +934,13 @@ mod tests {
                 "firmware/bk3635-usb-probe/target/probe/DO_NOT_FLASH-usb-recovery-probe.code.bin",
                 Some(
                     "firmware/bk3635-usb-probe/target/probe/DO_NOT_FLASH-usb-recovery-probe.container.bin",
+                ),
+            ),
+            (
+                8,
+                "firmware/bk3635-stock-harness/target/harness/DO_NOT_FLASH-stock-harness.injection.bin",
+                Some(
+                    "firmware/bk3635-stock-harness/target/harness/DO_NOT_FLASH-stock-harness.container.bin",
                 ),
             ),
         ];

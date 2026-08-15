@@ -80,8 +80,23 @@ The corrected Rust initializer now reproduces Kensington's register operations
 and ordering, including equivalent 499-iteration delays. Its fake-register test
 checks the entire operation transcript. The post-link audit confirms the exact
 marker prefix, reviewed MMIO literals, bounded branches and stack, and absence
-of storage/reset-controller access. This corrected candidate has not run on
-hardware.
+of storage/reset-controller access.
+
+The corrected container was flashed on 2026-08-15. Resident loader
+`25a7:fabe` returned `d2`, and all 3,748 blocks echoed with payload CRC
+`2da6b921`, but the device again failed to enumerate; command `0x0d` was not
+sent. A five-second USB power cycle returned the same port to loader
+`25a7:fabe`/`d2`, verifying marker recovery a second time. The exact v4.53
+image was restored with 3,748 echoed blocks and returned as `047d:80d7`,
+`bcdDevice 0453`, with its 170-byte report descriptor.
+
+Inference: Kensington's USB routine depends on earlier stock system and RAM
+initialization, or its FIQ service path is required before enumeration. Exact
+controller-register replay alone is insufficient. The safer next experiment
+is a marker-first harness that resumes complete stock startup and retains the
+stock USB stack before invoking any custom Rust. That build-only harness is now
+hash-locked and audited in [`stock-harness.md`](stock-harness.md); it has not
+been flashed.
 
 CSR evidence comes from Kensington v4.49 disassembly and the vendored
 [Beken BK3633 BLE SDK](https://gitee.com/beken-corp/bk3633_ble_sdk) commit

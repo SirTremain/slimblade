@@ -9,7 +9,11 @@ members = [
     "crates/slimblade-verify",
     "xtask",
 ]
-exclude = ["firmware/bk3635-rs", "firmware/bk3635-usb-probe"]
+exclude = [
+    "firmware/bk3635-rs",
+    "firmware/bk3635-stock-harness",
+    "firmware/bk3635-usb-probe",
+]
 resolver = "3"
 
 [workspace.package]

@@ -16,6 +16,8 @@ pub mod reset_trampoline;
 pub mod sdk_startup;
 #[cfg(feature = "std")]
 pub mod startup_trampoline;
+#[cfg(feature = "std")]
+pub mod stock_harness;
 pub mod usb_probe;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

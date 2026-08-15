@@ -164,7 +164,11 @@ Its host-only audit passes at 3,632 bytes (3,212 experimental), SHA-256
 It has 14 decoded allowlisted MMIO loads, no undefined/runtime symbols, and a
 184-byte maximum stack frame. Its hash-locked 128,112-byte container SHA-256 is
 `3ce23e3b9af4a1e713bad622f56fc9055cb178ca1ec198c7556c1dee44169e5a`.
-This corrected candidate has not run on hardware.
+The corrected candidate also failed to enumerate on hardware after all 3,748
+blocks echoed. Its marker recovered loader `25a7:fabe`/`d2` after a USB power
+cycle, and exact v4.53 restoration passed. This shows that exact controller
+register replay is insufficient without some earlier stock initialization or
+the stock FIQ service path.
 
 Inference: a tight polling loop can replace FIQ dispatch for a first probe,
 avoiding new interrupt-controller and FIQ-state dependencies. The endpoint
@@ -173,8 +177,10 @@ unverified hardware assumption.
 
 Open before the next probe candidate:
 
-- first observe enumeration without sending the already present command
-  `0x0d`, then test that command only as a separate explicit stage;
+- retain complete stock startup and USB initially, set the recovery marker
+  before stock startup, and add custom code only behind a reviewed hook;
+- first observe enumeration without sending command `0x0d`, then test that
+  command only as a separate explicit stage;
 - rerun the complete gate and review the new exact hash immediately before any
   explicit hardware request.
 

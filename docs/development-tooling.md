@@ -20,6 +20,9 @@ Rust 1.97.1; the isolated `thumbv5te-none-eabi` firmware workspace pins nightly
   build-only endpoint-zero probe, then audit its prefix, symbols, MMIO loads,
   control flow, stack sizes, byte count, and SHA-256. It packs a hash-locked
   `DO_NOT_FLASH` container but does not access or flash the device.
+- `cargo xtask stock-harness`: build and audit the 340-byte marker-first
+  injection, overlay it only on the exact v4.53 base, and reproduce the locked
+  `0455` container. It does not access or flash the device.
 - `cargo xtask postlink`: rerun the Rust guard ELF symbol audit.
 - `cargo xtask all`: alias the complete Rust-only `check` gate.
 - `cargo xtask disassemble-stock FIRMWARE START STOP arm|thumb`: hash-lock an
@@ -52,6 +55,14 @@ payload SHA-256
 `6e14eedaa65930bca93fa60febd43f966f310743c9c4c7c79084865990192f7d`,
 and payload CRC `2da6b921`. See
 [`usb-recovery-probe.md`](usb-recovery-probe.md) for its staged hardware gate.
+
+The safer stock-startup harness retains Kensington startup and USB rather than
+reproducing them. Its 340-byte injection SHA-256 is
+`a26b3d8d9d2b45a79ccb80792d3dd8b5e40d47a07e539bc0e88ef72c9fc7c981`;
+the 128,112-byte derived container SHA-256 is
+`cac3bab34545a2e20ad545af5b91c4a55db1c9cacfdcb0f45e4a348b65e3b356`.
+See [`stock-harness.md`](stock-harness.md). It is audited but has not been
+flashed.
 
 The protocol crate is dependency-free and `no_std`. It reproduces the existing
 17-byte and 49-byte command reports, updater CRC, preparation report and B1

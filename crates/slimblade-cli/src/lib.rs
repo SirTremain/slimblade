@@ -1,6 +1,6 @@
 use slimblade_image::{
     FirmwareIdentity, OFFICIAL_V449, RECOVERY_CARRIER, RECOVERY_GUARD, RECOVERY_STUB,
-    RESET_TRAMPOLINE, STARTUP_TRAMPOLINE, USB_RECOVERY_PROBE, V449_DESCRIPTOR_PROBE,
+    RESET_TRAMPOLINE, STARTUP_TRAMPOLINE, STOCK_HARNESS, USB_RECOVERY_PROBE, V449_DESCRIPTOR_PROBE,
 };
 
 pub const FULL_RECOVERY_CONFIRMATION: &str = "ERASE-MARKER-RESET";
@@ -15,6 +15,7 @@ pub enum FlashArtifact {
     StartupTrampoline,
     RecoveryGuard,
     UsbRecoveryProbe,
+    StockHarness,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -36,6 +37,7 @@ impl FlashArtifact {
             Self::StartupTrampoline => STARTUP_TRAMPOLINE,
             Self::RecoveryGuard => RECOVERY_GUARD,
             Self::UsbRecoveryProbe => USB_RECOVERY_PROBE,
+            Self::StockHarness => STOCK_HARNESS,
         }
     }
 
@@ -60,6 +62,7 @@ impl FlashArtifact {
             Self::RecoveryStub => PostFlashExpectation::ResidentLoader,
             Self::RecoveryGuard => PostFlashExpectation::UsbSilence,
             Self::UsbRecoveryProbe => PostFlashExpectation::Application { bcd_device: "0454" },
+            Self::StockHarness => PostFlashExpectation::Application { bcd_device: "0455" },
         }
     }
 }
@@ -142,5 +145,17 @@ mod tests {
         assert!(FlashArtifact::UsbRecoveryProbe.confirmation_matches(
             "3ce23e3b9af4a1e713bad622f56fc9055cb178ca1ec198c7556c1dee44169e5a"
         ));
+    }
+
+    #[test]
+    fn stock_harness_needs_exact_hash_confirmation() {
+        assert!(!FlashArtifact::StockHarness.confirmation_matches("wrong"));
+        assert!(FlashArtifact::StockHarness.confirmation_matches(
+            "cac3bab34545a2e20ad545af5b91c4a55db1c9cacfdcb0f45e4a348b65e3b356"
+        ));
+        assert_eq!(
+            FlashArtifact::StockHarness.post_flash_expectation(),
+            PostFlashExpectation::Application { bcd_device: "0455" }
+        );
     }
 }
