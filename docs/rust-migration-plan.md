@@ -4,65 +4,19 @@ Last updated: 2026-08-15
 
 ## Progress
 
-Started 2026-08-15. Stage 0 now has a recorded toolchain/artifact baseline, a
-machine-readable map of all 88 legacy tests, and one command for every legacy
-preflight. Stage 1 has pinned stable and nightly workspaces plus unified format,
-Clippy, test and firmware-build checks. Stage 2 has begun with dependency-free
-`no_std` packet/checksum code; eight legacy packet cases have Rust equivalents.
-The host image crate now maps all five legacy container tests and adds malformed
-length, geometry and one-byte-corruption checks.
-Checked ARM B, ARM BL/BLX and ARMv5 Thumb BL primitives reproduce the recorded
-Python encodings and reject invalid alignment, opcodes, ranges and address
-overflow. Reference artifact identities are now held in one typed Rust table.
-All seven hash-locked container/payload identities use one validator, covering
-the recorded byte length, SHA-256 and updater CRC. Report parsing now makes
-incorrect lengths and report IDs explicit errors; normal-mode replies also
-require the updater checksum.
-Stage 3 has started with a borrowed, bounds-checked ELF32 parser and a complete
-Rust reset-trampoline builder/verifier. All seven legacy reset-trampoline cases
-now have Rust equivalents, and the generated container matches byte-for-byte.
-A typed post-link symbol audit now rejects unresolved symbols and linked panic,
-unwind, allocation, or compiler-runtime machinery in every generated ELF; the
-future Rust executable will enter the same gate when it exists.
-The startup-trampoline builder and verifier now reproduce the exact 60-byte
-code and v4.53 container, including the ARM/Thumb transitions, standalone-stub
-comparisons, stock return, header CRCs, and shared executable ELF checks. All
-six legacy startup-trampoline cases have Rust equivalents.
-The standalone recovery-stub builder and verifier now reproduce the exact
-420-byte code container and audit its vector/startup path, call graph, marker,
-flash-controller, delay, watchdog, reference-byte, padding, header, and ELF
-invariants. All nine legacy recovery-stub cases have Rust equivalents.
-The marker-first guard builder and verifier also reproduce the exact 422-byte
-code and container, preserve the seven-byte difference set and live-stub
-prefix, and reject persistent-storage addresses, external calls, indirect
-calls, and software interrupts in the experimental range. All ten legacy guard
-cases have Rust equivalents.
-The stock-derived recovery-carrier builder and verifier now reproduce its exact
-264-byte injection and full container, including dispatcher patches, probe
-code, critical MMIO literals, stock unlock ordering, header CRCs, version, and
-ELF layout. All seven legacy carrier cases have Rust equivalents.
-The SDK startup verifier now proves the 396-byte startup and 48-byte IRQ/FIQ
-span are byte-identical to stock, decodes all reset and interrupt transitions,
-and checks their separate executable ELF sections. All five legacy SDK-startup
-cases have Rust equivalents, completing the artifact-verifier suites in the
-parity manifest.
-The remaining mocked USB cases now have Rust equivalents in typed protocol,
-Linux state, and command-confirmation crates. All 88 legacy Python tests are
-mapped. The loader model proves discovery retries stop at the `B0` boundary,
-protocol mismatches do not retry, and same-path silence/re-enumeration rules are
-preserved.
-The Rust firmware workspace now links the reviewed 420-byte recovery prefix
-with a two-byte Rust hang function. Cargo plus the Rust host packer reproduce
-the live-tested 422-byte guard and 128,112-byte container exactly, without
-Python in the build path.
-Stage 4 now has a direct Rust hidraw wrapper for identity and descriptor ioctls,
-plus sysfs parent resolution. A live read-only check on 2026-08-15 reproduced
-`047d:80d7`, `bcdDevice 0453`, and the 170-byte vendor descriptor. Stage 5 has
-the real Rust `B2` discovery and `B0`/`B1` transport path; its scripted test
-writes and verifies the complete 3,748-block geometry, and stops without a
-rewrite on an incorrect echo. All seven recorded images use this path with
-typed post-flash application-version, resident-loader, or USB-silence checks.
-Its first hardware write remains pending an explicit request.
+Completed 2026-08-15. All 88 former test cases have named Rust equivalents;
+the Rust workspace currently runs 115 unit tests plus one compile-fail test.
+Typed crates now own packet/CRC handling, image packing, artifact identities,
+ELF and ARM/Thumb verification, Linux hidraw/sysfs access, exact-hash command
+gates, loader discovery, and the complete 3,748-block transfer.
+
+Cargo produces the live-proven 422-byte marker-first guard and 128,112-byte
+container exactly. The Rust hardware cutoff flashed that guard, observed USB
+silence, recovered `25a7:fabe` with `B2/d2` after a USB power cycle, restored
+the exact v4.53 image, and confirmed `047d:80d7`, `bcdDevice 0453`, and the
+170-byte descriptor. The user confirmed normal movement, scrolling, and
+buttons. Superseded Python implementations and Makefile orchestration were
+then removed; retained C/assembly and the BK3633 SDK are research references.
 
 ## Goal
 
@@ -234,6 +188,8 @@ codes as Python for success and every currently tested failure.
 
 ### 6. Validate the Rust host on hardware
 
+Status: complete on 2026-08-15.
+
 - Run identity and descriptor commands first.
 - Enter the resident loader through the proven application command and issue
   only the non-writing `B2/d2` query.
@@ -246,6 +202,8 @@ Exit gate: Rust completes one live known-image restore with results equal to
 the proven Python process.
 
 ### 7. Rebuild the proven firmware boundary in Rust
+
+Status: complete on 2026-08-15, including the explicit hardware flash.
 
 - Keep the live-proven reset/vector, marker and ARM/Thumb sequences as reviewed
   assembly included by the Rust firmware crate. Do not ask LLVM to rediscover
@@ -298,12 +256,15 @@ marker-first recovery procedure before the next peripheral is introduced.
 
 ### 9. Retire legacy implementations and tidy the repository
 
+Status: complete on 2026-08-15. Milestone C/assembly remains in its original
+documented locations as unbuilt reference source.
+
 - Remove a Python or C implementation only when its parity-manifest row is
   complete and its Rust replacement has passed the corresponding exit gate.
 - Replace repeated Makefile orchestration with `cargo xtask`; retain linker
   scripts and readable architecture assembly.
-- Move historical carrier and trampoline experiments under `research/probes`
-  after all links and provenance records are updated.
+- Retain historical carrier and trampoline sources in their documented
+  directories as unbuilt research references.
 - Remove Python caches and generated products from the tree; keep all build
   output ignored under `target/` or explicit build directories.
 - Consolidate active documentation into architecture, recovery, development

@@ -16,15 +16,20 @@ Compact notes on the Kensington SlimBlade Pro sensor and firmware interface.
 - [Rust migration plan](docs/rust-migration-plan.md)
 - [Board observations](docs/board-observations.md)
 
-Linux development support:
+Active development support:
 
-- [`tools/slimblade_usb.py`](tools/slimblade_usb.py): guarded HID inspection, loader control, exact-hash images, and staged recovery-carrier commands.
-- [`tools/firmware_image.py`](tools/firmware_image.py): offline BK3635 header/CRC inspection, application packaging, and stock-derived acceptance-probe generation.
-- [`tools/disassemble_stock.py`](tools/disassemble_stock.py): hash-locked ARM/Thumb disassembly of selected official v4.49 ranges.
-- [`tools/verify_sdk_startup.py`](tools/verify_sdk_startup.py): requires the source-built BK3635 vector/startup region to match stock v4.49 byte-for-byte.
-- [`tools/verify_recovery_stub.py`](tools/verify_recovery_stub.py): hash-locked, offline stock/stub comparison and pre-flight checks.
-- [`tools/verify_recovery_guard.py`](tools/verify_recovery_guard.py): requires the marker-first guard to be an exact seven-byte delta from the live stub.
-- [`tools/verify_recovery_carrier.py`](tools/verify_recovery_carrier.py): verifies the safer stock-hosted staged MMIO probes.
-- [`tools/verify_reset_trampoline.py`](tools/verify_reset_trampoline.py): verifies the two-instruction stock reset hook and exact return target.
-- [`tools/verify_startup_trampoline.py`](tools/verify_startup_trampoline.py): verifies CPU-mode, stack, and ARM/Thumb transition probes.
-- [`udev/70-slimblade-research.rules`](udev/70-slimblade-research.rules): scoped permissions plus stable vendor-interface and loader symlinks.
+- [`crates/slimblade-cli`](crates/slimblade-cli): guarded Linux HID inspection,
+  loader control, and exact-hash flashing.
+- [`crates/slimblade-protocol`](crates/slimblade-protocol): `no_std` wire
+  reports, checksums, CRC, and fixed-size packet types.
+- [`crates/slimblade-image`](crates/slimblade-image): firmware containers and
+  recorded artifact identities.
+- [`crates/slimblade-verify`](crates/slimblade-verify): ELF, ARM/Thumb, artifact,
+  and storage-isolation checks.
+- [`firmware/bk3635-rs`](firmware/bk3635-rs): Rust marker-first firmware.
+- [`udev/70-slimblade-research.rules`](udev/70-slimblade-research.rules):
+  scoped permissions and stable HID paths.
+
+Run `cargo xtask all` for the complete non-writing build and verification gate.
+The retained C/assembly probes and vendored BK3633 SDK are research references,
+not part of the active build.

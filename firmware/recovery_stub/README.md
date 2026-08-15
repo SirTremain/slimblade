@@ -12,4 +12,6 @@ ran successfully, wrote the loader marker, reset, and returned as a new
 its `DO_NOT_FLASH` name because another hardware write still requires a separate
 explicit decision.
 
-Build with `make`. Run `make preflight` while the exact official v4.49 extraction is present at `/tmp/slimblade-v449.bin`. Generated files remain under ignored `build/`.
+These C/assembly sources are retained as readable evidence for the proven
+milestone. They are no longer an active build. The Rust verifier preserves its
+exact code, container, call-graph, MMIO, and recovery invariants.

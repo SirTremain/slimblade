@@ -1,6 +1,6 @@
 # Marker-first recovery guard
 
-Last checked: 2026-08-14
+Last checked: 2026-08-15
 
 ## Design
 
@@ -48,6 +48,14 @@ Verified on 2026-08-14 with the battery disconnected:
 This proves the persistent marker is committed before the experimental entry
 and is honored during a true cold boot. It also proves recovery can restore a
 working application after that experimental entry hangs.
+
+The Rust migration cutoff repeated this complete cycle on 2026-08-15. Cargo
+produced the same 422-byte code and 128,112-byte container hashes. The Rust
+host sent and verified all 3,748 guard blocks, observed USB silence, and found
+`25a7:fabe` with `B2/d2` after a five-second USB power cycle. It then sent and
+verified all 3,748 blocks of the exact v4.53 recovery image. Rust independently
+confirmed `047d:80d7`, `bcdDevice 0453`, and the 170-byte descriptor; the user
+confirmed normal ball movement, scrolling, and buttons.
 
 ## Experimental-code invariant
 

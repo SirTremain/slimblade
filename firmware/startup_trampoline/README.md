@@ -6,3 +6,7 @@ The exact audited artifact ran successfully on the BK3635 and returned as the
 normal `047d:80d7` application with `bcdDevice 0453`. The generated file retains
 the `DO_NOT_FLASH` name because another hardware write still requires a separate
 explicit decision.
+
+The assembly and linker script are retained milestone references. The Rust
+builder/verifier preserves the exact 60 code bytes and container identity;
+this directory is no longer an active build.

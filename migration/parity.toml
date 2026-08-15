@@ -1,8 +1,8 @@
 checked = "2026-08-15"
-legacy_total = 88
+former_python_total = 88
 
 [[suite]]
-legacy = "tests/test_firmware_image.py"
+former_python = "tests/test_firmware_image.py"
 count = 5
 status = "complete"
 rust = "crates/slimblade-image/src/lib.rs::tests"
@@ -15,7 +15,7 @@ complete = [
 ]
 
 [[suite]]
-legacy = "tests/test_recovery_carrier.py"
+former_python = "tests/test_recovery_carrier.py"
 count = 7
 status = "complete"
 rust = "crates/slimblade-verify/src/recovery_carrier.rs::tests and branch tests"
@@ -30,7 +30,7 @@ complete = [
 ]
 
 [[suite]]
-legacy = "tests/test_recovery_guard.py"
+former_python = "tests/test_recovery_guard.py"
 count = 10
 status = "complete"
 rust = "crates/slimblade-verify/src/recovery_guard.rs::tests and branch tests"
@@ -48,7 +48,7 @@ complete = [
 ]
 
 [[suite]]
-legacy = "tests/test_recovery_stub.py"
+former_python = "tests/test_recovery_stub.py"
 count = 9
 status = "complete"
 rust = "crates/slimblade-verify/src/recovery_stub.rs::tests"
@@ -65,7 +65,7 @@ complete = [
 ]
 
 [[suite]]
-legacy = "tests/test_reset_trampoline.py"
+former_python = "tests/test_reset_trampoline.py"
 count = 7
 status = "complete"
 rust = "crates/slimblade-verify/src/reset_trampoline.rs::tests and branch tests"
@@ -80,7 +80,7 @@ complete = [
 ]
 
 [[suite]]
-legacy = "tests/test_sdk_startup.py"
+former_python = "tests/test_sdk_startup.py"
 count = 5
 status = "complete"
 rust = "crates/slimblade-verify/src/sdk_startup.rs::tests"
@@ -93,7 +93,7 @@ complete = [
 ]
 
 [[suite]]
-legacy = "tests/test_startup_trampoline.py"
+former_python = "tests/test_startup_trampoline.py"
 count = 6
 status = "complete"
 rust = "crates/slimblade-verify/src/startup_trampoline.rs::tests"
@@ -107,7 +107,7 @@ complete = [
 ]
 
 [[suite]]
-legacy = "tests/test_slimblade_usb.py"
+former_python = "tests/test_slimblade_usb.py"
 count = 39
 status = "complete"
 rust = "crates/slimblade-protocol, slimblade-image, slimblade-linux, and slimblade-cli tests"

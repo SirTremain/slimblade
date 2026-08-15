@@ -18,7 +18,11 @@ The final container differs from carrier `4.51` at only 18 byte positions: eight
 | Full container | 128,112 | `bad4a3a7bdf3610e8b6cf0d9b1bb27f4d147ffa0efb242f24c0257bb454c6905` |
 | Transmitted payload | 119,920 | `0bae1c229db988c03f6eb55b78a726d69fdf1f42048694a404335f00b950028a` |
 
-Updater payload CRC is `db034cd6`; USB `bcdDevice` is `4.52`. Two forced builds produced the same hashes. [`tools/verify_reset_trampoline.py`](../tools/verify_reset_trampoline.py) decodes both branches, checks their absolute targets, requires the displaced instruction to equal stock, preserves the reset vector and IRQ code, checks the exact carrier base and output hashes, validates both image CRCs and rejects corruption.
+Updater payload CRC is `db034cd6`; USB `bcdDevice` is `4.52`. Two forced builds
+produced the same hashes. The Rust reset-trampoline verifier decodes both
+branches, checks their absolute targets, requires the displaced instruction to
+equal stock, preserves the reset vector and IRQ code, checks the exact carrier
+base and output hashes, validates both image CRCs, and rejects corruption.
 
 The first draft used assembler syntax that treated `b 0x2068` as a relative displacement and would have targeted `0x4328`. Disassembly caught it before the image was hash-locked or sent. The final source uses explicit encoding `eaffff6a`, which the verifier independently decodes as `0x22b8 → 0x2068`.
 

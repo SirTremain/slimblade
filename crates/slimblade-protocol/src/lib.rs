@@ -70,8 +70,8 @@ impl NormalReport {
 
     /// Constructs a normal-mode command report.
     ///
-    /// The command is a byte at the type boundary, so the Python implementation's
-    /// out-of-range integer case cannot compile in Rust.
+    /// The command is a byte at the type boundary, so an out-of-range integer
+    /// cannot compile.
     ///
     /// ```compile_fail
     /// use slimblade_protocol::NormalReport;
@@ -347,7 +347,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn known_boot_identities_match_python() {
+    fn known_boot_identities_match_recorded_values() {
         assert!(BOOT_IDENTITIES.contains(&UsbIdentity {
             vendor_id: 0x25a7,
             product_id: 0xfabe,
@@ -420,7 +420,7 @@ mod tests {
     }
 
     #[test]
-    fn normal_reset_packet_matches_python() {
+    fn normal_reset_packet_matches_recorded_bytes() {
         assert_eq!(
             NormalReport::reset_to_loader().as_bytes(),
             &[0x08, 0x0d, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x40,]
@@ -428,7 +428,7 @@ mod tests {
     }
 
     #[test]
-    fn carrier_command_packets_match_python() {
+    fn carrier_command_packets_match_recorded_bytes() {
         for (command, final_checksum) in [(0x0e, 0x3f), (0x0f, 0x3e), (0x10, 0x3d)] {
             let report = NormalReport::command(command);
             assert_eq!(report.as_bytes()[16], final_checksum);
@@ -437,7 +437,7 @@ mod tests {
     }
 
     #[test]
-    fn boot_reset_packet_matches_python() {
+    fn boot_reset_packet_matches_recorded_bytes() {
         let report = BootReport::reset();
         assert_eq!(&report.as_bytes()[..2], &[0x06, 0x0d]);
         assert_eq!(report.as_bytes()[48], 0x42);
@@ -445,7 +445,7 @@ mod tests {
     }
 
     #[test]
-    fn boot_query_packet_matches_python() {
+    fn boot_query_packet_matches_recorded_bytes() {
         let report = BootReport::query();
         assert_eq!(&report.as_bytes()[..2], &[0x06, 0xb2]);
         assert_eq!(report.as_bytes()[48], 0x9d);
@@ -453,7 +453,7 @@ mod tests {
     }
 
     #[test]
-    fn updater_crc_vectors_match_python() {
+    fn updater_crc_matches_recorded_vectors() {
         assert_eq!(updater_crc32(b""), 0xffff_ffff);
         assert_eq!(updater_crc32(b"123456789"), 0x340b_c6d9);
         let mut payload = [0_u8; 256];
@@ -468,7 +468,7 @@ mod tests {
     }
 
     #[test]
-    fn prepare_packet_matches_python() {
+    fn prepare_packet_matches_recorded_bytes() {
         let report = BootReport::prepare(256, 0xd6fa_738c);
         assert_eq!(&report.as_bytes()[..2], &[0x06, 0xb0]);
         assert_eq!(&report.as_bytes()[5..9], &[0, 0, 1, 0]);
@@ -476,7 +476,7 @@ mod tests {
     }
 
     #[test]
-    fn nonfinal_download_packet_matches_python() {
+    fn nonfinal_download_packet_matches_recorded_bytes() {
         let payload: [u8; 64] = core::array::from_fn(|index| {
             u8::try_from(index).expect("fixture index fits in one byte")
         });

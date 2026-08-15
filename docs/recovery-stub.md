@@ -11,11 +11,12 @@ Last checked: 2026-08-14
 - CRC: reflected polynomial `0xedb88320`, initial `0xffffffff`, no final XOR, covering all bytes after the 16-byte header through `header_offset + length_words * 4`.
 - Both official SlimBlade v4.48 and v4.49 headers reproduce exactly with this rule.
 
-[`tools/firmware_image.py`](../tools/firmware_image.py) inspects this structure and packages raw code linked for `0x2020`. It performs no USB access.
+The Rust image crate inspects this structure and packages raw code linked for
+`0x2020`. It performs no USB access.
 
 ## CPU and build contract
 
-The stock vector/startup code is ARM state with later ARM/Thumb interworking. A closely related Beken BK3633 SDK specifies `arm968e-s`, ARMv5TE, Thumb, and `arm-none-eabi-gcc`. Clang 22 on the research host accepts the same target. [`firmware/recovery_stub/`](../firmware/recovery_stub/) builds a minimal candidate using that contract. It has passed offline pre-flight checks but has not run as a standalone image on hardware.
+The stock vector/startup code is ARM state with later ARM/Thumb interworking. A closely related Beken BK3633 SDK specifies `arm968e-s`, ARMv5TE, Thumb, and `arm-none-eabi-gcc`. Clang 22 on the research host accepts the same target. The retained [`firmware/recovery_stub/`](../firmware/recovery_stub/) sources document the minimal candidate that later passed on hardware; the Rust verifier now owns its active checks.
 
 The BK3635 product page only calls the core a 32-bit RISC MCU; ARM968E-S is therefore a strong family/source and binary inference, not an explicit BK3635 datasheet statement.
 
@@ -60,7 +61,7 @@ and unlock order and require rejection.
 
 Application CRC is `f96b816e`; updater payload CRC is `6e473ed7`. The payload
 uses the same 3,748-block path as the successful stock-derived v4.50 probe.
-`make preflight` currently passes 73 tests.
+Those assertions are now part of the Rust test and artifact-verification gate.
 
 Three clean builds on 2026-08-14 produced identical raw-code, container, and
 ELF bytes. The ELF SHA-256 is
@@ -109,7 +110,12 @@ the pre-flash loader instance cannot satisfy the result check.
 
 Before the minimal stub, the safer live candidate is a full stock v4.49 image with only USB `bcdDevice` changed from `4.49` to `4.50`. The application and combined-header CRCs are then regenerated. This preserves the proven stock mouse and command-`0x0d` recovery path while making custom-image acceptance observable in USB descriptors.
 
-`tools/firmware_image.py make-v449-descriptor-probe` produces this artifact only from the exact recorded official v4.49 image. The deterministic temporary result is 128,112 bytes, SHA-256 `990079b8a71668f0e19963c71a70f8efac3f36e69a21133d60f9951cd8519081`; its transmitted payload is 119,920 bytes, SHA-256 `46520d851e5c908500e89f48fc05880c60fc43fb17367aeb6c109b3f0ce3ee88`, updater CRC `be3fedce`. It is not committed.
+The Rust image crate produces this artifact only from the exact recorded
+official v4.49 image. The deterministic temporary result is 128,112 bytes,
+SHA-256 `990079b8a71668f0e19963c71a70f8efac3f36e69a21133d60f9951cd8519081`;
+its transmitted payload is 119,920 bytes, SHA-256
+`46520d851e5c908500e89f48fc05880c60fc43fb17367aeb6c109b3f0ce3ee88`,
+updater CRC `be3fedce`. It is not committed.
 
 ## Live modified-image result
 

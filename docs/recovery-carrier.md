@@ -27,7 +27,11 @@ The carrier preserves the original 128,112-byte container and 119,920-byte/3,748
 | Full container | 128,112 | `e555d5e17edc84cb8799d035d6193f6f664c1df9116bcba3c49faef1609221e8` |
 | Transmitted payload | 119,920 | `aac81065cc171f263d54c4bb64019bd2fa250d032640fcd7415fbb4caf8b2899` |
 
-Updater payload CRC is `cbd4f74b`. [`tools/verify_recovery_carrier.py`](../tools/verify_recovery_carrier.py) checks the stock source hash, exact derivation, dispatch branches, original recovery pointer, injection bounds, IRQ preservation, critical MMIO literals and ordering, code hash, headers and wire geometry. Corruption tests require rejection.
+Updater payload CRC is `cbd4f74b`. The Rust recovery-carrier verifier checks
+the stock source hash, exact derivation, dispatch branches, original recovery
+pointer, injection bounds, IRQ preservation, critical MMIO literals and
+ordering, code hash, headers, and wire geometry. Corruption tests require
+rejection.
 
 ## Live flash result
 
@@ -41,11 +45,13 @@ Carrier command `0x10` then ran the direct sector erase, marker writes, delay, a
 
 After restoration, normal movement, buttons, and scrolling were confirmed again.
 
-The USB utility rejects any container or payload differing from the audited values above. It also requires the full container hash as an explicit confirmation before reaching the loader erase step.
+The Rust host utility rejects any container or payload differing from the
+audited values above. It also requires the full container hash as explicit
+confirmation before reaching the loader erase step.
 
 ## Guarded live sequence
 
-Run `make preflight` immediately before a live attempt. The intended order is:
+The historical live sequence was:
 
 1. Use stock command `0x0d` to enter the proven resident loader.
 2. Flash the exact carrier with `flash-recovery-carrier`; require normal USB identity `047d:80d7` and `bcdDevice 0451` afterward.

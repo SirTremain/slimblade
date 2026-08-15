@@ -9,11 +9,12 @@ the marker was already written. This tests the fallback invariant needed before
 real experimental code is placed at the same entry. It does not access USB while
 building and must not be flashed without a separate explicit decision.
 
-The 2026-08-14 hardware test produced the intended USB silence. A complete USB
-power cycle with the battery disconnected then entered the resident loader,
-which answered `B2/d2` and successfully restored the proven v4.53 image. See
+The 2026-08-14 test and Rust-only 2026-08-15 cutoff both produced the intended
+USB silence. A complete USB power cycle entered the resident loader, which
+answered `B2/d2` and successfully restored the proven v4.53 image. See
 [`../../docs/recovery-guard.md`](../../docs/recovery-guard.md).
 
-`make preflight` also applies conservative storage-isolation checks to the
-post-marker experimental range. Future experiments must keep these checks and
-must not link persistent-storage drivers.
+The active Rust builder and conservative storage-isolation checks run through
+`cargo xtask all`. Future experiments must keep these checks and must not link
+persistent-storage drivers. Files in this directory are retained milestone
+references; active firmware lives in [`../bk3635-rs`](../bk3635-rs).

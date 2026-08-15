@@ -16,12 +16,10 @@ Rust 1.97.1; the isolated `thumbv5te-none-eabi` firmware workspace pins nightly
   marker-first guard.
 - `cargo xtask rust-guard`: build only the Rust firmware guard and place its
   verified code/container under `firmware/bk3635-rs/target/guard/`.
-- `cargo xtask legacy`: run all 88 Python tests and every existing firmware
-  preflight, rerun fixture-backed Rust parity tests after artifacts exist, then
-  audit every generated ELF symbol table.
-- `cargo xtask postlink`: rerun only the ELF symbol audit after artifacts have
-  been built.
-- `cargo xtask all`: require both gates.
+- `cargo xtask postlink`: rerun the Rust guard ELF symbol audit.
+- `cargo xtask all`: alias the complete Rust-only `check` gate.
+- `cargo xtask disassemble-stock FIRMWARE START STOP arm|thumb`: hash-lock an
+  external official v4.49 image and disassemble only the requested range.
 
 The root [`rustfmt.toml`](../rustfmt.toml) is shared by every Rust workspace.
 Workspace lint policy denies panic-prone conveniences (`panic!`, `unwrap`,
@@ -33,11 +31,9 @@ code is warned rather than forbidden so a necessary startup or MMIO block must
 be explicitly reviewed and annotated.
 
 The post-link audit rejects empty or unresolved symbol tables and any linked
-panic, unwind, allocation, or double-underscore compiler-runtime symbol. It
-currently covers the SDK startup reference, carrier, both trampolines,
-standalone recovery stub, and Rust-built marker-first guard. The older derived
-guard has no ELF and remains covered by its binary call-target and
-storage-isolation verifier.
+panic, unwind, allocation, or double-underscore compiler-runtime symbol. The
+active gate audits the Rust-built marker-first guard. Typed binary verifiers
+retain the exact constraints and hashes of the earlier recovery milestones.
 
 The protocol crate is dependency-free and `no_std`. It reproduces the existing
 17-byte and 49-byte command reports, updater CRC, preparation report and B1
@@ -72,8 +68,7 @@ The Linux crate handles direct hidraw identity/descriptor access, sysfs parent
 resolution, same-port re-enumeration, expected USB silence, pre-erase `B2/d2`
 discovery, and the complete `B0`/`B1` transfer behind a fakeable transport
 trait. The CLI crate makes exact artifact/action confirmation a typed gate.
-These complete all 88 legacy test mappings. Python remains until the Rust write
-path passes its planned live hardware and recovery checks.
+These preserve every assertion from the former 88-test Python suite.
 
 Build the host utility with `cargo build --release -p slimblade-cli`. Its
 read-only identity command is `target/release/slimblade identify`; write
@@ -82,6 +77,13 @@ transfer path supports every recorded hash-locked image and checks the expected
 application version, resident-loader return, or guard USB silence afterward.
 On 2026-08-15 the Rust identity path returned `047d:80d7`, `bcdDevice 0453`,
 and the expected 170-byte descriptor from `/dev/slimblade-vendor`.
+
+The 2026-08-15 hardware cutoff also passed: Rust flashed the exact marker-first
+guard, verified 3,748 echoes and USB silence, recovered `25a7:fabe` after a
+power cycle, restored the exact v4.53 image with another 3,748 verified echoes,
+and rechecked the identity and descriptor. Physical ball, scroll, and button
+operation were confirmed. The superseded Python implementation was then
+removed.
 
 ## Stable device paths
 

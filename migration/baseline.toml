@@ -1,5 +1,5 @@
 checked = "2026-08-15"
-legacy_test_count = 88
+former_python_test_count = 88
 official_firmware_path = "/tmp/slimblade-v449.bin"
 
 [toolchain]
@@ -15,9 +15,8 @@ python = "3.14.7"
 
 [commands]
 host = "cargo xtask check"
-legacy = "cargo xtask legacy"
 all = "cargo xtask all"
-firmware_smoke = "cd firmware/bk3635-rs && cargo build"
+firmware = "cargo xtask rust-guard"
 
 [[artifact]]
 name = "stock-startup-reference"

@@ -251,7 +251,7 @@ mod tests {
     }
 
     #[test]
-    fn arm_branch_encodings_match_python() {
+    fn arm_branch_encodings_match_recorded_bytes() {
         assert_eq!(
             encode_arm_b(arm(0x2064), arm(0x22b4)),
             Ok([0x92, 0x00, 0x00, 0xea])
@@ -310,7 +310,7 @@ mod tests {
     }
 
     #[test]
-    fn thumb_branch_encodings_match_python() {
+    fn thumb_branch_encodings_match_recorded_bytes() {
         assert_eq!(
             encode_thumb_bl(thumb(0x18fba), thumb(0x1895c)),
             Ok([0xff, 0xf7, 0xcf, 0xfc])
