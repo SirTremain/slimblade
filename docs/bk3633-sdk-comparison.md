@@ -1,6 +1,6 @@
 # BK3633 SDK comparison
 
-Last checked: 2026-08-14
+Last checked: 2026-08-15
 
 ## Initial result
 
@@ -56,6 +56,94 @@ acknowledgement, `0x77` line-driver write, software-stack initialization and
 final USB-reset bit. Kensington removes the host branch, changes surrounding
 system setup, and inlines or replaces some helpers, but retains the distinctive
 device sequence.
+
+## USB command path
+
+The BK3633 boot project contains a complete, working command transport rather
+than only peripheral definitions:
+
+1. `usb_init(1)` configures the shared controller block and calls
+   `usb_sw_init()`.
+2. The generic MicroSW stack registers `MGC_McpFunctionClient`.
+3. Its configuration callback binds a 64-byte interrupt IN pipe and a 64-byte
+   interrupt OUT pipe, installs completion callbacks, and starts the OUT
+   transfer.
+4. `USB_InterruptHandler()` snapshots `INTRUSB`, `INTRTX` and `INTRRX`, then
+   passes them through `MGC_AfsUdsIsr()`.
+5. The OUT completion callback sets `b_isDataing`; `bim_main()` parses the
+   buffer and rearms reception.
+6. Command `SET_RESET_CMD` (`0x0e`) with argument `0xa5` starts the watchdog and
+   waits for reset.
+
+The compiled reference confirms the source-level path. The 23,348-byte boot
+image places `MGC_AfsUdsIsr` at `0x04c0`, the endpoint configuration callback
+at `0x2838`, RX callback at `0x3860`, transmit wrapper at `0x3894`, hardware
+interrupt wrapper at `0x38e4`, parser at `0x481c`, `usb_init` at `0x54b8`, and
+`usb_sw_init` at `0x55dc`.
+
+The SlimBlade transport is related but not identical. The BK3633 example's HID
+configuration has interrupt IN endpoint `0x81` and interrupt OUT endpoint
+`0x02`, both 64 bytes. The live SlimBlade configuration instead has mouse IN
+endpoint `0x81` (7 bytes) and updater IN endpoint `0x82` (17 bytes), with no
+interrupt OUT endpoint. Its 170-byte updater report descriptor declares report
+ID `0x08` with 16 input and 16 output data bytes. Host output therefore arrives
+as the 17-byte HID control transfer:
+
+`21 09 08 02 01 00 11 00`
+
+This is `SET_REPORT(Output, id=8)` to interface 1, followed by the report data.
+The stock binary corroborates that path:
+
+| Address | Observed role |
+| --- | --- |
+| `0x60e0` | FIQ dispatcher; tests the USB pending bit and calls `0x16dd8` |
+| `0x16dd8` | Saves the endpoint index, reads USB/TX/RX interrupt state from `0x00804000`, services endpoints, then restores the index |
+| `0x165a8` / `0x172cc` | Class-request dispatch and `SET_REPORT` data-stage setup |
+| `0x16ef6` | Requires a 17-byte interface-1/report-ID-8 payload before calling `0x11700` |
+| `0x11700` | Copies exactly 17 bytes into the vendor command buffer and marks it pending |
+| `0x18f4c` | Validates and dispatches the pending vendor report |
+| `0x18fba` | Command `0x0d` calls the proven loader-entry routine at `0x1895c` |
+
+Kensington's stack is a compact register-level implementation rather than the
+BK3633 boot project's generic MicroSW object graph. The BK3633 endpoint-2 OUT
+loop should therefore not be ported directly. Its controller initialization,
+FIFO semantics, completion model and watchdog-reset behavior remain useful
+source-level evidence; the SlimBlade endpoint-0 state machine is the closer
+model for custom firmware.
+
+## Minimal recovery-trigger design
+
+Verified constraints:
+
+- the live-tested marker prefix runs before experimental code;
+- marker persistence makes a later watchdog reset enter the resident loader;
+- the exact application request is a checksummed 17-byte report beginning
+  `08 0d` and ending `40`;
+- the Rust protocol crate now accepts only the exact setup packet and exact
+  valid reset report as a recovery request.
+
+The smallest first implementation should keep the audited marker prefix,
+initialize only USB device mode, enumerate the existing two-interface
+descriptor shape, service endpoint 0, acknowledge the complete `SET_REPORT`
+transaction, and then use the proven watchdog reset. Experimental USB code
+must not access the nonvolatile controller or marker storage after the prefix.
+
+Inference: a tight polling loop may replace FIQ dispatch for the first probe,
+which would avoid new interrupt-controller and FIQ-state dependencies. This
+needs confirmation against controller timing before selecting it over the
+stock FIQ structure.
+
+Open before a flash candidate:
+
+- identify the minimal endpoint-0 CSR/FIFO sequence for reset, setup, data and
+  status stages;
+- decide polling versus the stock FIQ route from instruction-level evidence;
+- reproduce and test descriptor selection, address assignment and
+  configuration without linking the generic 23 KiB stack;
+- require post-link checks for the exact marker prefix, allowed USB/watchdog
+  MMIO literals, absence of storage-controller literals and unexpected calls;
+- verify the candidate disassembly and exact artifact hash before requesting a
+  hardware write.
 
 ## Hardware-definition evidence
 
@@ -119,6 +207,15 @@ The build-relevant SDK source is now vendored under
 `0a461f8ed4a4f17ff6889d6f9d34e521b92b8243`, retrieved 2026-08-14. Compiled
 reference artifacts were inspected in temporary storage and are not committed.
 
+The connected v4.53 device was also read through Linux sysfs on 2026-08-15.
+Its mouse report descriptor is 87 bytes with SHA-256
+`57ba4a24f985a806132a04fea06bec3026cb69b12c957a1737a64507148fa968`;
+its updater report descriptor is 170 bytes with SHA-256
+`a8bc6d8de4d8c0674e7db3e2d238a260602fc9499a634e4d1bbd418091bfc5c6`.
+The 59-byte configuration descriptor at v4.49 file offset `0x1e7e3` has
+SHA-256
+`4f2b4eb1bd9f89cfbc070c34ecaa391a32fb0505933783c9e8653c30543e9e20`.
+
 | File | Bytes | SHA-256 |
 | --- | ---: | --- |
 | `SDK/src/system/startup_boot.S` | 6,053 | `c52aa16232d9162f7cae4e89010d4e9d1f92e9a81be45fde0ed66e23904af054` |
@@ -131,5 +228,7 @@ reference artifacts were inspected in temporary storage and are not committed.
 | `SDK/src/driver/wdt/wdt.h` | 681 | `bdc5d1e29fa817409f6c70cc49ab33fb1ab6ab747d02cc9448ee659c2c479b31` |
 | `SDK/projects/app_mouse/app/src/main.c` | 11,676 | `2e5543ca8cc4425601449b2e38d7c651081b158d6fa94f364966840642929f27` |
 | `SDK/projects/app_2.4g/boot_usb/usb/driver_usb.c` | 2,537 | `b6a90f7c45a5defdb6a8992e51ff7bfa887a847149fb4e2705cb6d474cb0b5fd` |
+| `SDK/projects/app_2.4g/boot_usb/app/bim_app.c` | 15,036 | `c3c97da7b59d5ababf7ecb7ec773197c43d6dc092cfcf4aae6ff7174d397e735` |
+| `SDK/projects/app_2.4g/boot_usb/usb/src/examples/msd/mu_msdfn.c` | 11,455 | `ff96b3540c18d40d2ed20db2aaaef7590be59897b4b757b425cd8058215001e4` |
 | `SDK/projects/app_2.4g/boot_usb/lst/bk3633_boot.map` | 29,259 | `126722c2df4c6e6385839513e4f27c4e81743b7304ba8ac75fc6266413936985` |
 | `SDK/projects/app_2.4g/boot_usb/output/bk3633_boot.bin` | 23,348 | `28e364d2328cf8732290bb063b17a57bc57fabddf7c924322b602e5d1b73fe53` |

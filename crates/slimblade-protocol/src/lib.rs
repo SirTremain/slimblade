@@ -5,9 +5,17 @@ use core::fmt;
 pub const APPLICATION_PAYLOAD_OFFSET: u32 = 0x2000;
 pub const NORMAL_REPORT_ID: u8 = 0x08;
 pub const NORMAL_REPORT_LENGTH: usize = 17;
+pub const USB_SETUP_PACKET_LENGTH: usize = 8;
 pub const BOOT_REPORT_ID: u8 = 0x06;
 pub const BOOT_REPORT_LENGTH: usize = 49;
 pub const DOWNLOAD_BLOCK_LENGTH: usize = 32;
+
+/// HID `SET_REPORT(Output, id=8)` for the `SlimBlade`'s vendor interface 1.
+///
+/// Fields are USB setup-packet byte order: host-to-device, class, interface;
+/// request `SET_REPORT`; value `0x0208`; interface 1; 17-byte data stage.
+pub const NORMAL_SET_REPORT_SETUP: [u8; USB_SETUP_PACKET_LENGTH] =
+    [0x21, 0x09, 0x08, 0x02, 0x01, 0x00, 0x11, 0x00];
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct UsbIdentity {
@@ -107,6 +115,16 @@ impl NormalReport {
 pub fn normal_command_response(bytes: &[u8], expected_command: u8) -> Option<NormalReport> {
     let report = NormalReport::parse(bytes).ok()?;
     (report.command_byte() == expected_command).then_some(report)
+}
+
+/// Accepts only the exact HID control transfer that requests the resident loader.
+///
+/// Keeping the setup and payload checks together prevents an unrelated class
+/// request or malformed report from reaching the firmware reset path.
+#[must_use]
+pub fn is_loader_control_request(setup: &[u8], payload: &[u8]) -> bool {
+    setup == NORMAL_SET_REPORT_SETUP
+        && NormalReport::parse(payload).is_ok_and(|report| report.command_byte() == 0x0d)
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -425,6 +443,36 @@ mod tests {
             NormalReport::reset_to_loader().as_bytes(),
             &[0x08, 0x0d, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x40,]
         );
+    }
+
+    #[test]
+    fn loader_control_request_requires_exact_setup_and_payload() {
+        let report = NormalReport::reset_to_loader();
+        assert!(is_loader_control_request(
+            &NORMAL_SET_REPORT_SETUP,
+            report.as_bytes()
+        ));
+
+        for index in 0..NORMAL_SET_REPORT_SETUP.len() {
+            let mut changed_setup = NORMAL_SET_REPORT_SETUP;
+            changed_setup[index] ^= 1;
+            assert!(!is_loader_control_request(
+                &changed_setup,
+                report.as_bytes()
+            ));
+        }
+
+        let mut changed_payload = *report.as_bytes();
+        changed_payload[1] = 0x0e;
+        changed_payload[16] = checksum(&changed_payload);
+        assert!(!is_loader_control_request(
+            &NORMAL_SET_REPORT_SETUP,
+            &changed_payload
+        ));
+        assert!(!is_loader_control_request(
+            &NORMAL_SET_REPORT_SETUP,
+            &report.as_bytes()[..16]
+        ));
     }
 
     #[test]
