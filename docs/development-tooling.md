@@ -55,6 +55,17 @@ container byte-for-byte. Its verifier preserves the full legacy checks for the
 startup transition, internal call graph, marker and flash MMIO sequences,
 stock-derived delay, watchdog reset, ELF layout, erased padding, and exact
 artifact identities.
+The marker-first guard Rust builder reproduces the recorded 422-byte code and
+container. Its storage-isolation audit scans every byte-aligned literal and
+every halfword-aligned instruction, rejecting persistent-storage addresses,
+out-of-range direct calls, indirect `BLX`, and software interrupts.
+The recovery-carrier Rust builder reproduces the stock-derived injection,
+dispatcher patches, metadata changes, and both header CRCs. Its verifier checks
+the full MMIO literal table, stock unlock order, exact probe instructions,
+unused gap, IRQ/FIQ preservation, and executable ELF layout.
+The SDK-startup Rust verifier compares the rebuilt startup and IRQ/FIQ wrappers
+directly with official v4.49, decodes reset and ARM/Thumb interrupt targets,
+and validates the `.startup`, `.irq_wrapper`, and `.fiq_wrapper` ELF sections.
 
 ## Stable device paths
 

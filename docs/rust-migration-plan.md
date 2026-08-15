@@ -32,6 +32,20 @@ The standalone recovery-stub builder and verifier now reproduce the exact
 420-byte code container and audit its vector/startup path, call graph, marker,
 flash-controller, delay, watchdog, reference-byte, padding, header, and ELF
 invariants. All nine legacy recovery-stub cases have Rust equivalents.
+The marker-first guard builder and verifier also reproduce the exact 422-byte
+code and container, preserve the seven-byte difference set and live-stub
+prefix, and reject persistent-storage addresses, external calls, indirect
+calls, and software interrupts in the experimental range. All ten legacy guard
+cases have Rust equivalents.
+The stock-derived recovery-carrier builder and verifier now reproduce its exact
+264-byte injection and full container, including dispatcher patches, probe
+code, critical MMIO literals, stock unlock ordering, header CRCs, version, and
+ELF layout. All seven legacy carrier cases have Rust equivalents.
+The SDK startup verifier now proves the 396-byte startup and 48-byte IRQ/FIQ
+span are byte-identical to stock, decodes all reset and interrupt transitions,
+and checks their separate executable ELF sections. All five legacy SDK-startup
+cases have Rust equivalents, completing the artifact-verifier suites in the
+parity manifest.
 
 ## Goal
 

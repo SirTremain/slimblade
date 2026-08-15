@@ -5,9 +5,15 @@ use core::fmt;
 pub mod elf;
 pub mod post_link;
 #[cfg(feature = "std")]
+pub mod recovery_carrier;
+#[cfg(feature = "std")]
+pub mod recovery_guard;
+#[cfg(feature = "std")]
 pub mod recovery_stub;
 #[cfg(feature = "std")]
 pub mod reset_trampoline;
+#[cfg(feature = "std")]
+pub mod sdk_startup;
 #[cfg(feature = "std")]
 pub mod startup_trampoline;
 

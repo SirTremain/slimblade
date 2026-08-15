@@ -17,12 +17,10 @@ complete = [
 [[suite]]
 legacy = "tests/test_recovery_carrier.py"
 count = 7
-status = "partial"
-rust = "crates/slimblade-verify/src/lib.rs::tests"
+status = "complete"
+rust = "crates/slimblade-verify/src/recovery_carrier.rs::tests and branch tests"
 complete = [
     "test_thumb_bl_encoder_reproduces_stock_call",
-]
-pending = [
     "test_audited_carrier_passes",
     "test_generator_reproduces_build",
     "test_wrong_stock_is_rejected",
@@ -34,17 +32,15 @@ pending = [
 [[suite]]
 legacy = "tests/test_recovery_guard.py"
 count = 10
-status = "partial"
-rust = "crates/slimblade-verify/src/lib.rs::tests"
+status = "complete"
+rust = "crates/slimblade-verify/src/recovery_guard.rs::tests and branch tests"
 complete = [
-    "test_thumb_bl_encoding_targets_experiment",
-]
-pending = [
     "test_exact_guard_passes",
     "test_generator_reproduces_artifacts",
     "test_wrong_live_stub_is_rejected",
     "test_changed_guard_branch_is_rejected",
     "test_changed_experimental_instruction_is_rejected",
+    "test_thumb_bl_encoding_targets_experiment",
     "test_storage_isolation_rejects_controller_literal",
     "test_storage_isolation_rejects_marker_word_address",
     "test_storage_isolation_rejects_call_into_guard_prefix",
@@ -86,8 +82,9 @@ complete = [
 [[suite]]
 legacy = "tests/test_sdk_startup.py"
 count = 5
-status = "pending"
-pending = [
+status = "complete"
+rust = "crates/slimblade-verify/src/sdk_startup.rs::tests"
+complete = [
     "test_exact_source_build_passes",
     "test_single_instruction_byte_change_is_rejected",
     "test_wrong_stock_reference_is_rejected",
