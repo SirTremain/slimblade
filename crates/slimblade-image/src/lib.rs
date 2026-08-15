@@ -1,5 +1,3 @@
-#![forbid(unsafe_code)]
-
 use core::fmt;
 
 use sha2::{Digest, Sha256};
@@ -129,6 +127,12 @@ pub struct FirmwareIdentity {
 }
 
 impl FirmwareIdentity {
+    /// Verifies a container and returns its application payload.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the recorded container or payload identity does not match, or when
+    /// the recorded payload offset is outside the image.
     pub fn validate(self, image: &[u8]) -> Result<&[u8], FirmwareIdentityError> {
         let container_sha256 = sha256(image);
         if image.len() != self.container_size || container_sha256 != self.container_sha256 {
@@ -183,22 +187,19 @@ pub enum FirmwareIdentityError {
 }
 
 impl fmt::Display for FirmwareIdentityError {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::ContainerMismatch { name, size, .. } => {
-                write!(
-                    formatter,
-                    "{name} container identity mismatch ({size} bytes)"
-                )
-            }
+                write!(f, "{name} container identity mismatch ({size} bytes)")
+            },
             Self::PayloadOffsetOutOfBounds { name, offset, size } => write!(
-                formatter,
+                f,
                 "{name} payload offset {offset:#x} is beyond {size}-byte container"
             ),
             Self::PayloadMismatch {
                 name, size, crc, ..
             } => write!(
-                formatter,
+                f,
                 "{name} payload identity mismatch ({size} bytes, CRC {crc:08x})"
             ),
         }
@@ -290,6 +291,11 @@ pub struct ImageHeader {
 }
 
 impl ImageHeader {
+    /// Calculates the exclusive end of the image region described by this header.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the encoded length overflows the host address size.
     pub fn end_offset(self) -> Result<usize, ImageError> {
         let byte_length = usize::from(self.length_words)
             .checked_mul(4)
@@ -299,12 +305,22 @@ impl ImageHeader {
             .ok_or(ImageError::ArithmeticOverflow)
     }
 
+    /// Calculates the first payload byte following this header.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the header offset arithmetic overflows.
     pub fn payload_offset(self) -> Result<usize, ImageError> {
         self.offset
             .checked_add(HEADER_SIZE)
             .ok_or(ImageError::ArithmeticOverflow)
     }
 
+    /// Calculates the updater CRC for the region described by this header.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the region arithmetic overflows or the region is outside `image`.
     pub fn calculate_crc(self, image: &[u8]) -> Result<u32, ImageError> {
         let end = self.end_offset()?;
         if end > image.len() {
@@ -322,9 +338,21 @@ impl ImageHeader {
                 end,
             });
         }
-        Ok(updater_crc32(&image[payload..end]))
+        let region = image
+            .get(payload..end)
+            .ok_or(ImageError::RegionOutOfBounds {
+                header_offset: self.offset,
+                end,
+                image_length: image.len(),
+            })?;
+        Ok(updater_crc32(region))
     }
 
+    /// Checks the stored CRC against the described payload.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the region arithmetic overflows or the region is outside `image`.
     pub fn crc_is_valid(self, image: &[u8]) -> Result<bool, ImageError> {
         Ok(self.calculate_crc(image)? == self.crc)
     }
@@ -366,13 +394,13 @@ pub enum ImageError {
 }
 
 impl fmt::Display for ImageError {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::HeaderOutOfBounds {
                 offset,
                 image_length,
             } => write!(
-                formatter,
+                f,
                 "no complete image header at {offset:#x} in {image_length}-byte image"
             ),
             Self::RegionOutOfBounds {
@@ -380,7 +408,7 @@ impl fmt::Display for ImageError {
                 end,
                 image_length,
             } => write!(
-                formatter,
+                f,
                 "header at {header_offset:#x} ends beyond {image_length}-byte image at {end:#x}"
             ),
             Self::RegionBeforePayload {
@@ -388,35 +416,44 @@ impl fmt::Display for ImageError {
                 payload,
                 end,
             } => write!(
-                formatter,
+                f,
                 "header at {header_offset:#x} ends at {end:#x}, before payload at {payload:#x}"
             ),
-            Self::EmptyApplication => formatter.write_str("application code is empty"),
+            Self::EmptyApplication => f.write_str("application code is empty"),
             Self::EndBeforeCode { requested, natural } => write!(
-                formatter,
+                f,
                 "requested end {requested:#x} is before code end {natural:#x}"
             ),
             Self::EndNotAligned { requested } => write!(
-                formatter,
+                f,
                 "requested application end {requested:#x} is not 16-byte aligned"
             ),
             Self::LengthWordsOverflow { words } => {
-                write!(formatter, "application length {words} words exceeds header")
-            }
+                write!(f, "application length {words} words exceeds header")
+            },
             Self::OfficialImageMismatch { size, sha256 } => write!(
-                formatter,
+                f,
                 "input is not recorded official v4.49 image: size={size}, sha256={sha256:02x?}"
             ),
             Self::DescriptorMismatch => {
-                formatter.write_str("official v4.49 USB descriptor does not match expectation")
-            }
-            Self::ArithmeticOverflow => formatter.write_str("image offset arithmetic overflowed"),
+                f.write_str("official v4.49 USB descriptor does not match expectation")
+            },
+            Self::ArithmeticOverflow => f.write_str("image offset arithmetic overflowed"),
         }
     }
 }
 
 impl core::error::Error for ImageError {}
 
+/// Parses one fixed-format image header.
+///
+/// # Errors
+///
+/// Returns an error when offset arithmetic overflows or a complete header is unavailable.
+#[allow(
+    clippy::indexing_slicing,
+    reason = "get() first proves that the returned slice contains the complete fixed-size header"
+)]
 pub fn parse_header(image: &[u8], offset: usize) -> Result<ImageHeader, ImageError> {
     let end = offset
         .checked_add(HEADER_SIZE)
@@ -439,6 +476,11 @@ pub fn parse_header(image: &[u8], offset: usize) -> Result<ImageHeader, ImageErr
     })
 }
 
+/// Finds and validates known stack and application headers.
+///
+/// # Errors
+///
+/// Returns an error when a recognized header describes an invalid image region.
 pub fn inspect_headers(image: &[u8]) -> Result<Vec<ImageHeader>, ImageError> {
     let mut headers = Vec::with_capacity(2);
     for (offset, expected_uid) in [
@@ -460,6 +502,16 @@ pub fn inspect_headers(image: &[u8]) -> Result<Vec<ImageHeader>, ImageError> {
     Ok(headers)
 }
 
+/// Wraps application code in the BK3635 application container format.
+///
+/// # Errors
+///
+/// Returns an error for empty code, invalid geometry, arithmetic overflow, or a length that does
+/// not fit the on-device header.
+#[allow(
+    clippy::indexing_slicing,
+    reason = "all written ranges are derived from the size of the newly allocated output image"
+)]
 pub fn make_application_container(
     code: &[u8],
     version: u16,
@@ -506,6 +558,15 @@ pub fn make_application_container(
     Ok(image)
 }
 
+/// Recalculates and writes the CRC stored in a header.
+///
+/// # Errors
+///
+/// Returns an error when the header or its described image region is invalid.
+#[allow(
+    clippy::indexing_slicing,
+    reason = "parse_header validates the header range before its four-byte CRC field is written"
+)]
 pub fn refresh_header_crc(image: &mut [u8], offset: usize) -> Result<(), ImageError> {
     let header = parse_header(image, offset)?;
     let crc = header.calculate_crc(image)?;
@@ -516,6 +577,15 @@ pub fn refresh_header_crc(image: &mut [u8], offset: usize) -> Result<(), ImageEr
     Ok(())
 }
 
+/// Produces the recorded v4.50 USB-descriptor probe from an official v4.49 image.
+///
+/// # Errors
+///
+/// Returns an error unless the input has the exact recorded v4.49 identity and descriptor.
+#[allow(
+    clippy::indexing_slicing,
+    reason = "exact v4.49 size and digest validation precedes access to its fixed descriptor fields"
+)]
 pub fn make_v449_descriptor_probe(image: &[u8]) -> Result<Vec<u8>, ImageError> {
     let digest = sha256(image);
     if image.len() != OFFICIAL_V449_SIZE || digest != OFFICIAL_V449_SHA256 {
@@ -541,6 +611,10 @@ pub fn sha256(bytes: &[u8]) -> [u8; 32] {
     Sha256::digest(bytes).into()
 }
 
+#[allow(
+    clippy::indexing_slicing,
+    reason = "the compile-time length assertion proves the literal contains every indexed digit"
+)]
 const fn parse_sha256(hex: &str) -> [u8; 32] {
     let input = hex.as_bytes();
     assert!(
@@ -550,12 +624,16 @@ const fn parse_sha256(hex: &str) -> [u8; 32] {
     let mut digest = [0_u8; 32];
     let mut index = 0;
     while index < digest.len() {
-        digest[index] = (hex_nibble(input[index * 2]) << 4) | hex_nibble(input[index * 2 + 1]);
+        digest[index] = (hex_nibble(input[index * 2]) << 4_u8) | hex_nibble(input[index * 2 + 1]);
         index += 1;
     }
     digest
 }
 
+#[allow(
+    clippy::panic,
+    reason = "an invalid repository-owned SHA-256 literal must fail at compile time"
+)]
 const fn hex_nibble(byte: u8) -> u8 {
     match byte {
         b'0'..=b'9' => byte - b'0',
@@ -565,6 +643,10 @@ const fn hex_nibble(byte: u8) -> u8 {
     }
 }
 
+#[allow(
+    clippy::indexing_slicing,
+    reason = "private callers provide the fixed 16-byte header region of a validated allocation"
+)]
 fn write_header(output: &mut [u8], crc: u32, version: u16, length_words: u16, uid: u32) {
     output[0..4].copy_from_slice(&crc.to_le_bytes());
     output[4..6].copy_from_slice(&version.to_le_bytes());
@@ -576,6 +658,11 @@ fn write_header(output: &mut [u8], crc: u32, version: u16, length_words: u16, ui
 }
 
 #[cfg(test)]
+#[allow(
+    clippy::expect_used,
+    clippy::indexing_slicing,
+    reason = "tests use fixed fixtures and expect success as part of each assertion"
+)]
 mod tests {
     use std::path::Path;
 
@@ -920,9 +1007,11 @@ mod tests {
             .filter_map(|(index, (before, after))| (before != after).then_some(index))
             .collect();
         assert!(changed.contains(&V449_BCD_DEVICE_OFFSET));
+        let stack_crc = STACK_HEADER_OFFSET..STACK_HEADER_OFFSET + 4;
+        let application_crc = APPLICATION_HEADER_OFFSET..APPLICATION_HEADER_OFFSET + 4;
         assert!(changed.iter().all(|offset| {
-            (STACK_HEADER_OFFSET..STACK_HEADER_OFFSET + 4).contains(offset)
-                || (APPLICATION_HEADER_OFFSET..APPLICATION_HEADER_OFFSET + 4).contains(offset)
+            stack_crc.contains(offset)
+                || application_crc.contains(offset)
                 || *offset == V449_BCD_DEVICE_OFFSET
         }));
     }

@@ -14,8 +14,27 @@ Rust 1.97.1; the isolated `thumbv5te-none-eabi` firmware workspace pins nightly
 - `cargo xtask check`: format, lint and test the stable host workspace, then
   format, lint and release-build the inert ARMv5TE firmware scaffold.
 - `cargo xtask legacy`: run all 88 Python tests and every existing firmware
-  preflight.
+  preflight, then audit every generated ELF symbol table.
+- `cargo xtask postlink`: rerun only the ELF symbol audit after artifacts have
+  been built.
 - `cargo xtask all`: require both gates.
+
+The root [`rustfmt.toml`](../rustfmt.toml) is shared by every Rust workspace.
+Workspace lint policy denies panic-prone conveniences (`panic!`, `unwrap`,
+`expect`, and unchecked indexing), floating-point arithmetic, and accidental
+`std` use where `core` or `alloc` is sufficient. Tests and audited fixed-layout
+code use narrow `allow` attributes with reasons. Firmware additionally denies
+integer division, unreachable placeholders, and unimplemented paths. Unsafe
+code is warned rather than forbidden so a necessary startup or MMIO block must
+be explicitly reviewed and annotated.
+
+The post-link audit rejects empty or unresolved symbol tables and any linked
+panic, unwind, allocation, or double-underscore compiler-runtime symbol. It
+currently covers the SDK startup reference, carrier, both trampolines, and
+standalone recovery stub. The marker-first guard has no ELF and remains covered
+by its binary call-target and storage-isolation verifier. The Rust firmware
+workspace still produces only an inert `rlib`; its final executable must be
+added to the audited ELF list as soon as that target exists.
 
 The protocol crate is dependency-free and `no_std`. It reproduces the existing
 17-byte and 49-byte command reports, updater CRC, preparation report and B1

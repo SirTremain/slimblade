@@ -1,3 +1,9 @@
+#![allow(
+    clippy::as_conversions,
+    clippy::cast_possible_truncation,
+    reason = "all audited firmware addresses and artifact sizes are fixed below u32::MAX"
+)]
+
 use core::fmt;
 
 use slimblade_image::{
@@ -39,7 +45,7 @@ impl fmt::Display for BuildError {
             ),
             Self::CarrierGapNotZero => {
                 formatter.write_str("carrier trampoline region is not zero-filled")
-            }
+            },
             Self::Branch(error) => write!(formatter, "reset branch: {error}"),
             Self::Image(error) => write!(formatter, "container header: {error}"),
         }
@@ -95,61 +101,61 @@ impl fmt::Display for VerificationError {
             Self::BaseIdentity(error) => write!(formatter, "base carrier: {error}"),
             Self::CodeSize { actual } => {
                 write!(formatter, "trampoline code is {actual} bytes, not 8")
-            }
+            },
             Self::CodeHash => formatter.write_str("trampoline code hash changed"),
             Self::Build(error) => write!(formatter, "could not rebuild trampoline: {error}"),
             Self::DerivedImageMismatch => {
                 formatter.write_str("image is not an exact derivation of the carrier")
-            }
+            },
             Self::ContainerIdentity(error) => write!(formatter, "trampoline image: {error}"),
             Self::ResetVectorRegionChanged => {
                 formatter.write_str("reset vector or literal table changed")
-            }
+            },
             Self::ResetVectorTarget { actual } => {
                 write!(formatter, "reset vector targets {actual:#x}, not 0x2064")
-            }
+            },
             Self::StockFirstInstructionChanged => {
                 formatter.write_str("recorded stock first reset instruction changed")
-            }
+            },
             Self::ResetBranchEncoding => formatter.write_str("reset branch encoding changed"),
             Self::ResetBranchTarget => formatter.write_str("reset branch target is wrong"),
             Self::DisplacedInstruction => {
                 formatter.write_str("trampoline does not replay displaced stock instruction")
-            }
+            },
             Self::StockReturnTarget => {
                 formatter.write_str("trampoline does not return to stock 0x2068")
-            }
+            },
             Self::InjectedCodeMismatch => {
                 formatter.write_str("injected trampoline differs from linked code")
-            }
+            },
             Self::UnusedGapChanged => formatter.write_str("unused pre-IRQ gap changed"),
             Self::StockInterruptWrappersChanged => {
                 formatter.write_str("stock IRQ/FIQ wrappers changed")
-            }
+            },
             Self::DeviceVersion { actual } => {
                 write!(formatter, "bcdDevice low byte is {actual:#04x}, not 0x52")
-            }
+            },
             Self::Header(error) => write!(formatter, "application header: {error}"),
             Self::HeaderCrc { offset } => {
                 write!(formatter, "header CRC at {offset:#x} is invalid")
-            }
+            },
             Self::Elf(error) => write!(formatter, "ELF: {error}"),
             Self::ElfType { actual } => write!(formatter, "ELF type is {actual}, not executable"),
             Self::ElfMachine { actual } => write!(formatter, "ELF machine is {actual}, not ARM"),
             Self::ElfEntry { actual } => {
                 write!(formatter, "ELF entry is {actual:#x}, not 0x22b4")
-            }
+            },
             Self::ElfTextMissing => formatter.write_str("ELF has no .text section"),
             Self::ElfTextAddress { actual } => {
                 write!(formatter, "ELF .text address is {actual:#x}, not 0x22b4")
-            }
+            },
             Self::ElfTextSize { actual } => {
                 write!(formatter, "ELF .text is {actual} bytes, not 8")
-            }
+            },
             Self::ElfRelocation => formatter.write_str("ELF contains relocations"),
             Self::ElfWritableAllocated => {
                 formatter.write_str("ELF contains writable allocated data")
-            }
+            },
         }
     }
 }
@@ -182,6 +188,15 @@ pub struct ResetTrampolineReport {
     pub usb_bcd_device: u16,
 }
 
+/// Injects the audited reset trampoline into the exact recovery-carrier image.
+///
+/// # Errors
+///
+/// Returns an error unless the carrier identity, code size, and injection gap are valid.
+#[allow(
+    clippy::indexing_slicing,
+    reason = "exact carrier identity and explicit code bounds are checked before fixed offsets are accessed"
+)]
 pub fn build(base: &[u8], code: &[u8]) -> Result<Vec<u8>, BuildError> {
     RECOVERY_CARRIER
         .validate(base)
@@ -214,6 +229,16 @@ pub fn build(base: &[u8], code: &[u8]) -> Result<Vec<u8>, BuildError> {
     Ok(image)
 }
 
+/// Performs the complete structural and cryptographic reset-trampoline audit.
+///
+/// # Errors
+///
+/// Returns the first failed identity, layout, branch, header, or ELF invariant.
+#[allow(
+    clippy::indexing_slicing,
+    clippy::too_many_lines,
+    reason = "the ordered audit checks fixed offsets only after exact artifact validation; keeping the checklist contiguous aids review"
+)]
 pub fn verify(
     base: &[u8],
     image: &[u8],
@@ -378,6 +403,10 @@ fn verify_elf(elf_bytes: &[u8], code_size: usize) -> Result<(), VerificationErro
     Ok(())
 }
 
+#[allow(
+    clippy::indexing_slicing,
+    reason = "the only caller reads a fixed field after exact artifact identity validation"
+)]
 fn read_u32(bytes: &[u8], offset: usize) -> u32 {
     u32::from_le_bytes([
         bytes[offset],
@@ -388,6 +417,11 @@ fn read_u32(bytes: &[u8], offset: usize) -> u32 {
 }
 
 #[cfg(test)]
+#[allow(
+    clippy::expect_used,
+    clippy::indexing_slicing,
+    reason = "tests mutate bounded fixtures and expect successful verification as assertions"
+)]
 mod tests {
     use std::path::{Path, PathBuf};
 

@@ -21,6 +21,9 @@ require the updater checksum.
 Stage 3 has started with a borrowed, bounds-checked ELF32 parser and a complete
 Rust reset-trampoline builder/verifier. All seven legacy reset-trampoline cases
 now have Rust equivalents, and the generated container matches byte-for-byte.
+A typed post-link symbol audit now rejects unresolved symbols and linked panic,
+unwind, allocation, or compiler-runtime machinery in every generated ELF; the
+future Rust executable will enter the same gate when it exists.
 
 ## Goal
 

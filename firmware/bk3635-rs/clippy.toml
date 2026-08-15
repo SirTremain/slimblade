@@ -1,0 +1,11 @@
+array-size-threshold = 1024
+stack-size-threshold = 1024
+
+disallowed-macros = [
+    { path = "core::assert", reason = "runtime assertions can strand firmware before recovery" },
+    { path = "core::assert_eq", reason = "runtime assertions can strand firmware before recovery" },
+    { path = "core::assert_ne", reason = "runtime assertions can strand firmware before recovery" },
+    { path = "core::debug_assert", reason = "debug firmware must retain the recovery invariant" },
+    { path = "core::debug_assert_eq", reason = "debug firmware must retain the recovery invariant" },
+    { path = "core::debug_assert_ne", reason = "debug firmware must retain the recovery invariant" },
+]

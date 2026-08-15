@@ -22,11 +22,16 @@ pub struct Elf32<'data> {
 }
 
 impl<'data> Elf32<'data> {
+    /// Parses a 32-bit little-endian ELF image and its section table.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the ELF format, offsets, or section-name table are invalid.
     pub fn parse(data: &'data [u8]) -> Result<Self, ElfError> {
         if data.len() < ELF32_HEADER_SIZE {
             return Err(ElfError::TruncatedHeader { size: data.len() });
         }
-        if data[..7] != *b"\x7fELF\x01\x01\x01" {
+        if data.get(..7) != Some(b"\x7fELF\x01\x01\x01") {
             return Err(ElfError::WrongFormat);
         }
 
@@ -98,7 +103,7 @@ impl<'data> Elf32<'data> {
     }
 
     #[must_use]
-    pub fn sections(self) -> Elf32Sections<'data> {
+    pub const fn sections(self) -> Elf32Sections<'data> {
         Elf32Sections {
             data: self.data,
             names: self.names,
@@ -108,6 +113,11 @@ impl<'data> Elf32<'data> {
         }
     }
 
+    /// Finds a section by its decoded name.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when a section header or name is malformed.
     pub fn section_by_name(self, expected: &str) -> Result<Option<Elf32Section<'data>>, ElfError> {
         for section in self.sections() {
             let section = section?;
@@ -148,7 +158,7 @@ impl Elf32Section<'_> {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Debug)]
 pub struct Elf32Sections<'data> {
     data: &'data [u8],
     names: &'data [u8],
@@ -199,11 +209,11 @@ impl fmt::Display for ElfError {
         match self {
             Self::TruncatedHeader { size } => {
                 write!(formatter, "ELF header is truncated ({size} bytes)")
-            }
+            },
             Self::WrongFormat => formatter.write_str("ELF is not 32-bit little-endian"),
             Self::UnexpectedSectionEntrySize { actual } => {
                 write!(formatter, "ELF section headers are {actual} bytes, not 40")
-            }
+            },
             Self::InvalidSectionTable { count, names_index } => write!(
                 formatter,
                 "invalid ELF section table: count={count}, names_index={names_index}"
@@ -222,10 +232,10 @@ impl fmt::Display for ElfError {
             ),
             Self::UnterminatedSectionName { offset } => {
                 write!(formatter, "ELF section name at {offset:#x} is unterminated")
-            }
+            },
             Self::NonAsciiSectionName { offset } => {
                 write!(formatter, "ELF section name at {offset:#x} is not ASCII")
-            }
+            },
             Self::ArithmeticOverflow => formatter.write_str("ELF offset arithmetic overflowed"),
         }
     }
@@ -281,7 +291,11 @@ fn section_from_raw(raw: RawSection, names: &[u8]) -> Result<Elf32Section<'_>, E
             .ok_or(ElfError::UnterminatedSectionName {
                 offset: raw.name_offset,
             })?;
-    let name_bytes = &suffix[..length];
+    let name_bytes = suffix
+        .get(..length)
+        .ok_or(ElfError::UnterminatedSectionName {
+            offset: raw.name_offset,
+        })?;
     if !name_bytes.is_ascii() {
         return Err(ElfError::NonAsciiSectionName {
             offset: raw.name_offset,
@@ -300,6 +314,10 @@ fn section_from_raw(raw: RawSection, names: &[u8]) -> Result<Elf32Section<'_>, E
     })
 }
 
+#[allow(
+    clippy::indexing_slicing,
+    reason = "get() first proves that the returned slice contains exactly two bytes"
+)]
 fn read_u16(data: &[u8], offset: usize) -> Result<u16, ElfError> {
     let end = offset.checked_add(2).ok_or(ElfError::ArithmeticOverflow)?;
     let bytes = data
@@ -308,6 +326,10 @@ fn read_u16(data: &[u8], offset: usize) -> Result<u16, ElfError> {
     Ok(u16::from_le_bytes([bytes[0], bytes[1]]))
 }
 
+#[allow(
+    clippy::indexing_slicing,
+    reason = "get() first proves that the returned slice contains exactly four bytes"
+)]
 fn read_u32(data: &[u8], offset: usize) -> Result<u32, ElfError> {
     let end = offset.checked_add(4).ok_or(ElfError::ArithmeticOverflow)?;
     let bytes = data
@@ -322,8 +344,14 @@ fn usize_from_u32(value: u32) -> Result<usize, ElfError> {
 
 #[cfg(test)]
 mod tests {
-    extern crate std;
-
+    #![allow(
+        clippy::cast_possible_truncation,
+        clippy::as_conversions,
+        clippy::expect_used,
+        clippy::indexing_slicing,
+        clippy::std_instead_of_alloc,
+        reason = "tests construct bounded synthetic ELF fixtures and use checked-size casts"
+    )]
     use std::{path::Path, vec, vec::Vec};
 
     use super::*;

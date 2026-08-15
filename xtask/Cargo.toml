@@ -6,5 +6,8 @@ license.workspace = true
 rust-version.workspace = true
 publish = false
 
+[dependencies]
+slimblade-verify = { path = "../crates/slimblade-verify" }
+
 [lints]
 workspace = true

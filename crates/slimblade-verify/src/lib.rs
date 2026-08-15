@@ -1,9 +1,9 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-#![forbid(unsafe_code)]
 
 use core::fmt;
 
 pub mod elf;
+pub mod post_link;
 #[cfg(feature = "std")]
 pub mod reset_trampoline;
 
@@ -11,6 +11,11 @@ pub mod reset_trampoline;
 pub struct ArmAddress(u32);
 
 impl ArmAddress {
+    /// Constructs a word-aligned ARM instruction address.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if `address` is not divisible by four.
     pub const fn new(address: u32) -> Result<Self, BranchError> {
         if address.is_multiple_of(4) {
             Ok(Self(address))
@@ -29,6 +34,11 @@ impl ArmAddress {
 pub struct ThumbAddress(u32);
 
 impl ThumbAddress {
+    /// Constructs a halfword-aligned Thumb instruction address.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if `address` is not divisible by two.
     pub const fn new(address: u32) -> Result<Self, BranchError> {
         if address.is_multiple_of(2) {
             Ok(Self(address))
@@ -65,7 +75,7 @@ impl fmt::Display for BranchError {
         match self {
             Self::UnalignedArmAddress { address } => {
                 write!(formatter, "ARM address {address:#x} is not word-aligned")
-            }
+            },
             Self::UnalignedThumbAddress { address } => write!(
                 formatter,
                 "Thumb address {address:#x} is not halfword-aligned"
@@ -76,10 +86,10 @@ impl fmt::Display for BranchError {
                     formatter,
                     "branch target {target:#x} is outside 32-bit address space"
                 )
-            }
+            },
             Self::InvalidArmBranch { instruction } => {
                 write!(formatter, "instruction {instruction:#010x} is not ARM B/BL")
-            }
+            },
             Self::InvalidArmBranchLinkExchange { instruction } => write!(
                 formatter,
                 "instruction {instruction:#010x} is not immediate ARM BLX"
@@ -94,21 +104,37 @@ impl fmt::Display for BranchError {
 
 impl core::error::Error for BranchError {}
 
+#[allow(
+    clippy::as_conversions,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "the range-checked displacement is intentionally masked into the ARM immediate field"
+)]
+/// Encodes an unconditional ARM branch.
+///
+/// # Errors
+///
+/// Returns an error if the target is outside the instruction's displacement range.
 pub fn encode_arm_b(source: ArmAddress, target: ArmAddress) -> Result<[u8; 4], BranchError> {
     let delta = i64::from(target.get()) - (i64::from(source.get()) + 8);
-    if !(-(1_i64 << 25)..(1_i64 << 25)).contains(&delta) {
+    if !(-(1_i64 << 25_u32)..(1_i64 << 25_u32)).contains(&delta) {
         return Err(BranchError::TargetOutOfRange);
     }
-    let immediate = ((delta >> 2) as u32) & 0x00ff_ffff;
+    let immediate = ((delta >> 2_u32) as u32) & 0x00ff_ffff;
     Ok((0xea00_0000 | immediate).to_le_bytes())
 }
 
+/// Decodes an ARM branch or branch-with-link instruction.
+///
+/// # Errors
+///
+/// Returns an error for another opcode, an out-of-range target, or an unaligned target.
 pub fn decode_arm_branch(
     instruction: [u8; 4],
     source: ArmAddress,
 ) -> Result<(ArmBranchKind, ArmAddress), BranchError> {
     let instruction = u32::from_le_bytes(instruction);
-    let kind = match instruction >> 24 {
+    let kind = match instruction >> 24_u32 {
         0xea => ArmBranchKind::Branch,
         0xeb => ArmBranchKind::BranchLink,
         _ => return Err(BranchError::InvalidArmBranch { instruction }),
@@ -119,6 +145,11 @@ pub fn decode_arm_branch(
     Ok((kind, ArmAddress::new(target)?))
 }
 
+/// Decodes an immediate ARM branch-with-link-and-exchange instruction.
+///
+/// # Errors
+///
+/// Returns an error for another opcode, an out-of-range target, or an unaligned Thumb target.
 pub fn decode_arm_blx(
     instruction: [u8; 4],
     source: ArmAddress,
@@ -128,26 +159,42 @@ pub fn decode_arm_blx(
         return Err(BranchError::InvalidArmBranchLinkExchange { instruction });
     }
     let immediate = i64::from(instruction & 0x00ff_ffff);
-    let h_bit = i64::from((instruction >> 23) & 2);
+    let h_bit = i64::from((instruction >> 23_u32) & 2);
     let delta = sign_extend((immediate << 2) | h_bit, 26);
     let target = checked_target(source.get(), 8, delta)?;
     ThumbAddress::new(target)
 }
 
+#[allow(
+    clippy::as_conversions,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "the range-checked displacement is intentionally masked into two 11-bit fields"
+)]
+/// Encodes a Thumb branch-with-link instruction.
+///
+/// # Errors
+///
+/// Returns an error if the target is outside the instruction's displacement range.
 pub fn encode_thumb_bl(source: ThumbAddress, target: ThumbAddress) -> Result<[u8; 4], BranchError> {
     let delta = i64::from(target.get()) - (i64::from(source.get()) + 4);
-    if !(-(1_i64 << 22)..(1_i64 << 22)).contains(&delta) {
+    if !(-(1_i64 << 22_u32)..(1_i64 << 22_u32)).contains(&delta) {
         return Err(BranchError::TargetOutOfRange);
     }
     let encoded = (delta as u32) & 0x007f_ffff;
-    let high = 0xf000 | ((encoded >> 12) as u16 & 0x07ff);
-    let low = 0xf800 | ((encoded >> 1) as u16 & 0x07ff);
+    let high = 0xf000 | ((encoded >> 12_u32) as u16 & 0x07ff);
+    let low = 0xf800 | ((encoded >> 1_u32) as u16 & 0x07ff);
     let mut bytes = [0; 4];
     bytes[..2].copy_from_slice(&high.to_le_bytes());
     bytes[2..].copy_from_slice(&low.to_le_bytes());
     Ok(bytes)
 }
 
+/// Decodes a Thumb branch-with-link instruction.
+///
+/// # Errors
+///
+/// Returns an error for invalid halfwords, an out-of-range target, or an unaligned target.
 pub fn decode_thumb_bl(
     instruction: [u8; 4],
     source: ThumbAddress,
@@ -157,7 +204,7 @@ pub fn decode_thumb_bl(
     if high & 0xf800 != 0xf000 || low & 0xf800 != 0xf800 {
         return Err(BranchError::InvalidThumbBranchLink { high, low });
     }
-    let encoded = (i64::from(high & 0x07ff) << 12) | (i64::from(low & 0x07ff) << 1);
+    let encoded = (i64::from(high & 0x07ff) << 12_u32) | (i64::from(low & 0x07ff) << 1_u32);
     let delta = sign_extend(encoded, 23);
     let target = checked_target(source.get(), 4, delta)?;
     ThumbAddress::new(target)
@@ -178,6 +225,10 @@ fn checked_target(source: u32, pc_bias: i64, delta: i64) -> Result<u32, BranchEr
 }
 
 #[cfg(test)]
+#[allow(
+    clippy::expect_used,
+    reason = "tests expect successful construction and encoding as part of their assertions"
+)]
 mod tests {
     use super::*;
 
