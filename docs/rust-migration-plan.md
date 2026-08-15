@@ -76,6 +76,7 @@ Cargo.toml                         stable host workspace
 rust-toolchain.toml               pinned stable host toolchain
 crates/
   slimblade-protocol/             no_std packets and checksums
+  slimblade-usb/                  pure no_std control-request/state logic
   slimblade-image/                containers, CRCs, manifests
   slimblade-verify/               ELF, instruction and safety checks
   slimblade-linux/                hidraw, ioctl, poll and sysfs

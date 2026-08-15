@@ -4,6 +4,7 @@ members = [
     "crates/slimblade-image",
     "crates/slimblade-linux",
     "crates/slimblade-protocol",
+    "crates/slimblade-usb",
     "crates/slimblade-verify",
     "xtask",
 ]

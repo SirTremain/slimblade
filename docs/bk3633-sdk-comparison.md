@@ -121,6 +121,14 @@ Verified constraints:
   `08 0d` and ending `40`;
 - the Rust protocol crate now accepts only the exact setup packet and exact
   valid reset report as a recovery request.
+- `slimblade-usb` now parses setup packets without host-endian assumptions,
+  classifies the minimal standard/HID request set, and models recovery as
+  setup, OUT-data and status-completion stages.
+
+The pure Rust recovery model returns `EnterLoader` only after status
+completion. A new setup packet, malformed report, unrelated valid command or
+bus reset cancels the pending action. Twelve host tests cover these cases. The
+crate has no MMIO and is not linked into the live-tested guard yet.
 
 The smallest first implementation should keep the audited marker prefix,
 initialize only USB device mode, enumerate the existing two-interface
@@ -212,6 +220,9 @@ Its mouse report descriptor is 87 bytes with SHA-256
 `57ba4a24f985a806132a04fea06bec3026cb69b12c957a1737a64507148fa968`;
 its updater report descriptor is 170 bytes with SHA-256
 `a8bc6d8de4d8c0674e7db3e2d238a260602fc9499a634e4d1bbd418091bfc5c6`.
+The combined 18-byte device and 59-byte configuration descriptor stream is 77
+bytes with SHA-256
+`91918d3d08ae4958080a78fe2c7d83ff58204ae4fc61fb48c01799d9483653ff`.
 The 59-byte configuration descriptor at v4.49 file offset `0x1e7e3` has
 SHA-256
 `4f2b4eb1bd9f89cfbc070c34ecaa391a32fb0505933783c9e8653c30543e9e20`.
