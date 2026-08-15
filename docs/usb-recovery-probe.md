@@ -46,8 +46,15 @@ experiment and recovered the device as designed.
 
 Verified: transfer, marker-first startup, and subsequent power-cycle recovery
 all worked. Inference: the polling USB experiment failed during controller
-startup or initial enumeration. Open: restore the previous v4.53 image before
-changing the probe.
+startup or initial enumeration.
+
+The exact audited v4.53 startup-trampoline image was then restored. All 3,748
+blocks echoed, and the device returned on the same physical port as
+`047d:80d7`, `bcdDevice 0453`, with its 170-byte report descriptor. Its
+128,112-byte container SHA-256 was
+`dccea5665710e9aebe039a83d49d07a1a0b32efc3826c7367814f5512ececa7b`.
+Open: identify the missing controller, clock, or system initialization before
+building another probe.
 
 CSR evidence comes from Kensington v4.49 disassembly and the vendored
 [Beken BK3633 BLE SDK](https://gitee.com/beken-corp/bk3633_ble_sdk) commit
