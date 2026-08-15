@@ -6,10 +6,11 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use slimblade_image::{
     ACTIVE_LOOP_HOOK_PROBE_ARTIFACT, APPLICATION_PREFIX_OFFSET, ArtifactIdentity,
-    EXPERIMENT_ENTRY_PROBE_ARTIFACT, LATE_MARKER_PROBE_ARTIFACT, OFFICIAL_V449,
-    POST_INIT_HOOK_PROBE_ARTIFACT, RECOVERY_GUARD, RECOVERY_GUARD_ARTIFACT,
-    RUST_RESPONSE_PROBE_ARTIFACT, STEADY_LOOP_HOOK_PROBE_ARTIFACT, STOCK_HARNESS_ARTIFACT,
-    USB_RECOVERY_PROBE, USB_RECOVERY_PROBE_ARTIFACT, WIRED_LOOP_HOOK_PROBE_ARTIFACT, sha256,
+    DISPATCHER_RETURN_HOOK_PROBE_ARTIFACT, EXPERIMENT_ENTRY_PROBE_ARTIFACT,
+    LATE_MARKER_PROBE_ARTIFACT, OFFICIAL_V449, POST_INIT_HOOK_PROBE_ARTIFACT, RECOVERY_GUARD,
+    RECOVERY_GUARD_ARTIFACT, RUST_RESPONSE_PROBE_ARTIFACT, STEADY_LOOP_HOOK_PROBE_ARTIFACT,
+    STOCK_HARNESS_ARTIFACT, USB_RECOVERY_PROBE, USB_RECOVERY_PROBE_ARTIFACT,
+    WIRED_LOOP_HOOK_PROBE_ARTIFACT, sha256,
 };
 use slimblade_protocol::updater_crc32;
 use slimblade_verify::experiment_entry_probe;
@@ -32,6 +33,7 @@ const POST_INIT_HOOK_PROBE_BINARY: &str = "slimblade-post-init-hook-probe";
 const WIRED_LOOP_HOOK_PROBE_BINARY: &str = "slimblade-wired-loop-hook-probe";
 const ACTIVE_LOOP_HOOK_PROBE_BINARY: &str = "slimblade-active-loop-hook-probe";
 const STEADY_LOOP_HOOK_PROBE_BINARY: &str = "slimblade-steady-loop-hook-probe";
+const DISPATCHER_RETURN_HOOK_PROBE_BINARY: &str = "slimblade-dispatcher-return-hook-probe";
 const USB_PROBE_MAX_STACK_BYTES: usize = 256;
 const USB_PROBE_CODE_ADDRESS: u32 = 0x0000_2020;
 const SYSTEM_MMIO_START: u32 = 0x0080_0000;
@@ -139,7 +141,8 @@ fn host_checks(root: &Path) -> Result<(), String> {
     build_post_init_hook_probe(root)?;
     build_wired_loop_hook_probe(root)?;
     build_active_loop_hook_probe(root)?;
-    build_steady_loop_hook_probe(root)
+    build_steady_loop_hook_probe(root)?;
+    build_dispatcher_return_hook_probe(root)
 }
 
 fn build_rust_guard(root: &Path) -> Result<(), String> {
@@ -768,6 +771,19 @@ fn build_steady_loop_hook_probe(root: &Path) -> Result<(), String> {
     )
 }
 
+fn build_dispatcher_return_hook_probe(root: &Path) -> Result<(), String> {
+    build_hook_probe(
+        root,
+        DISPATCHER_RETURN_HOOK_PROBE_BINARY,
+        "dispatcher-return-hook",
+        "dispatcher-return-hook-probe",
+        "dispatcher-return hook",
+        DISPATCHER_RETURN_HOOK_PROBE_ARTIFACT,
+        post_init_hook_probe::build_dispatcher_return,
+        post_init_hook_probe::verify_dispatcher_return,
+    )
+}
+
 #[allow(
     clippy::too_many_arguments,
     reason = "the hook builder keeps each locked artifact parameter explicit at its call site"
@@ -1048,7 +1064,7 @@ fn disassemble_stock(
 
 fn usage() {
     eprintln!(
-        "usage:\n  cargo xtask <check|rust-guard|usb-probe|stock-harness|late-marker-probe|experiment-entry-probe|rust-response-probe|post-init-hook-probe|wired-loop-hook-probe|active-loop-hook-probe|steady-loop-hook-probe|postlink|all>\n  cargo xtask disassemble-stock FIRMWARE START STOP <arm|thumb>"
+        "usage:\n  cargo xtask <check|rust-guard|usb-probe|stock-harness|late-marker-probe|experiment-entry-probe|rust-response-probe|post-init-hook-probe|wired-loop-hook-probe|active-loop-hook-probe|steady-loop-hook-probe|dispatcher-return-hook-probe|postlink|all>\n  cargo xtask disassemble-stock FIRMWARE START STOP <arm|thumb>"
     );
 }
 
@@ -1069,6 +1085,9 @@ fn main() -> ExitCode {
         [command] if command == "wired-loop-hook-probe" => build_wired_loop_hook_probe(&root),
         [command] if command == "active-loop-hook-probe" => build_active_loop_hook_probe(&root),
         [command] if command == "steady-loop-hook-probe" => build_steady_loop_hook_probe(&root),
+        [command] if command == "dispatcher-return-hook-probe" => {
+            build_dispatcher_return_hook_probe(&root)
+        },
         [command] if command == "postlink" => post_link_checks(&root),
         [command, firmware, start, stop, state] if command == "disassemble-stock" => {
             disassemble_stock(&root, firmware, start, stop, state)

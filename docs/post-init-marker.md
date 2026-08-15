@@ -177,3 +177,85 @@ The user then confirmed normal ball movement, scrolling, and button operation
 with the dormant `0462` wrapper installed. The next live gate is the explicit
 marker-first `0x0e` arm: it must return signature `a7`, consume state `5` back
 to `0`, and preserve normal input.
+
+The marker-first arm was run on 2026-08-15. Preflight accepted the live device
+and command `0x0e` wrote the recovery marker and armed state `5`, but eight
+subsequent queries all found the state still armed. Therefore the wrapper at
+`0x1d3c2` is not reached through the assumed live path after the command. This
+candidate failed its control-flow gate; cold-power loader recovery and restore
+of the audited `0453` image are required before further tracing.
+
+Cold-power recovery then passed. With the battery disconnected, a five-second
+USB removal returned the same physical path as loader `25a7:fabe`, whose
+read-only query returned `d2`. The audited `0453` container was hash-checked as
+`dccea5665710e9aebe039a83d49d07a1a0b32efc3826c7367814f5512ececa7b`;
+all 3,748 restore blocks echoed. The application returned as `047d:80d7`,
+`bcdDevice 0453`, with its 170-byte descriptor and expected Linux input
+interfaces present.
+
+The user confirmed normal ball movement, scrolling, and button operation after
+the restore. This closes the `0462` experiment without loss of device function.
+
+## Synchronous dispatcher-return candidate
+
+The failed loop probes are unnecessary for the next gate. The proven live
+vendor dispatcher at `0x18f4c` is called synchronously from `0x1c55a`:
+command `0x0e` enters the injected handler through the existing call at
+`0x18fba`, returns through the stock response path, and then returns to the
+caller at `0x1c55e`.
+
+The `0463` candidate replaces only the caller's four-byte `BL` with a call to
+`0x22c0`. Its 28-byte wrapper calls the exact odd Thumb address `0x18f4d`,
+preserves `r0`, checks state `5` only after the stock dispatcher returns,
+restores state `0`, and returns to `0x1c55e`. This path is causally downstream
+of the live command instead of depending on a loop being revisited. Command
+`0x0e` retains marker-first ordering and uses signature `a8`.
+
+| Artifact | Identity |
+| --- | --- |
+| Injection, 340 bytes | `76e71f9937c503d709370bec7b889a2d974f655e571978de6f069332e22bdbbe` |
+| Container, 128,112 bytes | `e79d8a05f0ed65ae6f3059885e02899c1adbb10be3d320f30829d1e8623b2656` |
+| Payload | `257588ae7bcbfb1192221a0a2604ae10e776aab0c4526dc38ffcdf6992780191` |
+| Payload CRC | `860c2809` |
+
+`cargo xtask dispatcher-return-hook-probe` rebuilds and audits the exact
+candidate. The full repository gate passes, including corruption tests for the
+stock-call literal and patched call site. It has not been flashed. The safe
+live sequence must enter loader through the proven marker-writing path, flash
+the exact hash, confirm normal unarmed operation, and only then issue the
+explicit marker-first arm.
+
+The exact `0463` container was flashed on 2026-08-15 after read-only preflight
+confirmed audited `0453` and a clean rebuild reproduced every pinned identity.
+The proven stock command entered the same physical path as loader `25a7:fabe`,
+whose non-writing query returned `d2`. All 3,748 blocks echoed, and the
+application returned as `047d:80d7`, `bcdDevice 0463`, with its stock 170-byte
+descriptor, stable vendor symlink, and expected Linux input interfaces.
+Command `0x0e` has not been sent, so the explicit hook remains unarmed.
+
+The user then confirmed normal ball movement, scrolling, and button operation.
+This proves the dispatcher wrapper can run repeatedly in its unarmed state
+without disrupting stock USB or input. The remaining live gate is the explicit
+marker-first arm: response signature `a8`, state transition `5 -> 0`, and
+continued normal input.
+
+The explicit marker-first arm then passed on 2026-08-15. Preflight returned
+state `00`; command `0x0e` committed the marker and returned exact signature
+`a8`; the first subsequent query returned state `00`. This proves the
+synchronous dispatcher-return wrapper consumed `5 -> 0` on the live command
+path. The device remained `047d:80d7`, `bcdDevice 0463`, with its 170-byte
+descriptor and expected Linux input interfaces present. Physical input and
+cold-power recovery remain to be confirmed.
+
+The user then confirmed normal ball movement, scrolling, and button operation
+after the live `5 -> 0` transition. The only remaining `0463` safety gate is
+cold-power recovery through the marker committed before the hook arm.
+
+Cold-power recovery passed. With the battery disconnected, a five-second USB
+removal returned the same physical path as resident loader `25a7:fabe`, whose
+non-writing query returned `d2`. The audited `0453` container was verified as
+SHA-256
+`dccea5665710e9aebe039a83d49d07a1a0b32efc3826c7367814f5512ececa7b`;
+all 3,748 restore blocks echoed. The application returned as `047d:80d7`,
+`bcdDevice 0453`, with its 170-byte descriptor and expected input interfaces.
+This completes the `0463` functional and recovery gates.

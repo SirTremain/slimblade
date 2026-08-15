@@ -56,9 +56,22 @@ flow returns to stock state before any automatic marker placement is attempted.
 Live testing showed `0x1cfcc` is not revisited after USB becomes active. The
 `0462` candidate wraps the deeper steady-state service call at `0x1d3c2`, calls
 its original stock target first, and retains the same marker-first arm. Its
-unarmed flash booted with the stock USB descriptor and expected input
-interfaces. The explicit `0x0e` arm and continued normal input remain the next
-live gate. Automatic marker placement remains gated on that pass.
+unarmed flash booted with normal input, but the explicit `0x0e` arm remained at
+state `5`; this boundary is also not traversed after the USB command. The
+marker-first cold-power fallback passed and audited `0453` was restored.
+Automatic marker placement remains gated on finding and live-proving a
+recurrently traversed boundary.
+
+Static tracing then found a stronger synchronous boundary: caller `0x1c55a`
+invokes the proven live vendor dispatcher at `0x18f4c`, which calls the custom
+handler at `0x18fba` and returns only after completing the stock response path.
+The separately hash-locked `0463` candidate wraps that call and checks the
+armed state immediately after its return. This removes the unproven
+outer-loop-recurrence assumption; an unarmed boot and explicit marker-first
+arm were live-proven, normal input remained functional, and marker-driven
+cold-power recovery returned the resident loader. Audited `0453` was then
+restored. This establishes the dispatcher-return boundary as the safe entry
+point for subsequent experimental code.
 
 After that gate, map the protected wired-USB call graph and reclaim only code
 whose wired-mode unreachability is demonstrated by static references and live

@@ -1,8 +1,9 @@
 use slimblade_image::{
-    ACTIVE_LOOP_HOOK_PROBE, EXPERIMENT_ENTRY_PROBE, FirmwareIdentity, LATE_MARKER_PROBE,
-    OFFICIAL_V449, POST_INIT_HOOK_PROBE, RECOVERY_CARRIER, RECOVERY_GUARD, RECOVERY_STUB,
-    RESET_TRAMPOLINE, RUST_RESPONSE_PROBE, STARTUP_TRAMPOLINE, STEADY_LOOP_HOOK_PROBE,
-    STOCK_HARNESS, USB_RECOVERY_PROBE, V449_DESCRIPTOR_PROBE, WIRED_LOOP_HOOK_PROBE,
+    ACTIVE_LOOP_HOOK_PROBE, DISPATCHER_RETURN_HOOK_PROBE, EXPERIMENT_ENTRY_PROBE, FirmwareIdentity,
+    LATE_MARKER_PROBE, OFFICIAL_V449, POST_INIT_HOOK_PROBE, RECOVERY_CARRIER, RECOVERY_GUARD,
+    RECOVERY_STUB, RESET_TRAMPOLINE, RUST_RESPONSE_PROBE, STARTUP_TRAMPOLINE,
+    STEADY_LOOP_HOOK_PROBE, STOCK_HARNESS, USB_RECOVERY_PROBE, V449_DESCRIPTOR_PROBE,
+    WIRED_LOOP_HOOK_PROBE,
 };
 use slimblade_protocol::NormalReport;
 
@@ -49,6 +50,13 @@ pub fn steady_loop_arm_response_is_success(response: NormalReport) -> bool {
 }
 
 #[must_use]
+pub fn dispatcher_return_arm_response_is_success(response: NormalReport) -> bool {
+    response.command_byte() == 0x0e
+        && response.as_bytes().get(2) == Some(&0x01)
+        && response.as_bytes().get(3) == Some(&0xa8)
+}
+
+#[must_use]
 pub fn post_init_hook_state(response: NormalReport) -> Option<u8> {
     if response.command_byte() == 0x0f && response.as_bytes().get(2) == Some(&0x01) {
         response.as_bytes().get(3).copied()
@@ -75,6 +83,7 @@ pub enum FlashArtifact {
     WiredLoopHookProbe,
     ActiveLoopHookProbe,
     SteadyLoopHookProbe,
+    DispatcherReturnHookProbe,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -104,6 +113,7 @@ impl FlashArtifact {
             Self::WiredLoopHookProbe => WIRED_LOOP_HOOK_PROBE,
             Self::ActiveLoopHookProbe => ACTIVE_LOOP_HOOK_PROBE,
             Self::SteadyLoopHookProbe => STEADY_LOOP_HOOK_PROBE,
+            Self::DispatcherReturnHookProbe => DISPATCHER_RETURN_HOOK_PROBE,
         }
     }
 
@@ -136,6 +146,9 @@ impl FlashArtifact {
             Self::WiredLoopHookProbe => PostFlashExpectation::Application { bcd_device: "0460" },
             Self::ActiveLoopHookProbe => PostFlashExpectation::Application { bcd_device: "0461" },
             Self::SteadyLoopHookProbe => PostFlashExpectation::Application { bcd_device: "0462" },
+            Self::DispatcherReturnHookProbe => {
+                PostFlashExpectation::Application { bcd_device: "0463" }
+            },
         }
     }
 }
@@ -317,6 +330,20 @@ mod tests {
     }
 
     #[test]
+    fn dispatcher_return_hook_probe_needs_exact_hash_confirmation() {
+        assert!(!FlashArtifact::DispatcherReturnHookProbe.confirmation_matches("wrong"));
+        assert!(
+            FlashArtifact::DispatcherReturnHookProbe.confirmation_matches(
+                "e79d8a05f0ed65ae6f3059885e02899c1adbb10be3d320f30829d1e8623b2656"
+            )
+        );
+        assert_eq!(
+            FlashArtifact::DispatcherReturnHookProbe.post_flash_expectation(),
+            PostFlashExpectation::Application { bcd_device: "0463" }
+        );
+    }
+
+    #[test]
     #[allow(
         clippy::expect_used,
         reason = "the fixed recorded response must parse for the assertion to be meaningful"
@@ -416,5 +443,20 @@ mod tests {
         .expect("fixed steady-loop response is valid");
         assert!(steady_loop_arm_response_is_success(arm));
         assert!(!active_loop_arm_response_is_success(arm));
+    }
+
+    #[test]
+    #[allow(
+        clippy::expect_used,
+        reason = "the fixed dispatcher-return response must parse for the assertion to be meaningful"
+    )]
+    fn dispatcher_return_response_requires_exact_signature() {
+        let arm = NormalReport::parse(&[
+            0x08, 0x0e, 0x01, 0xa8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x96,
+        ])
+        .expect("fixed dispatcher-return response is valid");
+        assert!(dispatcher_return_arm_response_is_success(arm));
+        assert!(!steady_loop_arm_response_is_success(arm));
     }
 }

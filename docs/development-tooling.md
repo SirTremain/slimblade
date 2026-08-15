@@ -37,6 +37,10 @@ Rust 1.97.1; the isolated `thumbv5te-none-eabi` firmware workspace pins nightly
   candidate. Command `0x0e` commits the marker before arming mode `3`; the hook
   restores mode `2`, which command `0x0f` can read. It does not access or flash
   the device.
+- `cargo xtask dispatcher-return-hook-probe`: build and audit the `0463`
+  candidate that wraps the proven live vendor-dispatcher call, calls the exact
+  stock Thumb entry first, and consumes armed state `5` only after it returns.
+  It does not access or flash the device.
 - `cargo xtask postlink`: rerun the Rust guard ELF symbol audit.
 - `cargo xtask all`: alias the complete Rust-only `check` gate.
 - `cargo xtask disassemble-stock FIRMWARE START STOP arm|thumb`: hash-lock an

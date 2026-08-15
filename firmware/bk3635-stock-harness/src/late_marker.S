@@ -8,6 +8,10 @@
     .equ MARKER_ADDRESS,           0x0000807c
     .equ STOCK_RECOVERY_COMMAND,   0x0001895d
     .equ STOCK_DELAY,              0x000178eb
+    .ifdef POST_INIT_DISPATCH_RETURN_HOOK_PROBE
+    .equ STOCK_MODE_ADDRESS,       0x00400264
+    .equ STOCK_VENDOR_DISPATCH,    0x00018f4d
+    .else
     .ifdef POST_INIT_STEADY_LOOP_HOOK_PROBE
     .equ STOCK_MODE_ADDRESS,       0x00400264
     .equ STOCK_STEADY_SERVICE,     0x00015d35
@@ -22,6 +26,7 @@
     .else
     .equ STOCK_MODE_ADDRESS,       0x00400282
     .equ STOCK_MAIN_LOOP,          0x00019bf3
+    .endif
     .endif
     .endif
     .endif
@@ -80,6 +85,9 @@ carrier_late_marker:
     bl marker_set
     .ifdef POST_INIT_HOOK_PROBE
     ldr r0, =STOCK_MODE_ADDRESS
+    .ifdef POST_INIT_DISPATCH_RETURN_HOOK_PROBE
+    movs r1, #5
+    .else
     .ifdef POST_INIT_STEADY_LOOP_HOOK_PROBE
     movs r1, #5
     .else
@@ -93,7 +101,11 @@ carrier_late_marker:
     .endif
     .endif
     .endif
+    .endif
     strb r1, [r0]
+    .ifdef POST_INIT_DISPATCH_RETURN_HOOK_PROBE
+    movs r0, #0xa8
+    .else
     .ifdef POST_INIT_STEADY_LOOP_HOOK_PROBE
     movs r0, #0xa7
     .else
@@ -104,6 +116,7 @@ carrier_late_marker:
     movs r0, #0xa5
     .else
     movs r0, #0xa3
+    .endif
     .endif
     .endif
     .endif
@@ -302,6 +315,27 @@ active_loop_hook_impl:
     .ltorg
     .endif
 
+    .ifdef POST_INIT_DISPATCH_RETURN_HOOK_PROBE
+/* Calls the stock vendor dispatcher, then consumes state 5 on its return. */
+    .thumb_func
+    .global dispatch_return_hook_impl
+    .type dispatch_return_hook_impl, %function
+dispatch_return_hook_impl:
+    push {lr}
+    ldr r3, =STOCK_VENDOR_DISPATCH
+    blx r3
+    ldr r1, =STOCK_MODE_ADDRESS
+    ldrb r2, [r1]
+    cmp r2, #5
+    bne .Ldispatch_return
+    movs r2, #0
+    strb r2, [r1]
+.Ldispatch_return:
+    pop {pc}
+    .size dispatch_return_hook_impl, . - dispatch_return_hook_impl
+    .ltorg
+    .endif
+
     .ifdef POST_INIT_STEADY_LOOP_HOOK_PROBE
 /* Calls the displaced stock service first, then consumes armed state 5. */
     .thumb_func
@@ -330,6 +364,9 @@ steady_loop_hook_impl:
     .global post_init_hook
     .type post_init_hook, %function
 post_init_hook:
+    .ifdef POST_INIT_DISPATCH_RETURN_HOOK_PROBE
+    b dispatch_return_hook_impl
+    .else
     .ifdef POST_INIT_STEADY_LOOP_HOOK_PROBE
     b steady_loop_hook_impl
     .else
@@ -347,6 +384,7 @@ post_init_hook:
     bx r0
 .Lstock_main_loop:
     .word STOCK_MAIN_LOOP
+    .endif
     .endif
     .endif
     .size post_init_hook, . - post_init_hook

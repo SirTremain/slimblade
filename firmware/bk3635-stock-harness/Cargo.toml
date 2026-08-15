@@ -37,6 +37,10 @@ path = "src/active_loop_hook.rs"
 name = "slimblade-steady-loop-hook-probe"
 path = "src/steady_loop_hook.rs"
 
+[[bin]]
+name = "slimblade-dispatcher-return-hook-probe"
+path = "src/dispatcher_return_hook.rs"
+
 [profile.dev]
 panic = "abort"
 

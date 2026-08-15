@@ -2,10 +2,10 @@ use core::fmt;
 
 use slimblade_image::{
     ACTIVE_LOOP_HOOK_PROBE, ACTIVE_LOOP_HOOK_PROBE_ARTIFACT, APPLICATION_HEADER_OFFSET,
-    POST_INIT_HOOK_PROBE, POST_INIT_HOOK_PROBE_ARTIFACT, STACK_HEADER_OFFSET, STARTUP_TRAMPOLINE,
-    STEADY_LOOP_HOOK_PROBE, STEADY_LOOP_HOOK_PROBE_ARTIFACT, V449_BCD_DEVICE_OFFSET,
-    WIRED_LOOP_HOOK_PROBE, WIRED_LOOP_HOOK_PROBE_ARTIFACT, parse_header, refresh_header_crc,
-    sha256,
+    DISPATCHER_RETURN_HOOK_PROBE, DISPATCHER_RETURN_HOOK_PROBE_ARTIFACT, POST_INIT_HOOK_PROBE,
+    POST_INIT_HOOK_PROBE_ARTIFACT, STACK_HEADER_OFFSET, STARTUP_TRAMPOLINE, STEADY_LOOP_HOOK_PROBE,
+    STEADY_LOOP_HOOK_PROBE_ARTIFACT, V449_BCD_DEVICE_OFFSET, WIRED_LOOP_HOOK_PROBE,
+    WIRED_LOOP_HOOK_PROBE_ARTIFACT, parse_header, refresh_header_crc, sha256,
 };
 
 use crate::{
@@ -27,6 +27,7 @@ const WIRED_SWITCH_DEFAULT: usize = 0x19b5e;
 const WIRED_MAIN_LOOP: u32 = 0x19b4a;
 const ACTIVE_LOOP_PATCH: usize = 0x1cfcc;
 const STEADY_LOOP_PATCH: usize = 0x1d3c2;
+const DISPATCHER_RETURN_PATCH: usize = 0x1c55a;
 
 const DISPATCH: [u8; 18] = [
     0x0d, 0x28, 0x04, 0xd0, 0x0e, 0x28, 0x04, 0xd0, 0x0f, 0x28, 0x0b, 0xd0, 0x70, 0x47, 0x2c, 0x4b,
@@ -61,6 +62,14 @@ const STEADY_ARM_AND_QUERY: [u8; 26] = [
 const STEADY_LOOP_HELPER: [u8; 28] = [
     0x00, 0xb5, 0x04, 0x4b, 0x98, 0x47, 0x04, 0x49, 0x0a, 0x78, 0x05, 0x2a, 0x01, 0xd1, 0x00, 0x22,
     0x0a, 0x70, 0x00, 0xbd, 0x35, 0x5d, 0x01, 0x00, 0x64, 0x02, 0x40, 0x00,
+];
+const DISPATCHER_RETURN_ARM_AND_QUERY: [u8; 26] = [
+    0x10, 0xb5, 0x00, 0xf0, 0x0a, 0xf8, 0x2a, 0x48, 0x05, 0x21, 0x01, 0x70, 0xa8, 0x20, 0xe0, 0x70,
+    0x10, 0xbd, 0x27, 0x48, 0x00, 0x78, 0xe0, 0x70, 0x70, 0x47,
+];
+const DISPATCHER_RETURN_HELPER: [u8; 28] = [
+    0x00, 0xb5, 0x04, 0x4b, 0x98, 0x47, 0x04, 0x49, 0x0a, 0x78, 0x05, 0x2a, 0x01, 0xd1, 0x00, 0x22,
+    0x0a, 0x70, 0x00, 0xbd, 0x4d, 0x8f, 0x01, 0x00, 0x64, 0x02, 0x40, 0x00,
 ];
 const CRITICAL_WORDS: [(usize, u32); 13] = [
     (0x0c0, 0x0001_895d),
@@ -605,6 +614,125 @@ pub fn verify_steady(
     })
 }
 
+/// Builds the marker-armed wrapper around the proven live vendor-dispatcher call.
+///
+/// # Errors
+///
+/// Returns an error unless the exact v4.53 base and reviewed injection are supplied.
+pub fn build_dispatcher_return(base: &[u8], injection: &[u8]) -> Result<Vec<u8>, Error> {
+    STARTUP_TRAMPOLINE
+        .validate(base)
+        .map_err(|_| Error::BaseIdentity)?;
+    if injection.len() != INJECTION_END - INJECTION_START {
+        return Err(Error::InjectionSize {
+            actual: injection.len(),
+        });
+    }
+    if !DISPATCHER_RETURN_HOOK_PROBE_ARTIFACT.code_matches(injection) {
+        return Err(Error::InjectionIdentity);
+    }
+    require_base(base, DISPATCHER_RETURN_PATCH, &[0xfc, 0xf7, 0xf7, 0xfc])?;
+
+    let mut image = base.to_vec();
+    replace(&mut image, INJECTION_START, injection)?;
+    replace(
+        &mut image,
+        RESET_BRANCH,
+        &encode_arm_b(
+            ArmAddress::new(u32::try_from(RESET_BRANCH).map_err(|_| Error::Layout)?)
+                .map_err(Error::Branch)?,
+            ArmAddress::new(TRAMPOLINE).map_err(Error::Branch)?,
+        )
+        .map_err(Error::Branch)?,
+    )?;
+    replace(
+        &mut image,
+        DISPATCHER_RETURN_PATCH,
+        &encode_thumb_bl(
+            ThumbAddress::new(u32::try_from(DISPATCHER_RETURN_PATCH).map_err(|_| Error::Layout)?)
+                .map_err(Error::Branch)?,
+            ThumbAddress::new(HOOK).map_err(Error::Branch)?,
+        )
+        .map_err(Error::Branch)?,
+    )?;
+    *image.get_mut(V449_BCD_DEVICE_OFFSET).ok_or(Error::Layout)? = 0x63;
+    refresh_header_crc(&mut image, APPLICATION_HEADER_OFFSET).map_err(|_| Error::Header)?;
+    refresh_header_crc(&mut image, STACK_HEADER_OFFSET).map_err(|_| Error::Header)?;
+    Ok(image)
+}
+
+/// Audits the synchronous dispatcher wrapper, original stock call, marker-first arm, and return.
+///
+/// # Errors
+///
+/// Returns the first failed identity, branch, stock-call, header, or ELF invariant.
+pub fn verify_dispatcher_return(
+    base: &[u8],
+    image: &[u8],
+    injection: &[u8],
+    elf_bytes: &[u8],
+) -> Result<Report, Error> {
+    if image != build_dispatcher_return(base, injection)? {
+        return Err(Error::DerivedImage);
+    }
+    require(injection, 0, &DISPATCH)?;
+    require(injection, 0x12, &DISPATCHER_RETURN_ARM_AND_QUERY)?;
+    require(injection, 0x0f4, &DISPATCHER_RETURN_HELPER)?;
+    require(injection, 0x114, &[0xee, 0xe7])?;
+    for (offset, expected) in WIRED_CRITICAL_WORDS {
+        let actual = read_u32(injection, offset)?;
+        if actual != expected {
+            return Err(Error::Word { offset, actual });
+        }
+    }
+    if read_u32(injection, 0x108)? != 0x0001_8f4d || read_u32(injection, 0x10c)? != 0x0040_0264 {
+        return Err(Error::Bytes { offset: 0x108 });
+    }
+    let target = decode_thumb_bl(
+        read_array(image, DISPATCHER_RETURN_PATCH)?,
+        ThumbAddress::new(u32::try_from(DISPATCHER_RETURN_PATCH).map_err(|_| Error::Layout)?)
+            .map_err(Error::Branch)?,
+    )
+    .map_err(Error::Branch)?;
+    if target.get() != HOOK {
+        return Err(Error::Bytes {
+            offset: DISPATCHER_RETURN_PATCH,
+        });
+    }
+    if image.get(0x18f4c..0x19004) != base.get(0x18f4c..0x19004)
+        || image.get(0x1c550..0x1c55a) != base.get(0x1c550..0x1c55a)
+        || image.get(0x1c55e..0x1c58c) != base.get(0x1c55e..0x1c58c)
+        || image.get(0x2300..0x2330) != base.get(0x2300..0x2330)
+    {
+        return Err(Error::Bytes {
+            offset: DISPATCHER_RETURN_PATCH,
+        });
+    }
+    for offset in [STACK_HEADER_OFFSET, APPLICATION_HEADER_OFFSET] {
+        let header = parse_header(image, offset).map_err(|_| Error::Header)?;
+        if !header.crc_is_valid(image).map_err(|_| Error::Header)? {
+            return Err(Error::Header);
+        }
+    }
+    verify_elf(
+        elf_bytes,
+        &[
+            (".carrier", 0x21ac, 0x110),
+            (".probe", 0x22c0, 0x002),
+            (".trampoline", 0x22cc, 0x034),
+        ],
+    )?;
+    let payload = DISPATCHER_RETURN_HOOK_PROBE
+        .validate(image)
+        .map_err(|_| Error::ContainerIdentity)?;
+    Ok(Report {
+        injection_sha256: sha256(injection),
+        container_sha256: sha256(image),
+        payload_sha256: sha256(payload),
+        payload_crc: slimblade_protocol::updater_crc32(payload),
+    })
+}
+
 fn verify_branch_chain(image: &[u8]) -> Result<(), Error> {
     require(image, MODE_BRANCH, &[0x35, 0xd1])?;
     require(image, LOCAL_BRANCH - 1, &[0x00, 0xad, 0xe5])?;
@@ -794,6 +922,25 @@ mod tests {
         })
     }
 
+    fn dispatcher_return_fixtures() -> Option<Fixtures> {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let target = root.join("firmware/bk3635-stock-harness/target");
+        Some(Fixtures {
+            base: read_if_present(root.join(
+                "firmware/startup_trampoline/build/DO_NOT_FLASH-stock-startup-trampoline.container.bin",
+            ))?,
+            injection: read_if_present(target.join(
+                "dispatcher-return-hook/DO_NOT_FLASH-dispatcher-return-hook-probe.injection.bin",
+            ))?,
+            container: read_if_present(target.join(
+                "dispatcher-return-hook/DO_NOT_FLASH-dispatcher-return-hook-probe.container.bin",
+            ))?,
+            elf: read_if_present(target.join(
+                "thumbv5te-none-eabi/release/slimblade-dispatcher-return-hook-probe",
+            ))?,
+        })
+    }
+
     #[test]
     fn exact_candidate_rebuilds_and_passes() {
         let Some(data) = fixtures() else { return };
@@ -928,6 +1075,42 @@ mod tests {
         data.container[STEADY_LOOP_PATCH] ^= 1;
         assert_eq!(
             verify_steady(&data.base, &data.container, &data.injection, &data.elf),
+            Err(Error::DerivedImage)
+        );
+    }
+
+    #[test]
+    fn dispatcher_return_candidate_rebuilds_and_passes() {
+        let Some(data) = dispatcher_return_fixtures() else {
+            return;
+        };
+        assert_eq!(
+            build_dispatcher_return(&data.base, &data.injection),
+            Ok(data.container.clone())
+        );
+        let report =
+            verify_dispatcher_return(&data.base, &data.container, &data.injection, &data.elf)
+                .expect("audit exact dispatcher-return hook probe");
+        assert_eq!(report.payload_crc, 0x860c_2809);
+    }
+
+    #[test]
+    fn dispatcher_return_candidate_locks_stock_call_and_patch() {
+        let Some(mut data) = dispatcher_return_fixtures() else {
+            return;
+        };
+        data.injection[0x108] ^= 1;
+        assert_eq!(
+            build_dispatcher_return(&data.base, &data.injection),
+            Err(Error::InjectionIdentity)
+        );
+
+        let Some(mut data) = dispatcher_return_fixtures() else {
+            return;
+        };
+        data.container[DISPATCHER_RETURN_PATCH] ^= 1;
+        assert_eq!(
+            verify_dispatcher_return(&data.base, &data.container, &data.injection, &data.elf,),
             Err(Error::DerivedImage)
         );
     }
