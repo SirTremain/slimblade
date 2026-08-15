@@ -34,12 +34,20 @@ hardware assumption left in the first probe.
 
 ## Hardware stages
 
-No hardware test has occurred. A future explicit flash request should first
-observe only `047d:80d7`, `bcdDevice 0454`, and the descriptors. It should not
-send command `0x0d` during that first stage. If enumeration succeeds, a later
-explicit command test can request the resident loader. Removing and restoring
-USB power remains the independent fallback because the marker precedes the
-experiment.
+The exact container was flashed on 2026-08-15 through resident loader
+`25a7:fabe`; its non-writing query returned `d2`, and all 3,748 payload blocks
+echoed successfully with CRC `8bb70620`. The device then disappeared from USB
+without enumerating as expected `047d:80d7`/`0454`. Command `0x0d` was not sent.
+
+After USB power was removed for five seconds, the same physical port returned
+as resident loader `25a7:fabe`; its non-writing query again returned `d2`.
+This verifies that the marker-first recovery guard survived the failed USB
+experiment and recovered the device as designed.
+
+Verified: transfer, marker-first startup, and subsequent power-cycle recovery
+all worked. Inference: the polling USB experiment failed during controller
+startup or initial enumeration. Open: restore the previous v4.53 image before
+changing the probe.
 
 CSR evidence comes from Kensington v4.49 disassembly and the vendored
 [Beken BK3633 BLE SDK](https://gitee.com/beken-corp/bk3633_ble_sdk) commit

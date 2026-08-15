@@ -154,20 +154,31 @@ It has 11 decoded allowlisted MMIO loads, no undefined/runtime symbols, and a
 176-byte maximum stack frame. Its hash-locked 128,112-byte container has
 SHA-256
 `d08395311afb43a289b05bbd0fb31a750c62371e957eedde4c08f0e7c78560e8`.
-It has not run on hardware.
+It ran on hardware on 2026-08-15. All 3,748 loader blocks echoed with the
+expected CRC, but the probe did not enumerate. Removing USB power for five
+seconds returned the same port to resident loader `25a7:fabe`, whose query
+returned `d2`; the marker-first recovery path therefore worked as designed.
 
 Inference: a tight polling loop can replace FIQ dispatch for a first probe,
 avoiding new interrupt-controller and FIQ-state dependencies. The endpoint
 registers latch requests until serviced, but polling latency is still the main
 unverified hardware assumption.
 
-Open before a flash candidate:
+Open before the next probe candidate:
 
-- confirm the polling loop meets controller timing without the stock FIQ route;
+- determine which controller, clock, or system initialization omitted from the
+  polling probe prevented enumeration;
 - first observe enumeration without sending the already present command
   `0x0d`, then test that command only as a separate explicit stage;
 - rerun the complete gate and review the new exact hash immediately before any
   explicit hardware request.
+
+Hardware result on 2026-08-15: the exact hash-locked container passed `B2/d2`
+and all 3,748 loader echoes, but did not enumerate as `047d:80d7`/`0454` after
+the loader exited. No `0x0d` command was sent. This falsifies the first polling
+probe as a working USB application; it does not yet distinguish initialization
+failure from endpoint-zero polling failure. Power-cycle recovery remained the
+next required check.
 
 Source for the CSR comparison: vendored [Beken BK3633 BLE SDK](https://gitee.com/beken-corp/bk3633_ble_sdk)
 commit `0a461f8ed4a4f17ff6889d6f9d34e521b92b8243`, retrieved 2026-08-14. The
