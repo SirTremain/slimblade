@@ -14,7 +14,8 @@ Rust 1.97.1; the isolated `thumbv5te-none-eabi` firmware workspace pins nightly
 - `cargo xtask check`: format, lint and test the stable host workspace, then
   format, lint and release-build the inert ARMv5TE firmware scaffold.
 - `cargo xtask legacy`: run all 88 Python tests and every existing firmware
-  preflight, then audit every generated ELF symbol table.
+  preflight, rerun fixture-backed Rust parity tests after artifacts exist, then
+  audit every generated ELF symbol table.
 - `cargo xtask postlink`: rerun only the ELF symbol audit after artifacts have
   been built.
 - `cargo xtask all`: require both gates.
@@ -46,7 +47,9 @@ used solely for exact artifact identity checks.
 The verifier crate keeps its ELF and checked address/branch primitives usable
 without `std`; its default host feature adds complete artifact verifiers.
 `cargo xtask check` compiles both configurations. Artifact tests compare typed
-identities and generated outputs without writing to hardware.
+identities and generated outputs without writing to hardware. Reset and startup
+trampolines share the same ARM executable-section verifier; both Rust builders
+reproduce their recorded containers byte-for-byte.
 
 ## Stable device paths
 

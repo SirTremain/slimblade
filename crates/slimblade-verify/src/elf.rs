@@ -244,6 +244,120 @@ impl fmt::Display for ElfError {
 impl core::error::Error for ElfError {}
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct ArmExecutableText {
+    pub entry: u32,
+    pub address: u32,
+    pub size: u32,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ArmExecutableError {
+    Elf(ElfError),
+    WrongType { actual: u16 },
+    WrongMachine { actual: u16 },
+    WrongEntry { actual: u32, expected: u32 },
+    TextMissing,
+    WrongTextAddress { actual: u32, expected: u32 },
+    WrongTextSize { actual: u32, expected: u32 },
+    Relocation,
+    WritableAllocated,
+}
+
+impl fmt::Display for ArmExecutableError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Elf(error) => write!(formatter, "ELF: {error}"),
+            Self::WrongType { actual } => write!(formatter, "ELF type is {actual}, not executable"),
+            Self::WrongMachine { actual } => {
+                write!(formatter, "ELF machine is {actual}, not ARM")
+            },
+            Self::WrongEntry { actual, expected } => {
+                write!(formatter, "ELF entry is {actual:#x}, not {expected:#x}")
+            },
+            Self::TextMissing => formatter.write_str("ELF has no .text section"),
+            Self::WrongTextAddress { actual, expected } => {
+                write!(
+                    formatter,
+                    "ELF .text address is {actual:#x}, not {expected:#x}"
+                )
+            },
+            Self::WrongTextSize { actual, expected } => {
+                write!(formatter, "ELF .text is {actual} bytes, not {expected}")
+            },
+            Self::Relocation => formatter.write_str("ELF contains relocations"),
+            Self::WritableAllocated => formatter.write_str("ELF contains writable allocated data"),
+        }
+    }
+}
+
+impl core::error::Error for ArmExecutableError {
+    fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
+        match self {
+            Self::Elf(error) => Some(error),
+            _ => None,
+        }
+    }
+}
+
+/// Verifies the common executable and `.text` invariants for a linked ARM artifact.
+///
+/// # Errors
+///
+/// Returns the first ELF parsing, identity, section, relocation, or writable-data failure.
+pub fn verify_arm_executable_text(
+    elf_bytes: &[u8],
+    expected: ArmExecutableText,
+) -> Result<(), ArmExecutableError> {
+    let elf = Elf32::parse(elf_bytes).map_err(ArmExecutableError::Elf)?;
+    if elf.elf_type() != ELF_TYPE_EXECUTABLE {
+        return Err(ArmExecutableError::WrongType {
+            actual: elf.elf_type(),
+        });
+    }
+    if elf.machine() != ELF_MACHINE_ARM {
+        return Err(ArmExecutableError::WrongMachine {
+            actual: elf.machine(),
+        });
+    }
+    if elf.entry() != expected.entry {
+        return Err(ArmExecutableError::WrongEntry {
+            actual: elf.entry(),
+            expected: expected.entry,
+        });
+    }
+
+    let mut found_text = false;
+    for section in elf.sections() {
+        let section = section.map_err(ArmExecutableError::Elf)?;
+        if section.name == ".text" {
+            found_text = true;
+            if section.address != expected.address {
+                return Err(ArmExecutableError::WrongTextAddress {
+                    actual: section.address,
+                    expected: expected.address,
+                });
+            }
+            if section.size != expected.size {
+                return Err(ArmExecutableError::WrongTextSize {
+                    actual: section.size,
+                    expected: expected.size,
+                });
+            }
+        }
+        if section.is_relocation() {
+            return Err(ArmExecutableError::Relocation);
+        }
+        if section.is_writable_allocated() {
+            return Err(ArmExecutableError::WritableAllocated);
+        }
+    }
+    if !found_text {
+        return Err(ArmExecutableError::TextMissing);
+    }
+    Ok(())
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 struct RawSection {
     name_offset: u32,
     section_type: u32,

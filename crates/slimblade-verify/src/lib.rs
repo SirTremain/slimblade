@@ -6,6 +6,8 @@ pub mod elf;
 pub mod post_link;
 #[cfg(feature = "std")]
 pub mod reset_trampoline;
+#[cfg(feature = "std")]
+pub mod startup_trampoline;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ArmAddress(u32);

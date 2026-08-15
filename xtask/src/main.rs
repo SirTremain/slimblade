@@ -103,6 +103,7 @@ fn legacy_checks(root: &Path) -> Result<(), String> {
     for directory in LEGACY_PREFLIGHTS {
         run(root, "make", &["-C", directory, "preflight"])?;
     }
+    run(root, "cargo", &["test", "--workspace"])?;
     post_link_checks(root)
 }
 

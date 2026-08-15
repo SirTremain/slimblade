@@ -97,8 +97,9 @@ pending = [
 [[suite]]
 legacy = "tests/test_startup_trampoline.py"
 count = 6
-status = "pending"
-pending = [
+status = "complete"
+rust = "crates/slimblade-verify/src/startup_trampoline.rs::tests"
+complete = [
     "test_exact_build_passes",
     "test_even_thumb_pointer_is_rejected",
     "test_changed_mode_setup_is_rejected",

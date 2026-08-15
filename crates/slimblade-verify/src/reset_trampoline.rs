@@ -13,8 +13,9 @@ use slimblade_image::{
 };
 
 use crate::{
-    ArmAddress, ArmBranchKind, BranchError, decode_arm_branch, elf::ELF_MACHINE_ARM,
-    elf::ELF_TYPE_EXECUTABLE, elf::Elf32, elf::ElfError, encode_arm_b,
+    ArmAddress, ArmBranchKind, BranchError, decode_arm_branch,
+    elf::{ArmExecutableError, ArmExecutableText, verify_arm_executable_text},
+    encode_arm_b,
 };
 
 pub const RESET_HANDLER: usize = 0x2064;
@@ -84,15 +85,7 @@ pub enum VerificationError {
     DeviceVersion { actual: u8 },
     Header(ImageError),
     HeaderCrc { offset: usize },
-    Elf(ElfError),
-    ElfType { actual: u16 },
-    ElfMachine { actual: u16 },
-    ElfEntry { actual: u32 },
-    ElfTextMissing,
-    ElfTextAddress { actual: u32 },
-    ElfTextSize { actual: u32 },
-    ElfRelocation,
-    ElfWritableAllocated,
+    Elf(ArmExecutableError),
 }
 
 impl fmt::Display for VerificationError {
@@ -139,23 +132,7 @@ impl fmt::Display for VerificationError {
             Self::HeaderCrc { offset } => {
                 write!(formatter, "header CRC at {offset:#x} is invalid")
             },
-            Self::Elf(error) => write!(formatter, "ELF: {error}"),
-            Self::ElfType { actual } => write!(formatter, "ELF type is {actual}, not executable"),
-            Self::ElfMachine { actual } => write!(formatter, "ELF machine is {actual}, not ARM"),
-            Self::ElfEntry { actual } => {
-                write!(formatter, "ELF entry is {actual:#x}, not 0x22b4")
-            },
-            Self::ElfTextMissing => formatter.write_str("ELF has no .text section"),
-            Self::ElfTextAddress { actual } => {
-                write!(formatter, "ELF .text address is {actual:#x}, not 0x22b4")
-            },
-            Self::ElfTextSize { actual } => {
-                write!(formatter, "ELF .text is {actual} bytes, not 8")
-            },
-            Self::ElfRelocation => formatter.write_str("ELF contains relocations"),
-            Self::ElfWritableAllocated => {
-                formatter.write_str("ELF contains writable allocated data")
-            },
+            Self::Elf(error) => write!(formatter, "{error}"),
         }
     }
 }
@@ -338,7 +315,15 @@ pub fn verify(
             return Err(VerificationError::HeaderCrc { offset });
         }
     }
-    verify_elf(elf_bytes, code.len())?;
+    verify_arm_executable_text(
+        elf_bytes,
+        ArmExecutableText {
+            entry: 0x22b4,
+            address: 0x22b4,
+            size: 8,
+        },
+    )
+    .map_err(VerificationError::Elf)?;
 
     Ok(ResetTrampolineReport {
         result: "PASS",
@@ -354,53 +339,6 @@ pub fn verify(
         stock_return_target: STOCK_RESET_CONTINUATION as u32,
         usb_bcd_device: 0x0452,
     })
-}
-
-fn verify_elf(elf_bytes: &[u8], code_size: usize) -> Result<(), VerificationError> {
-    let elf = Elf32::parse(elf_bytes).map_err(VerificationError::Elf)?;
-    if elf.elf_type() != ELF_TYPE_EXECUTABLE {
-        return Err(VerificationError::ElfType {
-            actual: elf.elf_type(),
-        });
-    }
-    if elf.machine() != ELF_MACHINE_ARM {
-        return Err(VerificationError::ElfMachine {
-            actual: elf.machine(),
-        });
-    }
-    if elf.entry() != TRAMPOLINE_ADDRESS as u32 {
-        return Err(VerificationError::ElfEntry {
-            actual: elf.entry(),
-        });
-    }
-
-    let mut found_text = false;
-    for section in elf.sections() {
-        let section = section.map_err(VerificationError::Elf)?;
-        if section.name == ".text" {
-            found_text = true;
-            if section.address != TRAMPOLINE_ADDRESS as u32 {
-                return Err(VerificationError::ElfTextAddress {
-                    actual: section.address,
-                });
-            }
-            if section.size != code_size as u32 {
-                return Err(VerificationError::ElfTextSize {
-                    actual: section.size,
-                });
-            }
-        }
-        if section.is_relocation() {
-            return Err(VerificationError::ElfRelocation);
-        }
-        if section.is_writable_allocated() {
-            return Err(VerificationError::ElfWritableAllocated);
-        }
-    }
-    if !found_text {
-        return Err(VerificationError::ElfTextMissing);
-    }
-    Ok(())
 }
 
 #[allow(
