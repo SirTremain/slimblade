@@ -42,13 +42,23 @@ at `0x18f6e–0x18fd4`, USB interfaces `00` and `01`, and descriptors near
 
 ## Current priority
 
-The build-only `0459` candidate now targets a dormant hook after stock
-initialization. It runs only after command `0x0e` has committed the marker and
-armed reserved mode `3`; see
-[`post-init-marker.md`](post-init-marker.md). Hardware proof remains required.
-The next stage proves the marker writer in that hooked context. Only the final
-stage removes the USB arming requirement and places the automatic marker at the
-`0x19bee` boundary.
+The `0459` preflight disproved the initially identified wired-loop state. The
+corrected `0460` probe proved that command `0x0e` can commit the marker and set
+the actual live state byte, but state `5` did not dispatch through the assumed
+default switch route; see [`post-init-marker.md`](post-init-marker.md).
+
+After confirming cold-power loader recovery, restore the audited working image
+and trace the actual state-dispatch path. That trace identified the internal
+wired loop at `0x1cfcc`; the separately hashed `0461` candidate now targets it
+while retaining the same marker-first arming sequence. It must prove control
+flow returns to stock state before any automatic marker placement is attempted.
+
+Live testing showed `0x1cfcc` is not revisited after USB becomes active. The
+`0462` candidate wraps the deeper steady-state service call at `0x1d3c2`, calls
+its original stock target first, and retains the same marker-first arm. Its
+unarmed flash booted with the stock USB descriptor and expected input
+interfaces. The explicit `0x0e` arm and continued normal input remain the next
+live gate. Automatic marker placement remains gated on that pass.
 
 After that gate, map the protected wired-USB call graph and reclaim only code
 whose wired-mode unreachability is demonstrated by static references and live

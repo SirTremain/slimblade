@@ -5,7 +5,10 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use slimblade_cli::{
-    FlashArtifact, PostFlashExpectation, late_marker_response_is_success, rust_response_is_success,
+    FlashArtifact, PostFlashExpectation, active_loop_arm_response_is_success,
+    late_marker_response_is_success, post_init_arm_response_is_success, post_init_hook_state,
+    rust_response_is_success, steady_loop_arm_response_is_success,
+    wired_loop_arm_response_is_success,
 };
 use slimblade_linux::flash::{transfer_payload, wait_for_queried_loader};
 use slimblade_linux::hidraw::Hidraw;
@@ -33,6 +36,9 @@ enum Command {
     RunRustResponse {
         confirmed: bool,
     },
+    RunPostInitHook {
+        confirmed: bool,
+    },
     QueryLoader,
     Flash {
         artifact: FlashArtifact,
@@ -49,7 +55,7 @@ struct Arguments {
 }
 
 const fn usage() -> &'static str {
-    "usage:\n  slimblade [--device PATH] identify\n  slimblade [--device PATH] [--timeout-seconds N] enter-loader --confirm\n  slimblade [--device PATH] [--timeout-seconds N] set-late-marker --confirm\n  slimblade [--device PATH] [--timeout-seconds N] start-experiment --confirm\n  slimblade [--device PATH] [--timeout-seconds N] run-rust-response --confirm\n  slimblade [--device PATH] [--timeout-seconds N] query-loader\n  slimblade [--device PATH] [--timeout-seconds N] FLASH_COMMAND --firmware PATH --confirm-sha256 HASH\n\nFLASH_COMMAND: restore-official-v449, flash-descriptor-probe, flash-recovery-carrier, flash-reset-trampoline, flash-recovery-stub, flash-startup-trampoline, flash-rust-guard, flash-usb-recovery-probe, flash-stock-harness, flash-late-marker-probe, flash-experiment-entry-probe, or flash-rust-response-probe"
+    "usage:\n  slimblade [--device PATH] identify\n  slimblade [--device PATH] [--timeout-seconds N] enter-loader --confirm\n  slimblade [--device PATH] [--timeout-seconds N] set-late-marker --confirm\n  slimblade [--device PATH] [--timeout-seconds N] start-experiment --confirm\n  slimblade [--device PATH] [--timeout-seconds N] run-rust-response --confirm\n  slimblade [--device PATH] [--timeout-seconds N] run-post-init-hook --confirm\n  slimblade [--device PATH] [--timeout-seconds N] query-loader\n  slimblade [--device PATH] [--timeout-seconds N] FLASH_COMMAND --firmware PATH --confirm-sha256 HASH\n\nFLASH_COMMAND: restore-official-v449, flash-descriptor-probe, flash-recovery-carrier, flash-reset-trampoline, flash-recovery-stub, flash-startup-trampoline, flash-rust-guard, flash-usb-recovery-probe, flash-stock-harness, flash-late-marker-probe, flash-experiment-entry-probe, flash-rust-response-probe, flash-post-init-hook-probe, flash-wired-loop-hook-probe, flash-active-loop-hook-probe, or flash-steady-loop-hook-probe"
 }
 
 fn take_value(arguments: &[String], index: &mut usize, option: &str) -> Result<String, String> {
@@ -106,6 +112,7 @@ fn parse_arguments() -> Result<Arguments, String> {
         "set-late-marker" => Command::SetLateMarker { confirmed },
         "start-experiment" => Command::StartExperiment { confirmed },
         "run-rust-response" => Command::RunRustResponse { confirmed },
+        "run-post-init-hook" => Command::RunPostInitHook { confirmed },
         "query-loader" => Command::QueryLoader,
         "restore-official-v449"
         | "flash-descriptor-probe"
@@ -118,7 +125,11 @@ fn parse_arguments() -> Result<Arguments, String> {
         | "flash-stock-harness"
         | "flash-late-marker-probe"
         | "flash-experiment-entry-probe"
-        | "flash-rust-response-probe" => Command::Flash {
+        | "flash-rust-response-probe"
+        | "flash-post-init-hook-probe"
+        | "flash-wired-loop-hook-probe"
+        | "flash-active-loop-hook-probe"
+        | "flash-steady-loop-hook-probe" => Command::Flash {
             artifact: match command_name.as_str() {
                 "restore-official-v449" => FlashArtifact::OfficialV449,
                 "flash-descriptor-probe" => FlashArtifact::DescriptorProbe,
@@ -132,6 +143,10 @@ fn parse_arguments() -> Result<Arguments, String> {
                 "flash-late-marker-probe" => FlashArtifact::LateMarkerProbe,
                 "flash-experiment-entry-probe" => FlashArtifact::ExperimentEntryProbe,
                 "flash-rust-response-probe" => FlashArtifact::RustResponseProbe,
+                "flash-post-init-hook-probe" => FlashArtifact::PostInitHookProbe,
+                "flash-wired-loop-hook-probe" => FlashArtifact::WiredLoopHookProbe,
+                "flash-active-loop-hook-probe" => FlashArtifact::ActiveLoopHookProbe,
+                "flash-steady-loop-hook-probe" => FlashArtifact::SteadyLoopHookProbe,
                 _ => return Err("unreachable flash command mapping".to_owned()),
             },
             firmware: firmware.ok_or_else(|| "flash command requires --firmware".to_owned())?,
@@ -145,7 +160,8 @@ fn parse_arguments() -> Result<Arguments, String> {
         | Command::EnterLoader { .. }
         | Command::SetLateMarker { .. }
         | Command::StartExperiment { .. }
-        | Command::RunRustResponse { .. } => DEFAULT_APPLICATION_DEVICE,
+        | Command::RunRustResponse { .. }
+        | Command::RunPostInitHook { .. } => DEFAULT_APPLICATION_DEVICE,
         Command::QueryLoader | Command::Flash { .. } => DEFAULT_LOADER_DEVICE,
     };
     Ok(Arguments {
@@ -336,6 +352,97 @@ fn run_rust_response(device: &Path, timeout: Duration, confirmed: bool) -> Resul
     Ok(())
 }
 
+fn exchange_vendor_command(
+    hidraw: &mut Hidraw,
+    command: u8,
+    timeout: Duration,
+) -> Result<NormalReport, String> {
+    hidraw
+        .write_report(NormalReport::command(command).as_bytes())
+        .map_err(|error| format!("vendor command {command:#04x} failed: {error}"))?;
+    hidraw
+        .read_normal_report(timeout.max(Duration::from_secs(3)))
+        .map_err(|error| format!("vendor response {command:#04x} failed: {error}"))?
+        .ok_or_else(|| format!("vendor command {command:#04x} returned no response"))
+}
+
+fn run_post_init_hook(device: &Path, timeout: Duration, confirmed: bool) -> Result<(), String> {
+    if !confirmed {
+        return Err("refusing persistent-marker hook probe without --confirm".to_owned());
+    }
+    let parent = usb_parent_for_hidraw(device, Path::new(HIDRAW_SYSFS_ROOT))
+        .map_err(|error| format!("could not resolve USB parent: {error}"))?
+        .ok_or_else(|| "could not find USB parent".to_owned())?;
+    if parent.identity != KENSINGTON_WIRED_IDENTITY {
+        return Err(format!(
+            "refusing post-init hook command for identity {:04x}:{:04x} bcdDevice={:?}; expected 047d:80d7",
+            parent.identity.vendor_id, parent.identity.product_id, parent.bcd_device
+        ));
+    }
+    let (expected_state, expected_signature, armed_state) = match parent.bcd_device.as_deref() {
+        Some("0459") => (2_u8, 0xa3_u8, 3_u8),
+        Some("0460") => (0_u8, 0xa5_u8, 5_u8),
+        Some("0461") => (0_u8, 0xa6_u8, 5_u8),
+        Some("0462") => (0_u8, 0xa7_u8, 5_u8),
+        _ => {
+            return Err(format!(
+                "refusing post-init hook command for bcdDevice={:?}; expected 0459, 0460, 0461, or 0462",
+                parent.bcd_device
+            ));
+        },
+    };
+    let mut hidraw = Hidraw::open_read_write(device)
+        .map_err(|error| format!("could not open {}: {error}", device.display()))?;
+    let (_, identity) = hidraw
+        .identity()
+        .map_err(|error| format!("could not query HID identity: {error}"))?;
+    if identity != parent.identity {
+        return Err("HID identity and USB parent disagree".to_owned());
+    }
+
+    let initial = exchange_vendor_command(&mut hidraw, 0x0f, timeout)?;
+    let initial_state = post_init_hook_state(initial);
+    if initial_state != Some(expected_state) {
+        return Err(format!(
+            "post-init hook preflight reported mode {initial_state:?}, expected Some({expected_state})"
+        ));
+    }
+    let armed = exchange_vendor_command(&mut hidraw, 0x0e, timeout)?;
+    let arm_succeeded = match expected_signature {
+        0xa3 => post_init_arm_response_is_success(armed),
+        0xa5 => wired_loop_arm_response_is_success(armed),
+        0xa6 => active_loop_arm_response_is_success(armed),
+        0xa7 => steady_loop_arm_response_is_success(armed),
+        _ => false,
+    };
+    if !arm_succeeded {
+        return Err(format!(
+            "marker command did not return status 01 and signature {expected_signature:02x}"
+        ));
+    }
+
+    for attempt in 1_u8..=8_u8 {
+        let response = exchange_vendor_command(&mut hidraw, 0x0f, timeout)?;
+        match post_init_hook_state(response) {
+            Some(state) if state == expected_state => {
+                println!(
+                    "post_init_hook=pass initial={expected_state:02x} arm_signature={expected_signature:02x} final={state:02x} attempts={attempt} sysfs={}",
+                    parent.sysfs
+                );
+                return Ok(());
+            },
+            Some(state) if state == armed_state => {},
+            Some(state) => {
+                return Err(format!(
+                    "post-init hook returned unexpected mode {state:#04x}"
+                ));
+            },
+            None => return Err("post-init hook state response was malformed".to_owned()),
+        }
+    }
+    Err("post-init hook remained armed after eight queries".to_owned())
+}
+
 fn query_loader(device: &Path, timeout: Duration) -> Result<(), String> {
     let loader = wait_for_queried_loader(device, timeout.max(Duration::from_secs(8)))
         .map_err(|error| error.to_string())?;
@@ -455,6 +562,9 @@ fn run() -> Result<(), String> {
         },
         Command::RunRustResponse { confirmed } => {
             run_rust_response(&arguments.device, arguments.timeout, confirmed)
+        },
+        Command::RunPostInitHook { confirmed } => {
+            run_post_init_hook(&arguments.device, arguments.timeout, confirmed)
         },
         Command::QueryLoader => query_loader(&arguments.device, arguments.timeout),
         Command::Flash {

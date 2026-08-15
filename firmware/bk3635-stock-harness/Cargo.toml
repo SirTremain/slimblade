@@ -25,6 +25,18 @@ path = "src/rust_response.rs"
 name = "slimblade-post-init-hook-probe"
 path = "src/post_init_hook.rs"
 
+[[bin]]
+name = "slimblade-wired-loop-hook-probe"
+path = "src/wired_loop_hook.rs"
+
+[[bin]]
+name = "slimblade-active-loop-hook-probe"
+path = "src/active_loop_hook.rs"
+
+[[bin]]
+name = "slimblade-steady-loop-hook-probe"
+path = "src/steady_loop_hook.rs"
+
 [profile.dev]
 panic = "abort"
 

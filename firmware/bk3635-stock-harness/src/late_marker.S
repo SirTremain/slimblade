@@ -8,8 +8,23 @@
     .equ MARKER_ADDRESS,           0x0000807c
     .equ STOCK_RECOVERY_COMMAND,   0x0001895d
     .equ STOCK_DELAY,              0x000178eb
+    .ifdef POST_INIT_STEADY_LOOP_HOOK_PROBE
+    .equ STOCK_MODE_ADDRESS,       0x00400264
+    .equ STOCK_STEADY_SERVICE,     0x00015d35
+    .else
+    .ifdef POST_INIT_ACTIVE_LOOP_HOOK_PROBE
+    .equ STOCK_MODE_ADDRESS,       0x00400264
+    .equ STOCK_WIRED_POINTER,      0x004002b8
+    .else
+    .ifdef POST_INIT_LOOP_HOOK_PROBE
+    .equ STOCK_MODE_ADDRESS,       0x00400264
+    .equ STOCK_MAIN_LOOP,          0x00019b4b
+    .else
     .equ STOCK_MODE_ADDRESS,       0x00400282
     .equ STOCK_MAIN_LOOP,          0x00019bf3
+    .endif
+    .endif
+    .endif
 
     .section .text.carrier, "ax", %progbits
     .thumb
@@ -65,9 +80,33 @@ carrier_late_marker:
     bl marker_set
     .ifdef POST_INIT_HOOK_PROBE
     ldr r0, =STOCK_MODE_ADDRESS
+    .ifdef POST_INIT_STEADY_LOOP_HOOK_PROBE
+    movs r1, #5
+    .else
+    .ifdef POST_INIT_ACTIVE_LOOP_HOOK_PROBE
+    movs r1, #5
+    .else
+    .ifdef POST_INIT_LOOP_HOOK_PROBE
+    movs r1, #5
+    .else
     movs r1, #3
+    .endif
+    .endif
+    .endif
     strb r1, [r0]
+    .ifdef POST_INIT_STEADY_LOOP_HOOK_PROBE
+    movs r0, #0xa7
+    .else
+    .ifdef POST_INIT_ACTIVE_LOOP_HOOK_PROBE
+    movs r0, #0xa6
+    .else
+    .ifdef POST_INIT_LOOP_HOOK_PROBE
+    movs r0, #0xa5
+    .else
     movs r0, #0xa3
+    .endif
+    .endif
+    .endif
     strb r0, [r4, #3]
     pop {r4, pc}
     .else
@@ -243,6 +282,47 @@ storage_operation:
 
     .ltorg
 
+    .ifdef POST_INIT_ACTIVE_LOOP_HOOK_PROBE
+/* Replays the two displaced stock instructions, then consumes armed state 5. */
+    .thumb_func
+    .global active_loop_hook_impl
+    .type active_loop_hook_impl, %function
+active_loop_hook_impl:
+    ldr r7, =STOCK_WIRED_POINTER
+    ldr r0, [r7]
+    ldr r1, =STOCK_MODE_ADDRESS
+    ldrb r2, [r1]
+    cmp r2, #5
+    bne .Lactive_loop_return
+    movs r2, #0
+    strb r2, [r1]
+.Lactive_loop_return:
+    bx lr
+    .size active_loop_hook_impl, . - active_loop_hook_impl
+    .ltorg
+    .endif
+
+    .ifdef POST_INIT_STEADY_LOOP_HOOK_PROBE
+/* Calls the displaced stock service first, then consumes armed state 5. */
+    .thumb_func
+    .global steady_loop_hook_impl
+    .type steady_loop_hook_impl, %function
+steady_loop_hook_impl:
+    push {lr}
+    ldr r3, =STOCK_STEADY_SERVICE
+    blx r3
+    ldr r1, =STOCK_MODE_ADDRESS
+    ldrb r2, [r1]
+    cmp r2, #5
+    bne .Lsteady_loop_return
+    movs r2, #0
+    strb r2, [r1]
+.Lsteady_loop_return:
+    pop {pc}
+    .size steady_loop_hook_impl, . - steady_loop_hook_impl
+    .ltorg
+    .endif
+
     .ifdef POST_INIT_HOOK_PROBE
     .section .text.rust_probe, "ax", %progbits
     .thumb
@@ -250,12 +330,25 @@ storage_operation:
     .global post_init_hook
     .type post_init_hook, %function
 post_init_hook:
+    .ifdef POST_INIT_STEADY_LOOP_HOOK_PROBE
+    b steady_loop_hook_impl
+    .else
+    .ifdef POST_INIT_ACTIVE_LOOP_HOOK_PROBE
+    b active_loop_hook_impl
+    .else
+    .ifdef POST_INIT_LOOP_HOOK_PROBE
+    movs r0, #0
+    strb r0, [r7]
+    .else
     movs r0, #2
     strb r0, [r4]
+    .endif
     ldr r0, .Lstock_main_loop
     bx r0
 .Lstock_main_loop:
     .word STOCK_MAIN_LOOP
+    .endif
+    .endif
     .size post_init_hook, . - post_init_hook
     .endif
 

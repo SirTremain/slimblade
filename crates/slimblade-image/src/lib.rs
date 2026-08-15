@@ -45,7 +45,7 @@ impl ArtifactIdentity {
     }
 }
 
-pub const REFERENCE_ARTIFACTS: [ArtifactIdentity; 13] = [
+pub const REFERENCE_ARTIFACTS: [ArtifactIdentity; 16] = [
     ArtifactIdentity {
         name: "stock-startup-reference",
         code_sha256: parse_sha256(
@@ -159,6 +159,33 @@ pub const REFERENCE_ARTIFACTS: [ArtifactIdentity; 13] = [
             "133f5241efecc23c7cc2fffcc0fdb34c37f5a3f840362938c27a2bc5353c1de1",
         )),
     },
+    ArtifactIdentity {
+        name: "wired-loop-hook-probe",
+        code_sha256: parse_sha256(
+            "5a99f4d7ab6972f05724980a9d960f5b4d279212af3866ff8cb3c8a8b3b5dac0",
+        ),
+        container_sha256: Some(parse_sha256(
+            "61cf9ebc9b7739fbc586a6949a1dbca2f754f07b6e3e7ea16a4319c6d365bd87",
+        )),
+    },
+    ArtifactIdentity {
+        name: "active-loop-hook-probe",
+        code_sha256: parse_sha256(
+            "aca3fcb6c3182a695667d96e2068e6e762698ae9f4f021cd3725d1ee6e308044",
+        ),
+        container_sha256: Some(parse_sha256(
+            "bf7aab32e3c32b4bf3853a7c79de21e5818961fbeb70239c95b40db7d898d077",
+        )),
+    },
+    ArtifactIdentity {
+        name: "steady-loop-hook-probe",
+        code_sha256: parse_sha256(
+            "df9df61f1b22393b242a24e9943795ea80bacb84cc3042ccae9a9e202bd8fc41",
+        ),
+        container_sha256: Some(parse_sha256(
+            "3defe9f5fda2ebaefb923fbe1c62fdd877345ccb75f6b1eec2604e731688d310",
+        )),
+    },
 ];
 
 pub const STOCK_STARTUP_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[0];
@@ -174,6 +201,9 @@ pub const LATE_MARKER_PROBE_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[9];
 pub const EXPERIMENT_ENTRY_PROBE_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[10];
 pub const RUST_RESPONSE_PROBE_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[11];
 pub const POST_INIT_HOOK_PROBE_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[12];
+pub const WIRED_LOOP_HOOK_PROBE_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[13];
+pub const ACTIVE_LOOP_HOOK_PROBE_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[14];
+pub const STEADY_LOOP_HOOK_PROBE_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[15];
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct FirmwareIdentity {
@@ -362,6 +392,24 @@ pub const POST_INIT_HOOK_PROBE: FirmwareIdentity = firmware_identity(
     "133f5241efecc23c7cc2fffcc0fdb34c37f5a3f840362938c27a2bc5353c1de1",
     "612e188cf000d7ecdabd0dd5e030b0066c93f59a2abef21ac03e496c38559c20",
     0x8065_29df,
+);
+pub const WIRED_LOOP_HOOK_PROBE: FirmwareIdentity = firmware_identity(
+    "wired-loop-hook-probe-v4.60",
+    "61cf9ebc9b7739fbc586a6949a1dbca2f754f07b6e3e7ea16a4319c6d365bd87",
+    "3336ed10de4883b22e79f77e0f937245e289615237016d15c1987aaf3189dfbd",
+    0xd31d_c8f2,
+);
+pub const ACTIVE_LOOP_HOOK_PROBE: FirmwareIdentity = firmware_identity(
+    "active-loop-hook-probe-v4.61",
+    "bf7aab32e3c32b4bf3853a7c79de21e5818961fbeb70239c95b40db7d898d077",
+    "dc240287646193279e2b46d582c635551ca64d020b81b5e68824e426c52ec40b",
+    0xdf50_3f76,
+);
+pub const STEADY_LOOP_HOOK_PROBE: FirmwareIdentity = firmware_identity(
+    "steady-loop-hook-probe-v4.62",
+    "3defe9f5fda2ebaefb923fbe1c62fdd877345ccb75f6b1eec2604e731688d310",
+    "49bb7e6406fa78aebb7df9df10b79fbd7785091dfea5da4a83b0a259f476ec37",
+    0x8a54_4004,
 );
 
 pub const FLASHABLE_IMAGES: [FirmwareIdentity; 12] = [
@@ -998,14 +1046,65 @@ mod tests {
     }
 
     #[test]
+    fn wired_loop_hook_probe_payload_constants() {
+        assert_fixture(
+            WIRED_LOOP_HOOK_PROBE,
+            "firmware/bk3635-stock-harness/target/wired-loop-hook/DO_NOT_FLASH-wired-loop-hook-probe.container.bin",
+        );
+    }
+
+    #[test]
+    fn wired_loop_hook_probe_rejects_one_byte_corruption() {
+        assert_corruption_rejected(
+            WIRED_LOOP_HOOK_PROBE,
+            "firmware/bk3635-stock-harness/target/wired-loop-hook/DO_NOT_FLASH-wired-loop-hook-probe.container.bin",
+            0x22c0,
+        );
+    }
+
+    #[test]
+    fn active_loop_hook_probe_payload_constants() {
+        assert_fixture(
+            ACTIVE_LOOP_HOOK_PROBE,
+            "firmware/bk3635-stock-harness/target/active-loop-hook/DO_NOT_FLASH-active-loop-hook-probe.container.bin",
+        );
+    }
+
+    #[test]
+    fn active_loop_hook_probe_rejects_one_byte_corruption() {
+        assert_corruption_rejected(
+            ACTIVE_LOOP_HOOK_PROBE,
+            "firmware/bk3635-stock-harness/target/active-loop-hook/DO_NOT_FLASH-active-loop-hook-probe.container.bin",
+            0x22a0,
+        );
+    }
+
+    #[test]
+    fn steady_loop_hook_probe_payload_constants() {
+        assert_fixture(
+            STEADY_LOOP_HOOK_PROBE,
+            "firmware/bk3635-stock-harness/target/steady-loop-hook/DO_NOT_FLASH-steady-loop-hook-probe.container.bin",
+        );
+    }
+
+    #[test]
+    fn steady_loop_hook_probe_rejects_one_byte_corruption() {
+        assert_corruption_rejected(
+            STEADY_LOOP_HOOK_PROBE,
+            "firmware/bk3635-stock-harness/target/steady-loop-hook/DO_NOT_FLASH-steady-loop-hook-probe.container.bin",
+            0x22a0,
+        );
+    }
+
+    #[test]
     fn reference_artifact_manifest_is_unique_and_complete() {
-        assert_eq!(REFERENCE_ARTIFACTS.len(), 13);
+        assert_eq!(REFERENCE_ARTIFACTS.len(), 16);
         assert_eq!(
             REFERENCE_ARTIFACTS
                 .iter()
                 .filter(|artifact| artifact.container_sha256.is_some())
                 .count(),
-            11
+            14
         );
         for (index, artifact) in REFERENCE_ARTIFACTS.iter().enumerate() {
             assert_ne!(artifact.code_sha256, [0; 32]);
@@ -1108,6 +1207,27 @@ mod tests {
                 "firmware/bk3635-stock-harness/target/post-init-hook/DO_NOT_FLASH-post-init-hook-probe.injection.bin",
                 Some(
                     "firmware/bk3635-stock-harness/target/post-init-hook/DO_NOT_FLASH-post-init-hook-probe.container.bin",
+                ),
+            ),
+            (
+                13,
+                "firmware/bk3635-stock-harness/target/wired-loop-hook/DO_NOT_FLASH-wired-loop-hook-probe.injection.bin",
+                Some(
+                    "firmware/bk3635-stock-harness/target/wired-loop-hook/DO_NOT_FLASH-wired-loop-hook-probe.container.bin",
+                ),
+            ),
+            (
+                14,
+                "firmware/bk3635-stock-harness/target/active-loop-hook/DO_NOT_FLASH-active-loop-hook-probe.injection.bin",
+                Some(
+                    "firmware/bk3635-stock-harness/target/active-loop-hook/DO_NOT_FLASH-active-loop-hook-probe.container.bin",
+                ),
+            ),
+            (
+                15,
+                "firmware/bk3635-stock-harness/target/steady-loop-hook/DO_NOT_FLASH-steady-loop-hook-probe.injection.bin",
+                Some(
+                    "firmware/bk3635-stock-harness/target/steady-loop-hook/DO_NOT_FLASH-steady-loop-hook-probe.container.bin",
                 ),
             ),
         ];

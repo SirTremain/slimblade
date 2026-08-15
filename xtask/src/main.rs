@@ -5,10 +5,11 @@ use std::process::{self, Command, ExitCode};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use slimblade_image::{
-    APPLICATION_PREFIX_OFFSET, ArtifactIdentity, EXPERIMENT_ENTRY_PROBE_ARTIFACT,
-    LATE_MARKER_PROBE_ARTIFACT, OFFICIAL_V449, POST_INIT_HOOK_PROBE_ARTIFACT, RECOVERY_GUARD,
-    RECOVERY_GUARD_ARTIFACT, RUST_RESPONSE_PROBE_ARTIFACT, STOCK_HARNESS_ARTIFACT,
-    USB_RECOVERY_PROBE, USB_RECOVERY_PROBE_ARTIFACT, sha256,
+    ACTIVE_LOOP_HOOK_PROBE_ARTIFACT, APPLICATION_PREFIX_OFFSET, ArtifactIdentity,
+    EXPERIMENT_ENTRY_PROBE_ARTIFACT, LATE_MARKER_PROBE_ARTIFACT, OFFICIAL_V449,
+    POST_INIT_HOOK_PROBE_ARTIFACT, RECOVERY_GUARD, RECOVERY_GUARD_ARTIFACT,
+    RUST_RESPONSE_PROBE_ARTIFACT, STEADY_LOOP_HOOK_PROBE_ARTIFACT, STOCK_HARNESS_ARTIFACT,
+    USB_RECOVERY_PROBE, USB_RECOVERY_PROBE_ARTIFACT, WIRED_LOOP_HOOK_PROBE_ARTIFACT, sha256,
 };
 use slimblade_protocol::updater_crc32;
 use slimblade_verify::experiment_entry_probe;
@@ -28,6 +29,9 @@ const LATE_MARKER_PROBE_BINARY: &str = "slimblade-late-marker-probe";
 const EXPERIMENT_ENTRY_PROBE_BINARY: &str = "slimblade-experiment-entry-probe";
 const RUST_RESPONSE_PROBE_BINARY: &str = "slimblade-rust-response-probe";
 const POST_INIT_HOOK_PROBE_BINARY: &str = "slimblade-post-init-hook-probe";
+const WIRED_LOOP_HOOK_PROBE_BINARY: &str = "slimblade-wired-loop-hook-probe";
+const ACTIVE_LOOP_HOOK_PROBE_BINARY: &str = "slimblade-active-loop-hook-probe";
+const STEADY_LOOP_HOOK_PROBE_BINARY: &str = "slimblade-steady-loop-hook-probe";
 const USB_PROBE_MAX_STACK_BYTES: usize = 256;
 const USB_PROBE_CODE_ADDRESS: u32 = 0x0000_2020;
 const SYSTEM_MMIO_START: u32 = 0x0080_0000;
@@ -52,6 +56,13 @@ type StockMarkerVerify =
         &[u8],
         &[u8],
     ) -> Result<late_marker_probe::LateMarkerReport, late_marker_probe::VerificationError>;
+type HookBuild = fn(&[u8], &[u8]) -> Result<Vec<u8>, post_init_hook_probe::Error>;
+type HookVerify = fn(
+    &[u8],
+    &[u8],
+    &[u8],
+    &[u8],
+) -> Result<post_init_hook_probe::Report, post_init_hook_probe::Error>;
 
 fn repository_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..")
@@ -125,7 +136,10 @@ fn host_checks(root: &Path) -> Result<(), String> {
     build_late_marker_probe(root)?;
     build_experiment_entry_probe(root)?;
     build_rust_response_probe(root)?;
-    build_post_init_hook_probe(root)
+    build_post_init_hook_probe(root)?;
+    build_wired_loop_hook_probe(root)?;
+    build_active_loop_hook_probe(root)?;
+    build_steady_loop_hook_probe(root)
 }
 
 fn build_rust_guard(root: &Path) -> Result<(), String> {
@@ -703,6 +717,71 @@ fn build_rust_response_probe(root: &Path) -> Result<(), String> {
 }
 
 fn build_post_init_hook_probe(root: &Path) -> Result<(), String> {
+    build_hook_probe(
+        root,
+        POST_INIT_HOOK_PROBE_BINARY,
+        "post-init-hook",
+        "post-init-hook-probe",
+        "post-init hook",
+        POST_INIT_HOOK_PROBE_ARTIFACT,
+        post_init_hook_probe::build,
+        post_init_hook_probe::verify,
+    )
+}
+
+fn build_wired_loop_hook_probe(root: &Path) -> Result<(), String> {
+    build_hook_probe(
+        root,
+        WIRED_LOOP_HOOK_PROBE_BINARY,
+        "wired-loop-hook",
+        "wired-loop-hook-probe",
+        "wired-loop hook",
+        WIRED_LOOP_HOOK_PROBE_ARTIFACT,
+        post_init_hook_probe::build_wired,
+        post_init_hook_probe::verify_wired,
+    )
+}
+
+fn build_active_loop_hook_probe(root: &Path) -> Result<(), String> {
+    build_hook_probe(
+        root,
+        ACTIVE_LOOP_HOOK_PROBE_BINARY,
+        "active-loop-hook",
+        "active-loop-hook-probe",
+        "active-loop hook",
+        ACTIVE_LOOP_HOOK_PROBE_ARTIFACT,
+        post_init_hook_probe::build_active,
+        post_init_hook_probe::verify_active,
+    )
+}
+
+fn build_steady_loop_hook_probe(root: &Path) -> Result<(), String> {
+    build_hook_probe(
+        root,
+        STEADY_LOOP_HOOK_PROBE_BINARY,
+        "steady-loop-hook",
+        "steady-loop-hook-probe",
+        "steady-loop hook",
+        STEADY_LOOP_HOOK_PROBE_ARTIFACT,
+        post_init_hook_probe::build_steady,
+        post_init_hook_probe::verify_steady,
+    )
+}
+
+#[allow(
+    clippy::too_many_arguments,
+    reason = "the hook builder keeps each locked artifact parameter explicit at its call site"
+)]
+fn build_hook_probe(
+    root: &Path,
+    binary: &str,
+    artifact_directory: &str,
+    artifact_stem: &str,
+    label: &str,
+    artifact: ArtifactIdentity,
+    build: HookBuild,
+    verify: HookVerify,
+) -> Result<(), String> {
     let firmware = root.join("firmware/bk3635-stock-harness");
     run(&firmware, "cargo", &[FIRMWARE_TOOLCHAIN, "fmt", "--check"])?;
     run(
@@ -712,7 +791,7 @@ fn build_post_init_hook_probe(root: &Path) -> Result<(), String> {
             FIRMWARE_TOOLCHAIN,
             "clippy",
             "--bin",
-            POST_INIT_HOOK_PROBE_BINARY,
+            binary,
             "--",
             "-D",
             "warnings",
@@ -721,23 +800,17 @@ fn build_post_init_hook_probe(root: &Path) -> Result<(), String> {
     run(
         &firmware,
         "cargo",
-        &[
-            FIRMWARE_TOOLCHAIN,
-            "build",
-            "--release",
-            "--bin",
-            POST_INIT_HOOK_PROBE_BINARY,
-        ],
+        &[FIRMWARE_TOOLCHAIN, "build", "--release", "--bin", binary],
     )?;
 
     let elf = firmware
         .join("target/thumbv5te-none-eabi/release")
-        .join(POST_INIT_HOOK_PROBE_BINARY);
-    let artifact_dir = firmware.join("target/post-init-hook");
+        .join(binary);
+    let artifact_dir = firmware.join("target").join(artifact_directory);
     fs::create_dir_all(&artifact_dir)
         .map_err(|error| format!("could not create {}: {error}", artifact_dir.display()))?;
-    let injection_path = artifact_dir.join("DO_NOT_FLASH-post-init-hook-probe.injection.bin");
-    let container_path = artifact_dir.join("DO_NOT_FLASH-post-init-hook-probe.container.bin");
+    let injection_path = artifact_dir.join(format!("DO_NOT_FLASH-{artifact_stem}.injection.bin"));
+    let container_path = artifact_dir.join(format!("DO_NOT_FLASH-{artifact_stem}.container.bin"));
     let objcopy = Command::new("llvm-objcopy")
         .args(["-O", "binary"])
         .arg(&elf)
@@ -750,8 +823,8 @@ fn build_post_init_hook_probe(root: &Path) -> Result<(), String> {
     }
     let injection = fs::read(&injection_path)
         .map_err(|error| format!("could not read {}: {error}", injection_path.display()))?;
-    if !POST_INIT_HOOK_PROBE_ARTIFACT.code_matches(&injection) {
-        return Err("post-init hook injection identity changed".to_owned());
+    if !artifact.code_matches(&injection) {
+        return Err(format!("{label} injection identity changed"));
     }
 
     let base_path = root.join(
@@ -759,13 +832,13 @@ fn build_post_init_hook_probe(root: &Path) -> Result<(), String> {
     );
     let base = fs::read(&base_path)
         .map_err(|error| format!("could not read {}: {error}", base_path.display()))?;
-    let container = post_init_hook_probe::build(&base, &injection)
-        .map_err(|error| format!("could not pack post-init hook probe: {error}"))?;
+    let container = build(&base, &injection)
+        .map_err(|error| format!("could not pack {label} probe: {error}"))?;
     let payload = container
         .get(APPLICATION_PREFIX_OFFSET..)
-        .ok_or_else(|| "post-init hook container has no updater payload".to_owned())?;
+        .ok_or_else(|| format!("{label} container has no updater payload"))?;
     eprintln!(
-        "post-init hook candidate: {} bytes, injection SHA-256 {}, container SHA-256 {}, payload SHA-256 {}, payload CRC {:08x}",
+        "{label} candidate: {} bytes, injection SHA-256 {}, container SHA-256 {}, payload SHA-256 {}, payload CRC {:08x}",
         container.len(),
         format_sha256(sha256(&injection))?,
         format_sha256(sha256(&container))?,
@@ -775,12 +848,12 @@ fn build_post_init_hook_probe(root: &Path) -> Result<(), String> {
 
     let elf_bytes =
         fs::read(&elf).map_err(|error| format!("could not read {}: {error}", elf.display()))?;
-    let report = post_init_hook_probe::verify(&base, &container, &injection, &elf_bytes)
-        .map_err(|error| format!("post-init hook audit failed: {error}"))?;
+    let report = verify(&base, &container, &injection, &elf_bytes)
+        .map_err(|error| format!("{label} audit failed: {error}"))?;
     fs::write(&container_path, &container)
         .map_err(|error| format!("could not write {}: {error}", container_path.display()))?;
     eprintln!(
-        "post-init hook PASS: injection SHA-256 {}, container SHA-256 {}, payload SHA-256 {}, payload CRC {:08x}",
+        "{label} PASS: injection SHA-256 {}, container SHA-256 {}, payload SHA-256 {}, payload CRC {:08x}",
         format_sha256(report.injection_sha256)?,
         format_sha256(report.container_sha256)?,
         format_sha256(report.payload_sha256)?,
@@ -975,7 +1048,7 @@ fn disassemble_stock(
 
 fn usage() {
     eprintln!(
-        "usage:\n  cargo xtask <check|rust-guard|usb-probe|stock-harness|late-marker-probe|experiment-entry-probe|rust-response-probe|post-init-hook-probe|postlink|all>\n  cargo xtask disassemble-stock FIRMWARE START STOP <arm|thumb>"
+        "usage:\n  cargo xtask <check|rust-guard|usb-probe|stock-harness|late-marker-probe|experiment-entry-probe|rust-response-probe|post-init-hook-probe|wired-loop-hook-probe|active-loop-hook-probe|steady-loop-hook-probe|postlink|all>\n  cargo xtask disassemble-stock FIRMWARE START STOP <arm|thumb>"
     );
 }
 
@@ -993,6 +1066,9 @@ fn main() -> ExitCode {
         [command] if command == "experiment-entry-probe" => build_experiment_entry_probe(&root),
         [command] if command == "rust-response-probe" => build_rust_response_probe(&root),
         [command] if command == "post-init-hook-probe" => build_post_init_hook_probe(&root),
+        [command] if command == "wired-loop-hook-probe" => build_wired_loop_hook_probe(&root),
+        [command] if command == "active-loop-hook-probe" => build_active_loop_hook_probe(&root),
+        [command] if command == "steady-loop-hook-probe" => build_steady_loop_hook_probe(&root),
         [command] if command == "postlink" => post_link_checks(&root),
         [command, firmware, start, stop, state] if command == "disassemble-stock" => {
             disassemble_stock(&root, firmware, start, stop, state)
