@@ -17,6 +17,8 @@ pub mod recovery_stub;
 #[cfg(feature = "std")]
 pub mod reset_trampoline;
 #[cfg(feature = "std")]
+pub mod rust_response_probe;
+#[cfg(feature = "std")]
 pub mod sdk_startup;
 #[cfg(feature = "std")]
 pub mod startup_trampoline;

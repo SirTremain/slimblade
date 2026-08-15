@@ -45,7 +45,7 @@ impl ArtifactIdentity {
     }
 }
 
-pub const REFERENCE_ARTIFACTS: [ArtifactIdentity; 11] = [
+pub const REFERENCE_ARTIFACTS: [ArtifactIdentity; 12] = [
     ArtifactIdentity {
         name: "stock-startup-reference",
         code_sha256: parse_sha256(
@@ -141,6 +141,15 @@ pub const REFERENCE_ARTIFACTS: [ArtifactIdentity; 11] = [
             "bc3275a95a0ebd4f3c12863ed2607d5f9ce026903ef19f145e177834f1a988b3",
         )),
     },
+    ArtifactIdentity {
+        name: "marker-first-rust-response-probe",
+        code_sha256: parse_sha256(
+            "964b064a5ab6e5b3149caa3d002d12a04c2b7b37d5569ca058de7898bcdc573e",
+        ),
+        container_sha256: Some(parse_sha256(
+            "93e939ffdf19a7d862108182528fac7d9b066e59fa853b21327bedd6260b14d4",
+        )),
+    },
 ];
 
 pub const STOCK_STARTUP_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[0];
@@ -154,6 +163,7 @@ pub const USB_RECOVERY_PROBE_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[7]
 pub const STOCK_HARNESS_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[8];
 pub const LATE_MARKER_PROBE_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[9];
 pub const EXPERIMENT_ENTRY_PROBE_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[10];
+pub const RUST_RESPONSE_PROBE_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[11];
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct FirmwareIdentity {
@@ -331,8 +341,14 @@ pub const EXPERIMENT_ENTRY_PROBE: FirmwareIdentity = firmware_identity(
     "08a4201ef3d9656b720914ac86447fdae27463e0302f7edd6f4641186b3e8fa9",
     0x2381_ed73,
 );
+pub const RUST_RESPONSE_PROBE: FirmwareIdentity = firmware_identity(
+    "marker-first-rust-response-probe-v4.58",
+    "93e939ffdf19a7d862108182528fac7d9b066e59fa853b21327bedd6260b14d4",
+    "1b1a76c85e0a94345ff54c47389f93fd9038a1c23a9755ace956c87f907fd24b",
+    0x671c_f8a7,
+);
 
-pub const FLASHABLE_IMAGES: [FirmwareIdentity; 11] = [
+pub const FLASHABLE_IMAGES: [FirmwareIdentity; 12] = [
     OFFICIAL_V449,
     V449_DESCRIPTOR_PROBE,
     RECOVERY_CARRIER,
@@ -344,6 +360,7 @@ pub const FLASHABLE_IMAGES: [FirmwareIdentity; 11] = [
     STOCK_HARNESS,
     LATE_MARKER_PROBE,
     EXPERIMENT_ENTRY_PROBE,
+    RUST_RESPONSE_PROBE,
 ];
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -931,14 +948,31 @@ mod tests {
     }
 
     #[test]
+    fn rust_response_probe_payload_constants() {
+        assert_fixture(
+            RUST_RESPONSE_PROBE,
+            "firmware/bk3635-stock-harness/target/rust-response/DO_NOT_FLASH-rust-response-probe.container.bin",
+        );
+    }
+
+    #[test]
+    fn rust_response_probe_rejects_one_byte_corruption() {
+        assert_corruption_rejected(
+            RUST_RESPONSE_PROBE,
+            "firmware/bk3635-stock-harness/target/rust-response/DO_NOT_FLASH-rust-response-probe.container.bin",
+            0x22c4,
+        );
+    }
+
+    #[test]
     fn reference_artifact_manifest_is_unique_and_complete() {
-        assert_eq!(REFERENCE_ARTIFACTS.len(), 11);
+        assert_eq!(REFERENCE_ARTIFACTS.len(), 12);
         assert_eq!(
             REFERENCE_ARTIFACTS
                 .iter()
                 .filter(|artifact| artifact.container_sha256.is_some())
                 .count(),
-            9
+            10
         );
         for (index, artifact) in REFERENCE_ARTIFACTS.iter().enumerate() {
             assert_ne!(artifact.code_sha256, [0; 32]);
@@ -1023,6 +1057,13 @@ mod tests {
                 "firmware/bk3635-stock-harness/target/experiment-entry/DO_NOT_FLASH-experiment-entry-probe.injection.bin",
                 Some(
                     "firmware/bk3635-stock-harness/target/experiment-entry/DO_NOT_FLASH-experiment-entry-probe.container.bin",
+                ),
+            ),
+            (
+                11,
+                "firmware/bk3635-stock-harness/target/rust-response/DO_NOT_FLASH-rust-response-probe.injection.bin",
+                Some(
+                    "firmware/bk3635-stock-harness/target/rust-response/DO_NOT_FLASH-rust-response-probe.container.bin",
                 ),
             ),
         ];

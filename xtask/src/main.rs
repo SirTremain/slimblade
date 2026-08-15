@@ -7,12 +7,14 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use slimblade_image::{
     APPLICATION_PREFIX_OFFSET, ArtifactIdentity, EXPERIMENT_ENTRY_PROBE_ARTIFACT,
     LATE_MARKER_PROBE_ARTIFACT, OFFICIAL_V449, RECOVERY_GUARD, RECOVERY_GUARD_ARTIFACT,
-    STOCK_HARNESS_ARTIFACT, USB_RECOVERY_PROBE, USB_RECOVERY_PROBE_ARTIFACT, sha256,
+    RUST_RESPONSE_PROBE_ARTIFACT, STOCK_HARNESS_ARTIFACT, USB_RECOVERY_PROBE,
+    USB_RECOVERY_PROBE_ARTIFACT, sha256,
 };
 use slimblade_protocol::updater_crc32;
 use slimblade_verify::experiment_entry_probe;
 use slimblade_verify::late_marker_probe;
 use slimblade_verify::post_link::audit_nm_outputs;
+use slimblade_verify::rust_response_probe;
 use slimblade_verify::stock_harness;
 use slimblade_verify::usb_probe::{EXPERIMENT_ADDRESS, audit_code};
 
@@ -23,6 +25,7 @@ const USB_PROBE_BINARY: &str = "slimblade-usb-recovery-probe";
 const STOCK_HARNESS_BINARY: &str = "slimblade-stock-harness";
 const LATE_MARKER_PROBE_BINARY: &str = "slimblade-late-marker-probe";
 const EXPERIMENT_ENTRY_PROBE_BINARY: &str = "slimblade-experiment-entry-probe";
+const RUST_RESPONSE_PROBE_BINARY: &str = "slimblade-rust-response-probe";
 const USB_PROBE_MAX_STACK_BYTES: usize = 256;
 const USB_PROBE_CODE_ADDRESS: u32 = 0x0000_2020;
 const SYSTEM_MMIO_START: u32 = 0x0080_0000;
@@ -118,7 +121,8 @@ fn host_checks(root: &Path) -> Result<(), String> {
     build_usb_probe(root)?;
     build_stock_harness(root)?;
     build_late_marker_probe(root)?;
-    build_experiment_entry_probe(root)
+    build_experiment_entry_probe(root)?;
+    build_rust_response_probe(root)
 }
 
 fn build_rust_guard(root: &Path) -> Result<(), String> {
@@ -682,6 +686,19 @@ fn build_experiment_entry_probe(root: &Path) -> Result<(), String> {
     )
 }
 
+fn build_rust_response_probe(root: &Path) -> Result<(), String> {
+    build_stock_marker_probe(
+        root,
+        RUST_RESPONSE_PROBE_BINARY,
+        "rust-response",
+        "rust-response-probe",
+        "Rust response",
+        RUST_RESPONSE_PROBE_ARTIFACT,
+        rust_response_probe::build,
+        rust_response_probe::verify,
+    )
+}
+
 #[allow(
     clippy::too_many_arguments,
     reason = "the probe builder keeps each locked artifact parameter explicit at its call site"
@@ -868,7 +885,7 @@ fn disassemble_stock(
 
 fn usage() {
     eprintln!(
-        "usage:\n  cargo xtask <check|rust-guard|usb-probe|stock-harness|late-marker-probe|experiment-entry-probe|postlink|all>\n  cargo xtask disassemble-stock FIRMWARE START STOP <arm|thumb>"
+        "usage:\n  cargo xtask <check|rust-guard|usb-probe|stock-harness|late-marker-probe|experiment-entry-probe|rust-response-probe|postlink|all>\n  cargo xtask disassemble-stock FIRMWARE START STOP <arm|thumb>"
     );
 }
 
@@ -884,6 +901,7 @@ fn main() -> ExitCode {
         [command] if command == "stock-harness" => build_stock_harness(&root),
         [command] if command == "late-marker-probe" => build_late_marker_probe(&root),
         [command] if command == "experiment-entry-probe" => build_experiment_entry_probe(&root),
+        [command] if command == "rust-response-probe" => build_rust_response_probe(&root),
         [command] if command == "postlink" => post_link_checks(&root),
         [command, firmware, start, stop, state] if command == "disassemble-stock" => {
             disassemble_stock(&root, firmware, start, stop, state)

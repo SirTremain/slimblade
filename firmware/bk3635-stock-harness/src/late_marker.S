@@ -17,6 +17,18 @@
     .global carrier_dispatch
     .type carrier_dispatch, %function
 carrier_dispatch:
+    .ifdef RUST_RESPONSE_PROBE
+    cmp r0, #0x0d
+    beq .Lstock_recovery
+    cmp r0, #0x0e
+    beq carrier_late_marker
+    bx lr
+    nop
+.Lstock_recovery:
+    ldr r3, =STOCK_RECOVERY_COMMAND
+    bx r3
+    nop
+    .else
     cmp r0, #0x0d
     beq .Lstock_recovery
     cmp r0, #0x0e
@@ -27,6 +39,7 @@ carrier_dispatch:
 .Lstock_recovery:
     ldr r3, =STOCK_RECOVERY_COMMAND
     bx r3
+    .endif
     .size carrier_dispatch, . - carrier_dispatch
 
     .thumb_func
@@ -39,10 +52,24 @@ carrier_late_marker:
 .Lexperiment_hang:
     b .Lexperiment_hang
     .else
+    .ifdef RUST_RESPONSE_PROBE
+    b rust_response_shim
+    .else
     pop {r4, pc}
+    .endif
     .endif
     .size carrier_late_marker, . - carrier_late_marker
 
+    .ifdef RUST_RESPONSE_PROBE
+    .thumb_func
+    .global rust_response_shim
+    .type rust_response_shim, %function
+rust_response_shim:
+    bl rust_probe_value
+    strb r0, [r4, #3]
+    pop {r4, pc}
+    .size rust_response_shim, . - rust_response_shim
+    .else
     .thumb_func
     .type carrier_reset_probe, %function
 carrier_reset_probe:
@@ -55,6 +82,7 @@ carrier_full_recovery:
     bl marker_set
     b watchdog_reset
     .size carrier_full_recovery, . - carrier_full_recovery
+    .endif
 
 /* Called only from Thumb code; restore interrupt control before returning. */
     .thumb_func

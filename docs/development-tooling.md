@@ -29,6 +29,10 @@ Rust 1.97.1; the isolated `thumbv5te-none-eabi` firmware workspace pins nightly
 - `cargo xtask experiment-entry-probe`: build and audit the `0457` image whose
   post-startup command `0x0e` runs the verified marker writer and then enters a
   two-byte hang. It does not access or flash the device.
+- `cargo xtask rust-response-probe`: build and audit the `0458` image whose
+  command `0x0e` writes the marker, calls an eight-byte Rust function, places
+  its `0x58` return value in the stock response, and returns. It does not access
+  or flash the device.
 - `cargo xtask postlink`: rerun the Rust guard ELF symbol audit.
 - `cargo xtask all`: alias the complete Rust-only `check` gate.
 - `cargo xtask disassemble-stock FIRMWARE START STOP arm|thumb`: hash-lock an
@@ -82,6 +86,11 @@ injection differs from live-tested `0456` only where the marker routine would
 return: bytes `10 bd` become the Thumb self-loop `fe e7`. Its locked container
 SHA-256 is
 `bc3275a95a0ebd4f3c12863ed2607d5f9ce026903ef19f145e177834f1a988b3`.
+
+The first bounded Rust execution artifact is tracked in
+[`rust-response-probe.md`](rust-response-probe.md). Its locked container
+SHA-256 is
+`93e939ffdf19a7d862108182528fac7d9b066e59fa853b21327bedd6260b14d4`.
 
 The protocol crate is dependency-free and `no_std`. It reproduces the existing
 17-byte and 49-byte command reports, updater CRC, preparation report and B1

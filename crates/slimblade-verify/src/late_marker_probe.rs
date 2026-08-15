@@ -26,7 +26,11 @@ const CARRIER_EXECUTABLE_SIZE: u32 = 0x0114;
 pub(crate) struct ProbeSpec {
     pub artifact: ArtifactIdentity,
     pub identity: FirmwareIdentity,
+    pub dispatch: [u8; 18],
     pub marker_entry_tail: [u8; 2],
+    pub response_shim: Option<[u8; 8]>,
+    pub gap: [u8; 12],
+    pub probe_section_size: u32,
     pub device_version_low: u8,
     pub usb_bcd_device: u16,
 }
@@ -34,7 +38,11 @@ pub(crate) struct ProbeSpec {
 const LATE_MARKER_SPEC: ProbeSpec = ProbeSpec {
     artifact: LATE_MARKER_PROBE_ARTIFACT,
     identity: LATE_MARKER_PROBE,
+    dispatch: DISPATCH,
     marker_entry_tail: [0x10, 0xbd],
+    response_shim: None,
+    gap: [0; 12],
+    probe_section_size: 0,
     device_version_low: 0x56,
     usb_bcd_device: 0x0456,
 };
@@ -281,9 +289,12 @@ pub(crate) fn verify_with_spec(
     if image != expected {
         return Err(VerificationError::DerivedImage);
     }
-    require_bytes(injection, 0, &DISPATCH)?;
+    require_bytes(injection, 0, &spec.dispatch)?;
     require_bytes(injection, 0x12, &MARKER_ENTRY_PREFIX)?;
     require_bytes(injection, 0x18, &spec.marker_entry_tail)?;
+    if let Some(response_shim) = spec.response_shim {
+        require_bytes(injection, 0x1a, &response_shim)?;
+    }
     require_bytes(injection, 0x66, &STOCK_RESUME)?;
     for (offset, expected) in CRITICAL_WORDS.into_iter().chain(ARM_WORDS) {
         let actual = read_u32(injection, offset)?;
@@ -294,10 +305,7 @@ pub(crate) fn verify_with_spec(
     if read_u32(injection, 0x150)? != STOCK_RESUME_POINTER {
         return Err(VerificationError::StartupMarkerCall);
     }
-    if injection
-        .get(CARRIER_EXECUTABLE_BYTES..0x120)
-        .is_none_or(|gap| gap.iter().any(|byte| *byte != 0))
-    {
+    if injection.get(CARRIER_EXECUTABLE_BYTES..0x120) != Some(spec.gap.as_slice()) {
         return Err(VerificationError::UnusedGap);
     }
     verify_arm_branch(
@@ -340,7 +348,7 @@ pub(crate) fn verify_with_spec(
             return Err(VerificationError::HeaderCrc { offset });
         }
     }
-    verify_elf(elf_bytes)?;
+    verify_elf(elf_bytes, spec)?;
     let payload = spec
         .identity
         .validate(image)
@@ -385,7 +393,7 @@ fn verify_arm_branch(
     }
 }
 
-fn verify_elf(bytes: &[u8]) -> Result<(), VerificationError> {
+fn verify_elf(bytes: &[u8], spec: ProbeSpec) -> Result<(), VerificationError> {
     let elf = Elf32::parse(bytes).map_err(VerificationError::Elf)?;
     if elf.elf_type() != ELF_TYPE_EXECUTABLE
         || elf.machine() != ELF_MACHINE_ARM
@@ -396,6 +404,7 @@ fn verify_elf(bytes: &[u8]) -> Result<(), VerificationError> {
         ));
     }
     let mut carrier = false;
+    let mut probe = spec.probe_section_size == 0;
     let mut trampoline = false;
     for section in elf.sections() {
         let section = section.map_err(VerificationError::Elf)?;
@@ -411,6 +420,9 @@ fn verify_elf(bytes: &[u8]) -> Result<(), VerificationError> {
             ".carrier" if section.address == 0x21ac && section.size == CARRIER_EXECUTABLE_SIZE => {
                 carrier = true;
             },
+            ".probe" if section.address == 0x22c0 && section.size == spec.probe_section_size => {
+                probe = true;
+            },
             ".trampoline" if section.address == 0x22cc && section.size == 0x34 => {
                 trampoline = true;
             },
@@ -421,7 +433,7 @@ fn verify_elf(bytes: &[u8]) -> Result<(), VerificationError> {
             },
         }
     }
-    if !carrier || !trampoline {
+    if !carrier || !probe || !trampoline {
         return Err(VerificationError::ElfInvariant(
             "ELF is missing a reviewed executable section",
         ));

@@ -4,7 +4,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-use slimblade_cli::{FlashArtifact, PostFlashExpectation, late_marker_response_is_success};
+use slimblade_cli::{
+    FlashArtifact, PostFlashExpectation, late_marker_response_is_success, rust_response_is_success,
+};
 use slimblade_linux::flash::{transfer_payload, wait_for_queried_loader};
 use slimblade_linux::hidraw::Hidraw;
 use slimblade_linux::sysfs::{
@@ -28,6 +30,9 @@ enum Command {
     StartExperiment {
         confirmed: bool,
     },
+    RunRustResponse {
+        confirmed: bool,
+    },
     QueryLoader,
     Flash {
         artifact: FlashArtifact,
@@ -44,7 +49,7 @@ struct Arguments {
 }
 
 const fn usage() -> &'static str {
-    "usage:\n  slimblade [--device PATH] identify\n  slimblade [--device PATH] [--timeout-seconds N] enter-loader --confirm\n  slimblade [--device PATH] [--timeout-seconds N] set-late-marker --confirm\n  slimblade [--device PATH] [--timeout-seconds N] start-experiment --confirm\n  slimblade [--device PATH] [--timeout-seconds N] query-loader\n  slimblade [--device PATH] [--timeout-seconds N] FLASH_COMMAND --firmware PATH --confirm-sha256 HASH\n\nFLASH_COMMAND: restore-official-v449, flash-descriptor-probe, flash-recovery-carrier, flash-reset-trampoline, flash-recovery-stub, flash-startup-trampoline, flash-rust-guard, flash-usb-recovery-probe, flash-stock-harness, flash-late-marker-probe, or flash-experiment-entry-probe"
+    "usage:\n  slimblade [--device PATH] identify\n  slimblade [--device PATH] [--timeout-seconds N] enter-loader --confirm\n  slimblade [--device PATH] [--timeout-seconds N] set-late-marker --confirm\n  slimblade [--device PATH] [--timeout-seconds N] start-experiment --confirm\n  slimblade [--device PATH] [--timeout-seconds N] run-rust-response --confirm\n  slimblade [--device PATH] [--timeout-seconds N] query-loader\n  slimblade [--device PATH] [--timeout-seconds N] FLASH_COMMAND --firmware PATH --confirm-sha256 HASH\n\nFLASH_COMMAND: restore-official-v449, flash-descriptor-probe, flash-recovery-carrier, flash-reset-trampoline, flash-recovery-stub, flash-startup-trampoline, flash-rust-guard, flash-usb-recovery-probe, flash-stock-harness, flash-late-marker-probe, flash-experiment-entry-probe, or flash-rust-response-probe"
 }
 
 fn take_value(arguments: &[String], index: &mut usize, option: &str) -> Result<String, String> {
@@ -100,6 +105,7 @@ fn parse_arguments() -> Result<Arguments, String> {
         "enter-loader" => Command::EnterLoader { confirmed },
         "set-late-marker" => Command::SetLateMarker { confirmed },
         "start-experiment" => Command::StartExperiment { confirmed },
+        "run-rust-response" => Command::RunRustResponse { confirmed },
         "query-loader" => Command::QueryLoader,
         "restore-official-v449"
         | "flash-descriptor-probe"
@@ -111,7 +117,8 @@ fn parse_arguments() -> Result<Arguments, String> {
         | "flash-usb-recovery-probe"
         | "flash-stock-harness"
         | "flash-late-marker-probe"
-        | "flash-experiment-entry-probe" => Command::Flash {
+        | "flash-experiment-entry-probe"
+        | "flash-rust-response-probe" => Command::Flash {
             artifact: match command_name.as_str() {
                 "restore-official-v449" => FlashArtifact::OfficialV449,
                 "flash-descriptor-probe" => FlashArtifact::DescriptorProbe,
@@ -124,6 +131,7 @@ fn parse_arguments() -> Result<Arguments, String> {
                 "flash-stock-harness" => FlashArtifact::StockHarness,
                 "flash-late-marker-probe" => FlashArtifact::LateMarkerProbe,
                 "flash-experiment-entry-probe" => FlashArtifact::ExperimentEntryProbe,
+                "flash-rust-response-probe" => FlashArtifact::RustResponseProbe,
                 _ => return Err("unreachable flash command mapping".to_owned()),
             },
             firmware: firmware.ok_or_else(|| "flash command requires --firmware".to_owned())?,
@@ -136,7 +144,8 @@ fn parse_arguments() -> Result<Arguments, String> {
         Command::Identify
         | Command::EnterLoader { .. }
         | Command::SetLateMarker { .. }
-        | Command::StartExperiment { .. } => DEFAULT_APPLICATION_DEVICE,
+        | Command::StartExperiment { .. }
+        | Command::RunRustResponse { .. } => DEFAULT_APPLICATION_DEVICE,
         Command::QueryLoader | Command::Flash { .. } => DEFAULT_LOADER_DEVICE,
     };
     Ok(Arguments {
@@ -288,6 +297,45 @@ fn start_experiment(device: &Path, timeout: Duration, confirmed: bool) -> Result
     Ok(())
 }
 
+fn run_rust_response(device: &Path, timeout: Duration, confirmed: bool) -> Result<(), String> {
+    if !confirmed {
+        return Err("refusing marker-first Rust response probe without --confirm".to_owned());
+    }
+    let parent = usb_parent_for_hidraw(device, Path::new(HIDRAW_SYSFS_ROOT))
+        .map_err(|error| format!("could not resolve USB parent: {error}"))?
+        .ok_or_else(|| "could not find USB parent".to_owned())?;
+    if parent.identity != KENSINGTON_WIRED_IDENTITY || parent.bcd_device.as_deref() != Some("0458")
+    {
+        return Err(format!(
+            "refusing Rust response command for identity {:04x}:{:04x} bcdDevice={:?}; expected 047d:80d7/0458",
+            parent.identity.vendor_id, parent.identity.product_id, parent.bcd_device
+        ));
+    }
+    let mut hidraw = Hidraw::open_read_write(device)
+        .map_err(|error| format!("could not open {}: {error}", device.display()))?;
+    let (_, identity) = hidraw
+        .identity()
+        .map_err(|error| format!("could not query HID identity: {error}"))?;
+    if identity != parent.identity {
+        return Err("HID identity and USB parent disagree".to_owned());
+    }
+    hidraw
+        .write_report(NormalReport::command(0x0e).as_bytes())
+        .map_err(|error| format!("Rust response report failed: {error}"))?;
+    let response = hidraw
+        .read_normal_report(timeout.max(Duration::from_secs(3)))
+        .map_err(|error| format!("Rust response read failed: {error}"))?
+        .ok_or_else(|| "Rust response probe did not return a vendor response".to_owned())?;
+    if !rust_response_is_success(response) {
+        return Err("Rust response probe returned an unexpected signature or status".to_owned());
+    }
+    println!(
+        "rust_response=ack command=0e status=01 signature=58 sysfs={}",
+        parent.sysfs
+    );
+    Ok(())
+}
+
 fn query_loader(device: &Path, timeout: Duration) -> Result<(), String> {
     let loader = wait_for_queried_loader(device, timeout.max(Duration::from_secs(8)))
         .map_err(|error| error.to_string())?;
@@ -404,6 +452,9 @@ fn run() -> Result<(), String> {
         },
         Command::StartExperiment { confirmed } => {
             start_experiment(&arguments.device, arguments.timeout, confirmed)
+        },
+        Command::RunRustResponse { confirmed } => {
+            run_rust_response(&arguments.device, arguments.timeout, confirmed)
         },
         Command::QueryLoader => query_loader(&arguments.device, arguments.timeout),
         Command::Flash {

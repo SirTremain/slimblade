@@ -7,7 +7,14 @@ use crate::late_marker_probe::{
 const SPEC: ProbeSpec = ProbeSpec {
     artifact: EXPERIMENT_ENTRY_PROBE_ARTIFACT,
     identity: EXPERIMENT_ENTRY_PROBE,
+    dispatch: [
+        0x0d, 0x28, 0x04, 0xd0, 0x0e, 0x28, 0x04, 0xd0, 0x0f, 0x28, 0x06, 0xd0, 0x06, 0xe0, 0x31,
+        0x4b, 0x18, 0x47,
+    ],
     marker_entry_tail: [0xfe, 0xe7],
+    response_shim: None,
+    gap: [0; 12],
+    probe_section_size: 0,
     device_version_low: 0x57,
     usb_bcd_device: 0x0457,
 };

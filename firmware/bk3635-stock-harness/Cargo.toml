@@ -17,6 +17,10 @@ path = "src/late_marker.rs"
 name = "slimblade-experiment-entry-probe"
 path = "src/experiment_entry.rs"
 
+[[bin]]
+name = "slimblade-rust-response-probe"
+path = "src/rust_response.rs"
+
 [profile.dev]
 panic = "abort"
 

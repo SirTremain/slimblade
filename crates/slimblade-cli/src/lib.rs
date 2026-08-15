@@ -1,7 +1,7 @@
 use slimblade_image::{
     EXPERIMENT_ENTRY_PROBE, FirmwareIdentity, LATE_MARKER_PROBE, OFFICIAL_V449, RECOVERY_CARRIER,
-    RECOVERY_GUARD, RECOVERY_STUB, RESET_TRAMPOLINE, STARTUP_TRAMPOLINE, STOCK_HARNESS,
-    USB_RECOVERY_PROBE, V449_DESCRIPTOR_PROBE,
+    RECOVERY_GUARD, RECOVERY_STUB, RESET_TRAMPOLINE, RUST_RESPONSE_PROBE, STARTUP_TRAMPOLINE,
+    STOCK_HARNESS, USB_RECOVERY_PROBE, V449_DESCRIPTOR_PROBE,
 };
 use slimblade_protocol::NormalReport;
 
@@ -10,6 +10,13 @@ pub const FULL_RECOVERY_CONFIRMATION: &str = "ERASE-MARKER-RESET";
 #[must_use]
 pub fn late_marker_response_is_success(response: NormalReport) -> bool {
     response.command_byte() == 0x0e && response.as_bytes().get(2) == Some(&0x01)
+}
+
+#[must_use]
+pub fn rust_response_is_success(response: NormalReport) -> bool {
+    response.command_byte() == 0x0e
+        && response.as_bytes().get(2) == Some(&0x01)
+        && response.as_bytes().get(3) == Some(&0x58)
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -25,6 +32,7 @@ pub enum FlashArtifact {
     StockHarness,
     LateMarkerProbe,
     ExperimentEntryProbe,
+    RustResponseProbe,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -49,6 +57,7 @@ impl FlashArtifact {
             Self::StockHarness => STOCK_HARNESS,
             Self::LateMarkerProbe => LATE_MARKER_PROBE,
             Self::ExperimentEntryProbe => EXPERIMENT_ENTRY_PROBE,
+            Self::RustResponseProbe => RUST_RESPONSE_PROBE,
         }
     }
 
@@ -76,6 +85,7 @@ impl FlashArtifact {
             Self::StockHarness => PostFlashExpectation::Application { bcd_device: "0455" },
             Self::LateMarkerProbe => PostFlashExpectation::Application { bcd_device: "0456" },
             Self::ExperimentEntryProbe => PostFlashExpectation::Application { bcd_device: "0457" },
+            Self::RustResponseProbe => PostFlashExpectation::Application { bcd_device: "0458" },
         }
     }
 }
@@ -197,6 +207,18 @@ mod tests {
     }
 
     #[test]
+    fn rust_response_probe_needs_exact_hash_confirmation() {
+        assert!(!FlashArtifact::RustResponseProbe.confirmation_matches("wrong"));
+        assert!(FlashArtifact::RustResponseProbe.confirmation_matches(
+            "93e939ffdf19a7d862108182528fac7d9b066e59fa853b21327bedd6260b14d4"
+        ));
+        assert_eq!(
+            FlashArtifact::RustResponseProbe.post_flash_expectation(),
+            PostFlashExpectation::Application { bcd_device: "0458" }
+        );
+    }
+
+    #[test]
     #[allow(
         clippy::expect_used,
         reason = "the fixed recorded response must parse for the assertion to be meaningful"
@@ -214,5 +236,20 @@ mod tests {
         assert!(!late_marker_response_is_success(NormalReport::command(
             0x0f
         )));
+    }
+
+    #[test]
+    #[allow(
+        clippy::expect_used,
+        reason = "the fixed recorded response must parse for the assertion to be meaningful"
+    )]
+    fn rust_response_requires_signature_and_success_status() {
+        let response = NormalReport::parse(&[
+            0x08, 0x0e, 0x01, 0x58, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0xe6,
+        ])
+        .expect("fixed Rust response is valid");
+        assert!(rust_response_is_success(response));
+        assert!(!rust_response_is_success(NormalReport::command(0x0e)));
     }
 }
