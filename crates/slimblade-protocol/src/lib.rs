@@ -102,6 +102,13 @@ impl NormalReport {
     }
 }
 
+/// Accepts only a valid normal-mode report carrying the expected command byte.
+#[must_use]
+pub fn normal_command_response(bytes: &[u8], expected_command: u8) -> Option<NormalReport> {
+    let report = NormalReport::parse(bytes).ok()?;
+    (report.command_byte() == expected_command).then_some(report)
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct BootReport([u8; BOOT_REPORT_LENGTH]);
 
@@ -376,6 +383,24 @@ mod tests {
             NormalReport::parse(&wrong_id),
             Err(ReportParseError::WrongReportId { .. })
         ));
+    }
+
+    #[test]
+    fn read_probe_accepts_only_valid_checksummed_command_reply() {
+        let report = NormalReport::command(0x0e);
+        assert_eq!(
+            normal_command_response(report.as_bytes(), 0x0e),
+            Some(report)
+        );
+        assert_eq!(normal_command_response(report.as_bytes(), 0x0f), None);
+    }
+
+    #[test]
+    fn read_probe_rejects_bad_checksum() {
+        let report = NormalReport::command(0x0e);
+        let mut corrupted = *report.as_bytes();
+        corrupted[16] ^= 1;
+        assert_eq!(normal_command_response(&corrupted, 0x0e), None);
     }
 
     #[test]

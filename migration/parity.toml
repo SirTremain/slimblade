@@ -109,8 +109,8 @@ complete = [
 [[suite]]
 legacy = "tests/test_slimblade_usb.py"
 count = 39
-status = "partial"
-rust = "crates/slimblade-protocol/src/lib.rs::tests"
+status = "complete"
+rust = "crates/slimblade-protocol, slimblade-image, slimblade-linux, and slimblade-cli tests"
 complete = [
     "test_normal_reset_packet",
     "test_carrier_command_packets",
@@ -133,8 +133,6 @@ complete = [
     "test_startup_trampoline_rejects_one_byte_corruption",
     "test_recovery_guard_payload_constants",
     "test_recovery_guard_rejects_one_byte_corruption",
-]
-pending = [
     "test_read_probe_accepts_only_valid_checksummed_command_reply",
     "test_read_probe_rejects_bad_checksum",
     "test_carrier_identity_requires_bcd_451",

@@ -12,7 +12,10 @@ Rust 1.97.1; the isolated `thumbv5te-none-eabi` firmware workspace pins nightly
 2026-08-14 and builds `core` from source.
 
 - `cargo xtask check`: format, lint and test the stable host workspace, then
-  format, lint and release-build the inert ARMv5TE firmware scaffold.
+  format, lint, release-build, extract, pack, and exact-hash-check the ARMv5TE
+  marker-first guard.
+- `cargo xtask rust-guard`: build only the Rust firmware guard and place its
+  verified code/container under `firmware/bk3635-rs/target/guard/`.
 - `cargo xtask legacy`: run all 88 Python tests and every existing firmware
   preflight, rerun fixture-backed Rust parity tests after artifacts exist, then
   audit every generated ELF symbol table.
@@ -31,15 +34,14 @@ be explicitly reviewed and annotated.
 
 The post-link audit rejects empty or unresolved symbol tables and any linked
 panic, unwind, allocation, or double-underscore compiler-runtime symbol. It
-currently covers the SDK startup reference, carrier, both trampolines, and
-standalone recovery stub. The marker-first guard has no ELF and remains covered
-by its binary call-target and storage-isolation verifier. The Rust firmware
-workspace still produces only an inert `rlib`; its final executable must be
-added to the audited ELF list as soon as that target exists.
+currently covers the SDK startup reference, carrier, both trampolines,
+standalone recovery stub, and Rust-built marker-first guard. The older derived
+guard has no ELF and remains covered by its binary call-target and
+storage-isolation verifier.
 
 The protocol crate is dependency-free and `no_std`. It reproduces the existing
 17-byte and 49-byte command reports, updater CRC, preparation report and B1
-download blocks. Eight legacy packet cases are mapped in the parity manifest.
+download blocks. All legacy packet cases are mapped in the parity manifest.
 The host-only image crate ports header parsing, bounded CRC validation,
 application packing and the v4.49 descriptor probe. Its only external direct
 dependency is RustCrypto `sha2` 0.11.0 with default features disabled; it is
@@ -66,6 +68,20 @@ unused gap, IRQ/FIQ preservation, and executable ELF layout.
 The SDK-startup Rust verifier compares the rebuilt startup and IRQ/FIQ wrappers
 directly with official v4.49, decodes reset and ARM/Thumb interrupt targets,
 and validates the `.startup`, `.irq_wrapper`, and `.fiq_wrapper` ELF sections.
+The Linux crate handles direct hidraw identity/descriptor access, sysfs parent
+resolution, same-port re-enumeration, expected USB silence, pre-erase `B2/d2`
+discovery, and the complete `B0`/`B1` transfer behind a fakeable transport
+trait. The CLI crate makes exact artifact/action confirmation a typed gate.
+These complete all 88 legacy test mappings. Python remains until the Rust write
+path passes its planned live hardware and recovery checks.
+
+Build the host utility with `cargo build --release -p slimblade-cli`. Its
+read-only identity command is `target/release/slimblade identify`; write
+commands keep their confirmation at the command boundary. The same typed
+transfer path supports every recorded hash-locked image and checks the expected
+application version, resident-loader return, or guard USB silence afterward.
+On 2026-08-15 the Rust identity path returned `047d:80d7`, `bcdDevice 0453`,
+and the expected 170-byte descriptor from `/dev/slimblade-vendor`.
 
 ## Stable device paths
 

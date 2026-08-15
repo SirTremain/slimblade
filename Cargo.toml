@@ -1,6 +1,8 @@
 [workspace]
 members = [
+    "crates/slimblade-cli",
     "crates/slimblade-image",
+    "crates/slimblade-linux",
     "crates/slimblade-protocol",
     "crates/slimblade-verify",
     "xtask",

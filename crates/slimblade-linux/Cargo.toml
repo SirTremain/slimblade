@@ -1,5 +1,5 @@
 [package]
-name = "xtask"
+name = "slimblade-linux"
 version = "0.1.0"
 edition.workspace = true
 license.workspace = true
@@ -7,8 +7,8 @@ rust-version.workspace = true
 publish = false
 
 [dependencies]
-slimblade-image = { path = "../crates/slimblade-image" }
-slimblade-verify = { path = "../crates/slimblade-verify" }
+libc = "0.2.180"
+slimblade-protocol = { path = "../slimblade-protocol" }
 
 [lints]
 workspace = true

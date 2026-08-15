@@ -1,5 +1,11 @@
 [build]
 target = "thumbv5te-none-eabi"
 
+[target.thumbv5te-none-eabi]
+rustflags = [
+    "-C", "link-arg=-Tlink/guard.ld",
+    "-C", "link-arg=--gc-sections",
+]
+
 [unstable]
 build-std = ["core"]

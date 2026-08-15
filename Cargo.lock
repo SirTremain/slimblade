@@ -72,10 +72,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "slimblade-cli"
+version = "0.1.0"
+dependencies = [
+ "slimblade-image",
+ "slimblade-linux",
+ "slimblade-protocol",
+]
+
+[[package]]
 name = "slimblade-image"
 version = "0.1.0"
 dependencies = [
  "sha2",
+ "slimblade-protocol",
+]
+
+[[package]]
+name = "slimblade-linux"
+version = "0.1.0"
+dependencies = [
+ "libc",
  "slimblade-protocol",
 ]
 
@@ -101,5 +118,6 @@ checksum = "b6f5e870be6c3b371b77fe0ee0bafb859fa4964b4404c27de1d380043c4dda20"
 name = "xtask"
 version = "0.1.0"
 dependencies = [
+ "slimblade-image",
  "slimblade-verify",
 ]

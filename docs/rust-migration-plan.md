@@ -46,6 +46,23 @@ span are byte-identical to stock, decodes all reset and interrupt transitions,
 and checks their separate executable ELF sections. All five legacy SDK-startup
 cases have Rust equivalents, completing the artifact-verifier suites in the
 parity manifest.
+The remaining mocked USB cases now have Rust equivalents in typed protocol,
+Linux state, and command-confirmation crates. All 88 legacy Python tests are
+mapped. The loader model proves discovery retries stop at the `B0` boundary,
+protocol mismatches do not retry, and same-path silence/re-enumeration rules are
+preserved.
+The Rust firmware workspace now links the reviewed 420-byte recovery prefix
+with a two-byte Rust hang function. Cargo plus the Rust host packer reproduce
+the live-tested 422-byte guard and 128,112-byte container exactly, without
+Python in the build path.
+Stage 4 now has a direct Rust hidraw wrapper for identity and descriptor ioctls,
+plus sysfs parent resolution. A live read-only check on 2026-08-15 reproduced
+`047d:80d7`, `bcdDevice 0453`, and the 170-byte vendor descriptor. Stage 5 has
+the real Rust `B2` discovery and `B0`/`B1` transport path; its scripted test
+writes and verifies the complete 3,748-block geometry, and stops without a
+rewrite on an incorrect echo. All seven recorded images use this path with
+typed post-flash application-version, resident-loader, or USB-silence checks.
+Its first hardware write remains pending an explicit request.
 
 ## Goal
 

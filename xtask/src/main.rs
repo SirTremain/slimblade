@@ -1,7 +1,9 @@
 use std::env;
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
 
+use slimblade_image::{RECOVERY_GUARD, RECOVERY_GUARD_ARTIFACT};
 use slimblade_verify::post_link::audit_nm_outputs;
 
 const LEGACY_PREFLIGHTS: &[&str] = &[
@@ -19,6 +21,7 @@ const POST_LINK_ELFS: &[&str] = &[
     "firmware/reset_trampoline/build/DO_NOT_FLASH-stock-reset-trampoline.elf",
     "firmware/startup_trampoline/build/DO_NOT_FLASH-stock-startup-trampoline.elf",
     "firmware/recovery_stub/build/DO_NOT_FLASH-recovery-stub.elf",
+    "firmware/bk3635-rs/target/thumbv5te-none-eabi/release/slimblade-guard",
 ];
 
 fn repository_root() -> PathBuf {
@@ -74,6 +77,8 @@ fn host_checks(root: &Path) -> Result<(), String> {
             FIRMWARE_TOOLCHAIN,
             "clippy",
             "--lib",
+            "--bin",
+            "slimblade-guard",
             "--",
             "-D",
             "warnings",
@@ -83,7 +88,65 @@ fn host_checks(root: &Path) -> Result<(), String> {
         &firmware,
         "cargo",
         &[FIRMWARE_TOOLCHAIN, "build", "--release"],
-    )
+    )?;
+    build_rust_guard(root)?;
+    run(root, "cargo", &["test", "--workspace"])
+}
+
+fn build_rust_guard(root: &Path) -> Result<(), String> {
+    let firmware = root.join("firmware/bk3635-rs");
+    run(
+        &firmware,
+        "cargo",
+        &[
+            FIRMWARE_TOOLCHAIN,
+            "build",
+            "--release",
+            "--bin",
+            "slimblade-guard",
+        ],
+    )?;
+
+    let elf = firmware.join("target/thumbv5te-none-eabi/release/slimblade-guard");
+    let artifact_dir = firmware.join("target/guard");
+    fs::create_dir_all(&artifact_dir)
+        .map_err(|error| format!("could not create {}: {error}", artifact_dir.display()))?;
+    let code_path = artifact_dir.join("DO_NOT_FLASH-rust-marker-first-guard.code.bin");
+    let container_path = artifact_dir.join("DO_NOT_FLASH-rust-marker-first-guard.container.bin");
+    eprintln!(
+        "+ llvm-objcopy -O binary {} {}",
+        elf.display(),
+        code_path.display()
+    );
+    let status = Command::new("llvm-objcopy")
+        .args(["-O", "binary"])
+        .arg(&elf)
+        .arg(&code_path)
+        .current_dir(root)
+        .status()
+        .map_err(|error| format!("could not run llvm-objcopy: {error}"))?;
+    if !status.success() {
+        return Err(format!("llvm-objcopy exited with {status}"));
+    }
+
+    let code = fs::read(&code_path)
+        .map_err(|error| format!("could not read {}: {error}", code_path.display()))?;
+    if !RECOVERY_GUARD_ARTIFACT.code_matches(&code) {
+        return Err("Rust guard code does not match the live-tested 422-byte identity".to_owned());
+    }
+    let container = slimblade_verify::recovery_stub::build(&code)
+        .map_err(|error| format!("could not pack Rust guard: {error}"))?;
+    RECOVERY_GUARD
+        .validate(&container)
+        .map_err(|error| format!("Rust guard container identity failed: {error}"))?;
+    fs::write(&container_path, &container)
+        .map_err(|error| format!("could not write {}: {error}", container_path.display()))?;
+    eprintln!(
+        "Rust guard PASS: {} code bytes, {} container bytes",
+        code.len(),
+        container.len()
+    );
+    Ok(())
 }
 
 fn legacy_checks(root: &Path) -> Result<(), String> {
@@ -139,7 +202,7 @@ fn post_link_checks(root: &Path) -> Result<(), String> {
 }
 
 fn usage() {
-    eprintln!("usage: cargo xtask <check|legacy|postlink|all>");
+    eprintln!("usage: cargo xtask <check|rust-guard|legacy|postlink|all>");
 }
 
 fn main() -> ExitCode {
@@ -156,6 +219,7 @@ fn main() -> ExitCode {
     let root = repository_root();
     let result = match command.as_str() {
         "check" => host_checks(&root),
+        "rust-guard" => build_rust_guard(&root),
         "legacy" => legacy_checks(&root),
         "postlink" => post_link_checks(&root),
         "all" => host_checks(&root).and_then(|()| legacy_checks(&root)),
