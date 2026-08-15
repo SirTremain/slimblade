@@ -53,5 +53,23 @@ gap, ELF sections, container identities, and storage isolation. The full
 
 If Rust unexpectedly fails to return at step 3, the marker completed first;
 remove USB power with the battery disconnected and require the same resident
-loader. Nothing in this document records a live `0458` result yet. A flash
-still requires a separate explicit request.
+loader.
+
+## Verified live
+
+On 2026-08-15, resident loader `25a7:fabe` returned `d2` and accepted all 3,748
+blocks from the exact locked container. The application re-enumerated on the
+same USB path as `047d:80d7`, `bcdDevice 0458`, with the unchanged 170-byte
+report descriptor. The marker was not written and Rust was not invoked during
+this stage. The user confirmed ball movement, scrolling, and buttons worked
+normally. The Rust response remains open.
+
+Command `run-rust-response` then returned a checksum-valid vendor report with
+command `0x0e`, status `01`, and signature `58`. The application remained
+enumerated as `047d:80d7`, `bcdDevice 0458`, with the same 170-byte descriptor.
+This proves the marker routine returned, the compiled Rust function executed
+and returned its signature, and stock response processing resumed. The user
+confirmed ball movement, scrolling, and buttons still worked with the marker
+present. Stock command `0x0d` then reached resident loader `25a7:fabe` at the
+same USB path, and its read-only query returned `d2`. The proposed `0458` live
+sequence is complete.
