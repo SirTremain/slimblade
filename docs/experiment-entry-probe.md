@@ -47,8 +47,28 @@ No build or test command accesses hardware.
 4. Remove USB power with the battery disconnected, restore power, and require
    resident loader `25a7:fabe` with query response `d2`.
 
-Nothing in this document records a live `0457` result yet. A flash still
-requires a separate explicit request.
+## Verified live
+
+On 2026-08-15, the resident loader answered `d2` and accepted all 3,748 blocks
+from the exact locked container. The application re-enumerated on the same USB
+path as `047d:80d7`, `bcdDevice 0457`, with the unchanged 170-byte report
+descriptor. The marker was not set and the experiment was not entered during
+this stage. The user confirmed ball movement, scrolling, and buttons still
+worked normally. Marker-then-hang recovery remains open.
+
+Command `start-experiment` then wrote the `0x0e` report successfully and no
+vendor response arrived during the three-second observation window, matching
+the deliberate non-returning path. This alone does not prove the persistent
+marker; the cold-boot loader result remains the decisive check.
+
+The user confirmed ball movement, scrolling, and buttons stopped after the
+command, consistent with execution remaining in the intended self-loop.
+
+With the battery disconnected, USB power was then removed for at least five
+seconds and restored. Without any application-side USB command, the device
+enumerated directly as resident loader `25a7:fabe` and returned query response
+`d2`. This completes the live gate: the late marker committed before the
+deliberately hanging experimental entry.
 
 ## Result if the live gate passes
 
