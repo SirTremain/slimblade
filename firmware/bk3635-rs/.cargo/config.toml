@@ -1,0 +1,5 @@
+[build]
+target = "thumbv5te-none-eabi"
+
+[unstable]
+build-std = ["core"]

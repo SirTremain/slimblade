@@ -1,6 +1,25 @@
 # Development tooling
 
-Last checked: 2026-08-14
+Last checked: 2026-08-15
+
+## Rust migration commands
+
+The staged Rust migration is tracked by
+[`rust-migration-plan.md`](rust-migration-plan.md),
+[`../migration/baseline.toml`](../migration/baseline.toml), and
+[`../migration/parity.toml`](../migration/parity.toml). The host workspace pins
+Rust 1.97.1; the isolated `thumbv5te-none-eabi` firmware workspace pins nightly
+2026-08-14 and builds `core` from source.
+
+- `cargo xtask check`: format, lint and test the stable host workspace, then
+  format, lint and release-build the inert ARMv5TE firmware scaffold.
+- `cargo xtask legacy`: run all 88 Python tests and every existing firmware
+  preflight.
+- `cargo xtask all`: require both gates.
+
+The first Rust crate is dependency-free and `no_std`. It reproduces the existing
+17-byte and 49-byte command reports, updater CRC, preparation report and B1
+download blocks. Eight legacy packet cases are mapped in the parity manifest.
 
 ## Stable device paths
 

@@ -1,6 +1,14 @@
 # Rust migration plan
 
-Last updated: 2026-08-14
+Last updated: 2026-08-15
+
+## Progress
+
+Started 2026-08-15. Stage 0 now has a recorded toolchain/artifact baseline, a
+machine-readable map of all 88 legacy tests, and one command for every legacy
+preflight. Stage 1 has pinned stable and nightly workspaces plus unified format,
+Clippy, test and firmware-build checks. Stage 2 has begun with dependency-free
+`no_std` packet/checksum code; eight legacy packet cases have Rust equivalents.
 
 ## Goal
 

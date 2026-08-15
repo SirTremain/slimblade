@@ -1,0 +1,149 @@
+checked = "2026-08-15"
+legacy_total = 88
+
+[[suite]]
+legacy = "tests/test_firmware_image.py"
+count = 5
+status = "pending"
+pending = [
+    "test_application_container_round_trip",
+    "test_empty_application_is_rejected",
+    "test_application_can_be_padded_to_official_geometry",
+    "test_official_images_have_valid_known_headers",
+    "test_v449_descriptor_probe_only_changes_metadata_and_bcd_device",
+]
+
+[[suite]]
+legacy = "tests/test_recovery_carrier.py"
+count = 7
+status = "pending"
+pending = [
+    "test_audited_carrier_passes",
+    "test_generator_reproduces_build",
+    "test_thumb_bl_encoder_reproduces_stock_call",
+    "test_wrong_stock_is_rejected",
+    "test_oversized_injection_is_rejected",
+    "test_changed_stock_fallback_pointer_is_rejected",
+    "test_reversed_unlock_order_is_rejected",
+]
+
+[[suite]]
+legacy = "tests/test_recovery_guard.py"
+count = 10
+status = "pending"
+pending = [
+    "test_exact_guard_passes",
+    "test_generator_reproduces_artifacts",
+    "test_wrong_live_stub_is_rejected",
+    "test_changed_guard_branch_is_rejected",
+    "test_changed_experimental_instruction_is_rejected",
+    "test_thumb_bl_encoding_targets_experiment",
+    "test_storage_isolation_rejects_controller_literal",
+    "test_storage_isolation_rejects_marker_word_address",
+    "test_storage_isolation_rejects_call_into_guard_prefix",
+    "test_storage_isolation_accepts_current_self_loop",
+]
+
+[[suite]]
+legacy = "tests/test_recovery_stub.py"
+count = 9
+status = "pending"
+pending = [
+    "test_audited_build_passes",
+    "test_reversed_unlock_order_is_rejected_even_with_valid_crc",
+    "test_changed_container_padding_is_rejected",
+    "test_changed_header_crc_is_rejected",
+    "test_wrong_stock_reference_is_rejected",
+    "test_wrong_live_carrier_reference_is_rejected",
+    "test_wrong_live_startup_reference_is_rejected",
+    "test_changed_standalone_stack_load_is_rejected",
+    "test_changed_standalone_call_target_is_rejected",
+]
+
+[[suite]]
+legacy = "tests/test_reset_trampoline.py"
+count = 7
+status = "pending"
+pending = [
+    "test_arm_branch_encodings",
+    "test_arm_branch_rejects_unaligned_address",
+    "test_exact_build_passes",
+    "test_wrong_base_is_rejected",
+    "test_corrupt_reset_branch_is_rejected",
+    "test_corrupt_return_branch_is_rejected",
+    "test_oversized_trampoline_is_rejected",
+]
+
+[[suite]]
+legacy = "tests/test_sdk_startup.py"
+count = 5
+status = "pending"
+pending = [
+    "test_exact_source_build_passes",
+    "test_single_instruction_byte_change_is_rejected",
+    "test_wrong_stock_reference_is_rejected",
+    "test_single_wrapper_byte_change_is_rejected",
+    "test_elf_entry_change_is_rejected",
+]
+
+[[suite]]
+legacy = "tests/test_startup_trampoline.py"
+count = 6
+status = "pending"
+pending = [
+    "test_exact_build_passes",
+    "test_even_thumb_pointer_is_rejected",
+    "test_changed_mode_setup_is_rejected",
+    "test_changed_base_is_rejected",
+    "test_changed_standalone_reference_is_rejected",
+    "test_oversized_code_is_rejected",
+]
+
+[[suite]]
+legacy = "tests/test_slimblade_usb.py"
+count = 39
+status = "partial"
+rust = "crates/slimblade-protocol/src/lib.rs::tests"
+complete = [
+    "test_normal_reset_packet",
+    "test_carrier_command_packets",
+    "test_normal_command_rejects_out_of_range_byte",
+    "test_boot_reset_packet",
+    "test_boot_query_packet",
+    "test_prepare_packet_matches_updater_layout",
+    "test_nonfinal_download_packet_matches_updater_layout",
+    "test_short_final_download_packet_is_ff_padded",
+]
+pending = [
+    "test_known_boot_identities",
+    "test_official_payload_constants",
+    "test_descriptor_probe_payload_constants",
+    "test_recovery_carrier_payload_constants",
+    "test_recovery_carrier_rejects_one_byte_corruption",
+    "test_reset_trampoline_payload_constants",
+    "test_reset_trampoline_rejects_one_byte_corruption",
+    "test_recovery_stub_payload_constants",
+    "test_recovery_stub_rejects_one_byte_corruption",
+    "test_startup_trampoline_payload_constants",
+    "test_startup_trampoline_rejects_one_byte_corruption",
+    "test_recovery_guard_payload_constants",
+    "test_recovery_guard_rejects_one_byte_corruption",
+    "test_read_probe_accepts_only_valid_checksummed_command_reply",
+    "test_read_probe_rejects_bad_checksum",
+    "test_carrier_identity_requires_bcd_451",
+    "test_carrier_identity_accepts_bcd_451",
+    "test_carrier_flash_needs_exact_hash_confirmation",
+    "test_reset_trampoline_needs_exact_hash_confirmation",
+    "test_recovery_stub_needs_exact_hash_confirmation",
+    "test_startup_trampoline_needs_exact_hash_confirmation",
+    "test_recovery_guard_needs_exact_hash_confirmation",
+    "test_full_recovery_needs_exact_action_confirmation",
+    "test_guard_silence_requires_disappearance_without_reenumeration",
+    "test_guard_silence_rejects_reenumeration",
+    "test_stub_result_requires_changed_loader_device_number",
+    "test_pre_erase_wait_retries_disappearing_loader",
+    "test_unexpected_loader_protocol_is_not_retried",
+    "test_no_erase_when_loader_never_opens",
+    "test_b0_failure_is_not_automatically_retried",
+    "test_stable_symlinks_are_scoped_to_correct_interfaces",
+]
