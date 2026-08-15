@@ -54,8 +54,9 @@ pending = [
 [[suite]]
 legacy = "tests/test_recovery_stub.py"
 count = 9
-status = "pending"
-pending = [
+status = "complete"
+rust = "crates/slimblade-verify/src/recovery_stub.rs::tests"
+complete = [
     "test_audited_build_passes",
     "test_reversed_unlock_order_is_rejected_even_with_valid_crc",
     "test_changed_container_padding_is_rejected",

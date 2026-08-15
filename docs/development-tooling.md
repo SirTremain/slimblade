@@ -50,6 +50,11 @@ without `std`; its default host feature adds complete artifact verifiers.
 identities and generated outputs without writing to hardware. Reset and startup
 trampolines share the same ARM executable-section verifier; both Rust builders
 reproduce their recorded containers byte-for-byte.
+The standalone recovery-stub Rust builder also reproduces its recorded
+container byte-for-byte. Its verifier preserves the full legacy checks for the
+startup transition, internal call graph, marker and flash MMIO sequences,
+stock-derived delay, watchdog reset, ELF layout, erased padding, and exact
+artifact identities.
 
 ## Stable device paths
 

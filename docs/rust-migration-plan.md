@@ -28,6 +28,10 @@ The startup-trampoline builder and verifier now reproduce the exact 60-byte
 code and v4.53 container, including the ARM/Thumb transitions, standalone-stub
 comparisons, stock return, header CRCs, and shared executable ELF checks. All
 six legacy startup-trampoline cases have Rust equivalents.
+The standalone recovery-stub builder and verifier now reproduce the exact
+420-byte code container and audit its vector/startup path, call graph, marker,
+flash-controller, delay, watchdog, reference-byte, padding, header, and ELF
+invariants. All nine legacy recovery-stub cases have Rust equivalents.
 
 ## Goal
 
