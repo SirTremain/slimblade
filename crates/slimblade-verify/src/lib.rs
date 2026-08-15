@@ -3,6 +3,8 @@
 use core::fmt;
 
 pub mod elf;
+#[cfg(feature = "std")]
+pub mod late_marker_probe;
 pub mod post_link;
 #[cfg(feature = "std")]
 pub mod recovery_carrier;

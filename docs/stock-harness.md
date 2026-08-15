@@ -87,5 +87,6 @@ No current build or test command accesses hardware.
 The next safer design should boot stock normally, then use an explicit USB
 command to write the marker immediately before entering experimental code. A
 hang after that late marker can be cold-boot tested without allowing stock
-startup to run between the marker write and the failure. This remains an
-unbuilt design, not a verified recovery path.
+startup to run between the marker write and the failure. The build-only first
+compatibility gate is now tracked in
+[`late-marker-probe.md`](late-marker-probe.md); it has not been flashed.

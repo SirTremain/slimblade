@@ -8,7 +8,9 @@ use std::thread;
 use core::time::Duration;
 use std::time::Instant;
 
-use slimblade_protocol::{BOOT_REPORT_LENGTH, BootReport, UsbIdentity};
+use slimblade_protocol::{
+    BOOT_REPORT_LENGTH, BootReport, NORMAL_REPORT_LENGTH, NormalReport, UsbIdentity,
+};
 
 const HIDIOCGRAWINFO: libc::c_ulong = 0x8008_4803;
 const HIDIOCGRDESCSIZE: libc::c_ulong = 0x8004_4801;
@@ -175,6 +177,40 @@ impl Hidraw {
                     if length == BOOT_REPORT_LENGTH
                         && let Some(bytes) = buffer.get(..length)
                         && let Ok(report) = BootReport::parse(bytes)
+                    {
+                        return Ok(Some(report));
+                    }
+                },
+                Err(error) if error.kind() == io::ErrorKind::WouldBlock => {},
+                Err(error) => return Err(error),
+            }
+            let now = Instant::now();
+            if now >= deadline {
+                return Ok(None);
+            }
+            thread::sleep((deadline - now).min(Duration::from_millis(5)));
+        }
+    }
+
+    /// Waits for the next well-formed normal-mode vendor report.
+    ///
+    /// Unrelated input reports are ignored until the deadline.
+    ///
+    /// # Errors
+    ///
+    /// Returns non-retryable read errors from the hidraw node.
+    pub fn read_normal_report(&mut self, timeout: Duration) -> io::Result<Option<NormalReport>> {
+        let deadline = Instant::now()
+            .checked_add(timeout)
+            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "timeout overflow"))?;
+        let mut buffer = [0_u8; READ_BUFFER_LENGTH];
+        loop {
+            match self.file.read(&mut buffer) {
+                Ok(0) => return Ok(None),
+                Ok(length) => {
+                    if length == NORMAL_REPORT_LENGTH
+                        && let Some(bytes) = buffer.get(..length)
+                        && let Ok(report) = NormalReport::parse(bytes)
                     {
                         return Ok(Some(report));
                     }

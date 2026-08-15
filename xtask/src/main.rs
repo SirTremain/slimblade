@@ -5,10 +5,11 @@ use std::process::{self, Command, ExitCode};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use slimblade_image::{
-    OFFICIAL_V449, RECOVERY_GUARD, RECOVERY_GUARD_ARTIFACT, STOCK_HARNESS_ARTIFACT,
-    USB_RECOVERY_PROBE, USB_RECOVERY_PROBE_ARTIFACT, sha256,
+    LATE_MARKER_PROBE_ARTIFACT, OFFICIAL_V449, RECOVERY_GUARD, RECOVERY_GUARD_ARTIFACT,
+    STOCK_HARNESS_ARTIFACT, USB_RECOVERY_PROBE, USB_RECOVERY_PROBE_ARTIFACT, sha256,
 };
 use slimblade_protocol::updater_crc32;
+use slimblade_verify::late_marker_probe;
 use slimblade_verify::post_link::audit_nm_outputs;
 use slimblade_verify::stock_harness;
 use slimblade_verify::usb_probe::{EXPERIMENT_ADDRESS, audit_code};
@@ -18,6 +19,7 @@ const POST_LINK_ELFS: &[&str] =
     &["firmware/bk3635-rs/target/thumbv5te-none-eabi/release/slimblade-guard"];
 const USB_PROBE_BINARY: &str = "slimblade-usb-recovery-probe";
 const STOCK_HARNESS_BINARY: &str = "slimblade-stock-harness";
+const LATE_MARKER_PROBE_BINARY: &str = "slimblade-late-marker-probe";
 const USB_PROBE_MAX_STACK_BYTES: usize = 256;
 const USB_PROBE_CODE_ADDRESS: u32 = 0x0000_2020;
 const SYSTEM_MMIO_START: u32 = 0x0080_0000;
@@ -102,7 +104,8 @@ fn host_checks(root: &Path) -> Result<(), String> {
     build_rust_guard(root)?;
     post_link_checks(root)?;
     build_usb_probe(root)?;
-    build_stock_harness(root)
+    build_stock_harness(root)?;
+    build_late_marker_probe(root)
 }
 
 fn build_rust_guard(root: &Path) -> Result<(), String> {
@@ -640,6 +643,101 @@ fn build_stock_harness(root: &Path) -> Result<(), String> {
     Ok(())
 }
 
+fn build_late_marker_probe(root: &Path) -> Result<(), String> {
+    let firmware = root.join("firmware/bk3635-stock-harness");
+    run(&firmware, "cargo", &[FIRMWARE_TOOLCHAIN, "fmt", "--check"])?;
+    run(
+        &firmware,
+        "cargo",
+        &[
+            FIRMWARE_TOOLCHAIN,
+            "clippy",
+            "--bin",
+            LATE_MARKER_PROBE_BINARY,
+            "--",
+            "-D",
+            "warnings",
+        ],
+    )?;
+    run(
+        &firmware,
+        "cargo",
+        &[
+            FIRMWARE_TOOLCHAIN,
+            "build",
+            "--release",
+            "--bin",
+            LATE_MARKER_PROBE_BINARY,
+        ],
+    )?;
+
+    let elf = firmware
+        .join("target/thumbv5te-none-eabi/release")
+        .join(LATE_MARKER_PROBE_BINARY);
+    let artifact_dir = firmware.join("target/late-marker");
+    fs::create_dir_all(&artifact_dir)
+        .map_err(|error| format!("could not create {}: {error}", artifact_dir.display()))?;
+    let injection_path = artifact_dir.join("DO_NOT_FLASH-late-marker-probe.injection.bin");
+    let container_path = artifact_dir.join("DO_NOT_FLASH-late-marker-probe.container.bin");
+    eprintln!(
+        "+ llvm-objcopy -O binary {} {}",
+        elf.display(),
+        injection_path.display()
+    );
+    let objcopy = Command::new("llvm-objcopy")
+        .args(["-O", "binary"])
+        .arg(&elf)
+        .arg(&injection_path)
+        .current_dir(root)
+        .status()
+        .map_err(|error| format!("could not run llvm-objcopy: {error}"))?;
+    if !objcopy.success() {
+        return Err(format!("llvm-objcopy exited with {objcopy}"));
+    }
+    let injection = fs::read(&injection_path)
+        .map_err(|error| format!("could not read {}: {error}", injection_path.display()))?;
+    if !LATE_MARKER_PROBE_ARTIFACT.code_matches(&injection) {
+        return Err("late-marker injection differs from its reviewed identity".to_owned());
+    }
+    let elf_text = elf.to_string_lossy().into_owned();
+    let defined = llvm_nm(root, &elf_text, "--defined-only")?;
+    let undefined = llvm_nm(root, &elf_text, "--undefined-only")?;
+    let symbols = audit_nm_outputs(&defined, &undefined)
+        .map_err(|error| format!("late-marker symbol audit failed: {error}"))?;
+
+    let base_path = root.join(
+        "firmware/startup_trampoline/build/DO_NOT_FLASH-stock-startup-trampoline.container.bin",
+    );
+    let base = fs::read(&base_path).map_err(|error| {
+        format!(
+            "could not read exact v4.53 base {}: {error}",
+            base_path.display()
+        )
+    })?;
+    let container = late_marker_probe::build(&base, &injection)
+        .map_err(|error| format!("could not pack late-marker probe: {error}"))?;
+    let elf_bytes =
+        fs::read(&elf).map_err(|error| format!("could not read {}: {error}", elf.display()))?;
+    let report = late_marker_probe::verify(&base, &container, &injection, &elf_bytes)
+        .map_err(|error| format!("late-marker audit failed: {error}"))?;
+    fs::write(&container_path, &container)
+        .map_err(|error| format!("could not write {}: {error}", container_path.display()))?;
+    eprintln!(
+        "late marker PASS: {} injection bytes, {} defined symbols, injection SHA-256 {}",
+        report.injection_bytes,
+        symbols.defined_symbols,
+        format_sha256(report.injection_sha256)?
+    );
+    eprintln!(
+        "late marker container: {} bytes, SHA-256 {}, payload SHA-256 {}, payload CRC {:08x}",
+        report.container_bytes,
+        format_sha256(report.container_sha256)?,
+        format_sha256(report.payload_sha256)?,
+        report.payload_crc
+    );
+    Ok(())
+}
+
 fn parse_address(value: &str) -> Result<usize, String> {
     let digits = value
         .strip_prefix("0x")
@@ -712,7 +810,7 @@ fn disassemble_stock(
 
 fn usage() {
     eprintln!(
-        "usage:\n  cargo xtask <check|rust-guard|usb-probe|stock-harness|postlink|all>\n  cargo xtask disassemble-stock FIRMWARE START STOP <arm|thumb>"
+        "usage:\n  cargo xtask <check|rust-guard|usb-probe|stock-harness|late-marker-probe|postlink|all>\n  cargo xtask disassemble-stock FIRMWARE START STOP <arm|thumb>"
     );
 }
 
@@ -726,6 +824,7 @@ fn main() -> ExitCode {
             build_rust_guard(&root).and_then(|()| build_usb_probe(&root))
         },
         [command] if command == "stock-harness" => build_stock_harness(&root),
+        [command] if command == "late-marker-probe" => build_late_marker_probe(&root),
         [command] if command == "postlink" => post_link_checks(&root),
         [command, firmware, start, stop, state] if command == "disassemble-stock" => {
             disassemble_stock(&root, firmware, start, stop, state)

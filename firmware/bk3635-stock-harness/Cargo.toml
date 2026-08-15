@@ -9,6 +9,10 @@ publish = false
 name = "slimblade-stock-harness"
 path = "src/main.rs"
 
+[[bin]]
+name = "slimblade-late-marker-probe"
+path = "src/late_marker.rs"
+
 [profile.dev]
 panic = "abort"
 

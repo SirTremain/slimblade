@@ -1,9 +1,16 @@
 use slimblade_image::{
-    FirmwareIdentity, OFFICIAL_V449, RECOVERY_CARRIER, RECOVERY_GUARD, RECOVERY_STUB,
-    RESET_TRAMPOLINE, STARTUP_TRAMPOLINE, STOCK_HARNESS, USB_RECOVERY_PROBE, V449_DESCRIPTOR_PROBE,
+    FirmwareIdentity, LATE_MARKER_PROBE, OFFICIAL_V449, RECOVERY_CARRIER, RECOVERY_GUARD,
+    RECOVERY_STUB, RESET_TRAMPOLINE, STARTUP_TRAMPOLINE, STOCK_HARNESS, USB_RECOVERY_PROBE,
+    V449_DESCRIPTOR_PROBE,
 };
+use slimblade_protocol::NormalReport;
 
 pub const FULL_RECOVERY_CONFIRMATION: &str = "ERASE-MARKER-RESET";
+
+#[must_use]
+pub fn late_marker_response_is_success(response: NormalReport) -> bool {
+    response.command_byte() == 0x0e && response.as_bytes().get(2) == Some(&0x01)
+}
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum FlashArtifact {
@@ -16,6 +23,7 @@ pub enum FlashArtifact {
     RecoveryGuard,
     UsbRecoveryProbe,
     StockHarness,
+    LateMarkerProbe,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -38,6 +46,7 @@ impl FlashArtifact {
             Self::RecoveryGuard => RECOVERY_GUARD,
             Self::UsbRecoveryProbe => USB_RECOVERY_PROBE,
             Self::StockHarness => STOCK_HARNESS,
+            Self::LateMarkerProbe => LATE_MARKER_PROBE,
         }
     }
 
@@ -63,6 +72,7 @@ impl FlashArtifact {
             Self::RecoveryGuard => PostFlashExpectation::UsbSilence,
             Self::UsbRecoveryProbe => PostFlashExpectation::Application { bcd_device: "0454" },
             Self::StockHarness => PostFlashExpectation::Application { bcd_device: "0455" },
+            Self::LateMarkerProbe => PostFlashExpectation::Application { bcd_device: "0456" },
         }
     }
 }
@@ -157,5 +167,37 @@ mod tests {
             FlashArtifact::StockHarness.post_flash_expectation(),
             PostFlashExpectation::Application { bcd_device: "0455" }
         );
+    }
+
+    #[test]
+    fn late_marker_probe_needs_exact_hash_confirmation() {
+        assert!(!FlashArtifact::LateMarkerProbe.confirmation_matches("wrong"));
+        assert!(FlashArtifact::LateMarkerProbe.confirmation_matches(
+            "76669e150983725954fec510eb0c6717f84e08ef2a1a8ef3fb59cb49f7566905"
+        ));
+        assert_eq!(
+            FlashArtifact::LateMarkerProbe.post_flash_expectation(),
+            PostFlashExpectation::Application { bcd_device: "0456" }
+        );
+    }
+
+    #[test]
+    #[allow(
+        clippy::expect_used,
+        reason = "the fixed recorded response must parse for the assertion to be meaningful"
+    )]
+    fn late_marker_response_requires_command_and_success_status() {
+        let response = NormalReport::parse(&[
+            0x08, 0x0e, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x3e,
+        ])
+        .expect("recorded carrier response is valid");
+        assert!(late_marker_response_is_success(response));
+        assert!(!late_marker_response_is_success(NormalReport::command(
+            0x0e
+        )));
+        assert!(!late_marker_response_is_success(NormalReport::command(
+            0x0f
+        )));
     }
 }
