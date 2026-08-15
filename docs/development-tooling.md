@@ -17,9 +17,17 @@ Rust 1.97.1; the isolated `thumbv5te-none-eabi` firmware workspace pins nightly
   preflight.
 - `cargo xtask all`: require both gates.
 
-The first Rust crate is dependency-free and `no_std`. It reproduces the existing
+The protocol crate is dependency-free and `no_std`. It reproduces the existing
 17-byte and 49-byte command reports, updater CRC, preparation report and B1
 download blocks. Eight legacy packet cases are mapped in the parity manifest.
+The host-only image crate ports header parsing, bounded CRC validation,
+application packing and the v4.49 descriptor probe. Its only external direct
+dependency is RustCrypto `sha2` 0.11.0 with default features disabled; it is
+used solely for exact artifact identity checks.
+The verifier crate keeps its ELF and checked address/branch primitives usable
+without `std`; its default host feature adds complete artifact verifiers.
+`cargo xtask check` compiles both configurations. Artifact tests compare typed
+identities and generated outputs without writing to hardware.
 
 ## Stable device paths
 

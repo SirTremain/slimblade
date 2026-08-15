@@ -11,9 +11,55 @@ pub const BOOT_REPORT_LENGTH: usize = 49;
 pub const DOWNLOAD_BLOCK_LENGTH: usize = 32;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct UsbIdentity {
+    pub vendor_id: u16,
+    pub product_id: u16,
+}
+
+pub const KENSINGTON_WIRED_IDENTITY: UsbIdentity = UsbIdentity {
+    vendor_id: 0x047d,
+    product_id: 0x80d7,
+};
+pub const BOOT_IDENTITIES: [UsbIdentity; 3] = [
+    UsbIdentity {
+        vendor_id: 0x25a7,
+        product_id: 0xfabe,
+    },
+    UsbIdentity {
+        vendor_id: 0x3554,
+        product_id: 0xf600,
+    },
+    UsbIdentity {
+        vendor_id: 0x3554,
+        product_id: 0xf800,
+    },
+];
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct NormalReport([u8; NORMAL_REPORT_LENGTH]);
 
 impl NormalReport {
+    pub fn parse(bytes: &[u8]) -> Result<Self, ReportParseError> {
+        if bytes.len() != NORMAL_REPORT_LENGTH {
+            return Err(ReportParseError::WrongLength {
+                expected: NORMAL_REPORT_LENGTH,
+                actual: bytes.len(),
+            });
+        }
+        if bytes[0] != NORMAL_REPORT_ID {
+            return Err(ReportParseError::WrongReportId {
+                expected: NORMAL_REPORT_ID,
+                actual: bytes[0],
+            });
+        }
+        if !checksum_is_valid(bytes) {
+            return Err(ReportParseError::InvalidChecksum);
+        }
+        let mut report = [0; NORMAL_REPORT_LENGTH];
+        report.copy_from_slice(bytes);
+        Ok(Self(report))
+    }
+
     /// Constructs a normal-mode command report.
     ///
     /// The command is a byte at the type boundary, so the Python implementation's
@@ -41,12 +87,35 @@ impl NormalReport {
     pub const fn as_bytes(&self) -> &[u8; NORMAL_REPORT_LENGTH] {
         &self.0
     }
+
+    #[must_use]
+    pub const fn command_byte(self) -> u8 {
+        self.0[1]
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct BootReport([u8; BOOT_REPORT_LENGTH]);
 
 impl BootReport {
+    pub fn parse(bytes: &[u8]) -> Result<Self, ReportParseError> {
+        if bytes.len() != BOOT_REPORT_LENGTH {
+            return Err(ReportParseError::WrongLength {
+                expected: BOOT_REPORT_LENGTH,
+                actual: bytes.len(),
+            });
+        }
+        if bytes[0] != BOOT_REPORT_ID {
+            return Err(ReportParseError::WrongReportId {
+                expected: BOOT_REPORT_ID,
+                actual: bytes[0],
+            });
+        }
+        let mut report = [0; BOOT_REPORT_LENGTH];
+        report.copy_from_slice(bytes);
+        Ok(Self(report))
+    }
+
     #[must_use]
     pub const fn command(command: u8) -> Self {
         let mut bytes = [0; BOOT_REPORT_LENGTH];
@@ -116,7 +185,36 @@ impl BootReport {
     pub const fn as_bytes(&self) -> &[u8; BOOT_REPORT_LENGTH] {
         &self.0
     }
+
+    #[must_use]
+    pub const fn command_byte(self) -> u8 {
+        self.0[1]
+    }
 }
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ReportParseError {
+    WrongLength { expected: usize, actual: usize },
+    WrongReportId { expected: u8, actual: u8 },
+    InvalidChecksum,
+}
+
+impl fmt::Display for ReportParseError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::WrongLength { expected, actual } => {
+                write!(formatter, "expected {expected}-byte report, got {actual}")
+            }
+            Self::WrongReportId { expected, actual } => write!(
+                formatter,
+                "expected report ID {expected:#04x}, got {actual:#04x}"
+            ),
+            Self::InvalidChecksum => formatter.write_str("report checksum is invalid"),
+        }
+    }
+}
+
+impl core::error::Error for ReportParseError {}
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum PacketError {
@@ -141,6 +239,8 @@ impl fmt::Display for PacketError {
         }
     }
 }
+
+impl core::error::Error for PacketError {}
 
 #[must_use]
 pub const fn checksum(bytes: &[u8]) -> u8 {
@@ -189,6 +289,61 @@ pub const fn updater_crc32(bytes: &[u8]) -> u32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn known_boot_identities_match_python() {
+        assert!(BOOT_IDENTITIES.contains(&UsbIdentity {
+            vendor_id: 0x25a7,
+            product_id: 0xfabe,
+        }));
+        assert!(BOOT_IDENTITIES.contains(&UsbIdentity {
+            vendor_id: 0x3554,
+            product_id: 0xf600,
+        }));
+        assert!(BOOT_IDENTITIES.contains(&UsbIdentity {
+            vendor_id: 0x3554,
+            product_id: 0xf800,
+        }));
+    }
+
+    #[test]
+    fn normal_report_parser_accepts_only_valid_checksummed_reports() {
+        let report = NormalReport::command(0x0e);
+        assert_eq!(NormalReport::parse(report.as_bytes()), Ok(report));
+
+        let mut bad_checksum = *report.as_bytes();
+        bad_checksum[16] ^= 1;
+        assert_eq!(
+            NormalReport::parse(&bad_checksum),
+            Err(ReportParseError::InvalidChecksum)
+        );
+        assert!(matches!(
+            NormalReport::parse(&report.as_bytes()[..16]),
+            Err(ReportParseError::WrongLength { .. })
+        ));
+        let mut wrong_id = *report.as_bytes();
+        wrong_id[0] = BOOT_REPORT_ID;
+        assert!(matches!(
+            NormalReport::parse(&wrong_id),
+            Err(ReportParseError::WrongReportId { .. })
+        ));
+    }
+
+    #[test]
+    fn boot_report_parser_enforces_length_and_report_id() {
+        let report = BootReport::query();
+        assert_eq!(BootReport::parse(report.as_bytes()), Ok(report));
+        assert!(matches!(
+            BootReport::parse(&report.as_bytes()[..48]),
+            Err(ReportParseError::WrongLength { .. })
+        ));
+        let mut wrong_id = *report.as_bytes();
+        wrong_id[0] = NORMAL_REPORT_ID;
+        assert!(matches!(
+            BootReport::parse(&wrong_id),
+            Err(ReportParseError::WrongReportId { .. })
+        ));
+    }
 
     #[test]
     fn normal_reset_packet_matches_python() {

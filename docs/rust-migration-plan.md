@@ -9,6 +9,18 @@ machine-readable map of all 88 legacy tests, and one command for every legacy
 preflight. Stage 1 has pinned stable and nightly workspaces plus unified format,
 Clippy, test and firmware-build checks. Stage 2 has begun with dependency-free
 `no_std` packet/checksum code; eight legacy packet cases have Rust equivalents.
+The host image crate now maps all five legacy container tests and adds malformed
+length, geometry and one-byte-corruption checks.
+Checked ARM B, ARM BL/BLX and ARMv5 Thumb BL primitives reproduce the recorded
+Python encodings and reject invalid alignment, opcodes, ranges and address
+overflow. Reference artifact identities are now held in one typed Rust table.
+All seven hash-locked container/payload identities use one validator, covering
+the recorded byte length, SHA-256 and updater CRC. Report parsing now makes
+incorrect lengths and report IDs explicit errors; normal-mode replies also
+require the updater checksum.
+Stage 3 has started with a borrowed, bounds-checked ELF32 parser and a complete
+Rust reset-trampoline builder/verifier. All seven legacy reset-trampoline cases
+now have Rust equivalents, and the generated container matches byte-for-byte.
 
 ## Goal
 
@@ -206,6 +218,15 @@ the proven Python process.
 Exit gate: the Rust-built hang guard is byte-identical and passes the complete
 existing guard preflight. A hardware flash still requires a separate explicit
 request.
+
+### First post-parity development milestone
+
+After the Rust guard matches the proven 422-byte guard exactly, add a guarded
+USB command that requests the resident loader without disconnecting USB power.
+It must preserve the marker-first invariant, use the proven reset path, verify
+same-port loader re-enumeration, and retain physical power cycling as the
+independent recovery fallback. This is intended to shorten the firmware test
+cycle; it must not weaken recovery or be combined with the parity flash.
 
 ### 8. Introduce safe Rust experimental firmware
 

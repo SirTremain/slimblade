@@ -48,6 +48,16 @@ fn host_checks(root: &Path) -> Result<(), String> {
         ],
     )?;
     run(root, "cargo", &["test", "--workspace"])?;
+    run(
+        root,
+        "cargo",
+        &[
+            "check",
+            "--package",
+            "slimblade-verify",
+            "--no-default-features",
+        ],
+    )?;
 
     let firmware = root.join("firmware/bk3635-rs");
     run(&firmware, "cargo", &[FIRMWARE_TOOLCHAIN, "fmt", "--check"])?;

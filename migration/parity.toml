@@ -4,8 +4,9 @@ legacy_total = 88
 [[suite]]
 legacy = "tests/test_firmware_image.py"
 count = 5
-status = "pending"
-pending = [
+status = "complete"
+rust = "crates/slimblade-image/src/lib.rs::tests"
+complete = [
     "test_application_container_round_trip",
     "test_empty_application_is_rejected",
     "test_application_can_be_padded_to_official_geometry",
@@ -16,11 +17,14 @@ pending = [
 [[suite]]
 legacy = "tests/test_recovery_carrier.py"
 count = 7
-status = "pending"
+status = "partial"
+rust = "crates/slimblade-verify/src/lib.rs::tests"
+complete = [
+    "test_thumb_bl_encoder_reproduces_stock_call",
+]
 pending = [
     "test_audited_carrier_passes",
     "test_generator_reproduces_build",
-    "test_thumb_bl_encoder_reproduces_stock_call",
     "test_wrong_stock_is_rejected",
     "test_oversized_injection_is_rejected",
     "test_changed_stock_fallback_pointer_is_rejected",
@@ -30,14 +34,17 @@ pending = [
 [[suite]]
 legacy = "tests/test_recovery_guard.py"
 count = 10
-status = "pending"
+status = "partial"
+rust = "crates/slimblade-verify/src/lib.rs::tests"
+complete = [
+    "test_thumb_bl_encoding_targets_experiment",
+]
 pending = [
     "test_exact_guard_passes",
     "test_generator_reproduces_artifacts",
     "test_wrong_live_stub_is_rejected",
     "test_changed_guard_branch_is_rejected",
     "test_changed_experimental_instruction_is_rejected",
-    "test_thumb_bl_encoding_targets_experiment",
     "test_storage_isolation_rejects_controller_literal",
     "test_storage_isolation_rejects_marker_word_address",
     "test_storage_isolation_rejects_call_into_guard_prefix",
@@ -63,8 +70,9 @@ pending = [
 [[suite]]
 legacy = "tests/test_reset_trampoline.py"
 count = 7
-status = "pending"
-pending = [
+status = "complete"
+rust = "crates/slimblade-verify/src/reset_trampoline.rs::tests and branch tests"
+complete = [
     "test_arm_branch_encodings",
     "test_arm_branch_rejects_unaligned_address",
     "test_exact_build_passes",
@@ -110,12 +118,10 @@ complete = [
     "test_normal_command_rejects_out_of_range_byte",
     "test_boot_reset_packet",
     "test_boot_query_packet",
+    "test_known_boot_identities",
     "test_prepare_packet_matches_updater_layout",
     "test_nonfinal_download_packet_matches_updater_layout",
     "test_short_final_download_packet_is_ff_padded",
-]
-pending = [
-    "test_known_boot_identities",
     "test_official_payload_constants",
     "test_descriptor_probe_payload_constants",
     "test_recovery_carrier_payload_constants",
@@ -128,6 +134,8 @@ pending = [
     "test_startup_trampoline_rejects_one_byte_corruption",
     "test_recovery_guard_payload_constants",
     "test_recovery_guard_rejects_one_byte_corruption",
+]
+pending = [
     "test_read_probe_accepts_only_valid_checksummed_command_reply",
     "test_read_probe_rejects_bad_checksum",
     "test_carrier_identity_requires_bcd_451",

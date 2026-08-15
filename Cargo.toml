@@ -1,6 +1,8 @@
 [workspace]
 members = [
+    "crates/slimblade-image",
     "crates/slimblade-protocol",
+    "crates/slimblade-verify",
     "xtask",
 ]
 exclude = ["firmware/bk3635-rs"]
