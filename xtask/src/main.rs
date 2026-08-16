@@ -9,9 +9,9 @@ use slimblade_image::{
     DISPATCHER_RETURN_HOOK_PROBE_ARTIFACT, EXPERIMENT_DISPATCH_GUARD_ARTIFACT,
     EXPERIMENT_ENTRY_PROBE_ARTIFACT, INPUT_DIAGNOSTICS_ARTIFACT, LATE_MARKER_PROBE_ARTIFACT,
     OFFICIAL_V449, PAGED_INPUT_DIAGNOSTICS_ARTIFACT, POST_INIT_HOOK_PROBE_ARTIFACT, RECOVERY_GUARD,
-    RECOVERY_GUARD_ARTIFACT, RUST_RESPONSE_PROBE_ARTIFACT, STEADY_LOOP_HOOK_PROBE_ARTIFACT,
-    STOCK_HARNESS_ARTIFACT, USB_RECOVERY_PROBE, USB_RECOVERY_PROBE_ARTIFACT,
-    WIRED_LOOP_HOOK_PROBE_ARTIFACT, sha256,
+    RECOVERY_GUARD_ARTIFACT, RUST_RESPONSE_PROBE_ARTIFACT, SENSOR_SHADOW_DIAGNOSTICS_ARTIFACT,
+    STEADY_LOOP_HOOK_PROBE_ARTIFACT, STOCK_HARNESS_ARTIFACT, USB_RECOVERY_PROBE,
+    USB_RECOVERY_PROBE_ARTIFACT, WIRED_LOOP_HOOK_PROBE_ARTIFACT, sha256,
 };
 use slimblade_protocol::updater_crc32;
 use slimblade_verify::experiment_entry_probe;
@@ -38,6 +38,7 @@ const DISPATCHER_RETURN_HOOK_PROBE_BINARY: &str = "slimblade-dispatcher-return-h
 const EXPERIMENT_DISPATCH_GUARD_BINARY: &str = "slimblade-experiment-dispatch-guard";
 const INPUT_DIAGNOSTICS_BINARY: &str = "slimblade-input-diagnostics";
 const PAGED_INPUT_DIAGNOSTICS_BINARY: &str = "slimblade-paged-input-diagnostics";
+const SENSOR_SHADOW_DIAGNOSTICS_BINARY: &str = "slimblade-sensor-shadow-diagnostics";
 const USB_PROBE_MAX_STACK_BYTES: usize = 256;
 const USB_PROBE_CODE_ADDRESS: u32 = 0x0000_2020;
 const SYSTEM_MMIO_START: u32 = 0x0080_0000;
@@ -149,7 +150,8 @@ fn host_checks(root: &Path) -> Result<(), String> {
     build_dispatcher_return_hook_probe(root)?;
     build_experiment_dispatch_guard(root)?;
     build_input_diagnostics(root)?;
-    build_paged_input_diagnostics(root)
+    build_paged_input_diagnostics(root)?;
+    build_sensor_shadow_diagnostics(root)
 }
 
 fn build_rust_guard(root: &Path) -> Result<(), String> {
@@ -830,6 +832,19 @@ fn build_paged_input_diagnostics(root: &Path) -> Result<(), String> {
     )
 }
 
+fn build_sensor_shadow_diagnostics(root: &Path) -> Result<(), String> {
+    build_hook_probe(
+        root,
+        SENSOR_SHADOW_DIAGNOSTICS_BINARY,
+        "sensor-shadow-diagnostics",
+        "sensor-shadow-diagnostics",
+        "sensor shadow diagnostics",
+        SENSOR_SHADOW_DIAGNOSTICS_ARTIFACT,
+        post_init_hook_probe::build_sensor_shadow_diagnostics,
+        post_init_hook_probe::verify_sensor_shadow_diagnostics,
+    )
+}
+
 #[allow(
     clippy::too_many_arguments,
     reason = "the hook builder keeps each locked artifact parameter explicit at its call site"
@@ -1116,7 +1131,7 @@ fn disassemble_stock(
 
 fn usage() {
     eprintln!(
-        "usage:\n  cargo xtask <check|rust-guard|usb-probe|stock-harness|late-marker-probe|experiment-entry-probe|rust-response-probe|post-init-hook-probe|wired-loop-hook-probe|active-loop-hook-probe|steady-loop-hook-probe|dispatcher-return-hook-probe|experiment-dispatch-guard|input-diagnostics|paged-input-diagnostics|postlink|all>\n  cargo xtask disassemble-stock FIRMWARE START STOP <arm|thumb>"
+        "usage:\n  cargo xtask <check|rust-guard|usb-probe|stock-harness|late-marker-probe|experiment-entry-probe|rust-response-probe|post-init-hook-probe|wired-loop-hook-probe|active-loop-hook-probe|steady-loop-hook-probe|dispatcher-return-hook-probe|experiment-dispatch-guard|input-diagnostics|paged-input-diagnostics|sensor-shadow-diagnostics|postlink|all>\n  cargo xtask disassemble-stock FIRMWARE START STOP <arm|thumb>"
     );
 }
 
@@ -1145,6 +1160,9 @@ fn main() -> ExitCode {
         },
         [command] if command == "input-diagnostics" => build_input_diagnostics(&root),
         [command] if command == "paged-input-diagnostics" => build_paged_input_diagnostics(&root),
+        [command] if command == "sensor-shadow-diagnostics" => {
+            build_sensor_shadow_diagnostics(&root)
+        },
         [command] if command == "postlink" => post_link_checks(&root),
         [command, firmware, start, stop, state] if command == "disassemble-stock" => {
             disassemble_stock(&root, firmware, start, stop, state)

@@ -53,6 +53,10 @@ path = "src/input_diagnostics.rs"
 name = "slimblade-paged-input-diagnostics"
 path = "src/paged_input_diagnostics.rs"
 
+[[bin]]
+name = "slimblade-sensor-shadow-diagnostics"
+path = "src/sensor_shadow_diagnostics.rs"
+
 [profile.dev]
 panic = "abort"
 

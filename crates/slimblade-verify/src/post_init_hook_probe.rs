@@ -5,7 +5,8 @@ use slimblade_image::{
     DISPATCHER_RETURN_HOOK_PROBE, DISPATCHER_RETURN_HOOK_PROBE_ARTIFACT, EXPERIMENT_DISPATCH_GUARD,
     EXPERIMENT_DISPATCH_GUARD_ARTIFACT, INPUT_DIAGNOSTICS, INPUT_DIAGNOSTICS_ARTIFACT,
     PAGED_INPUT_DIAGNOSTICS, PAGED_INPUT_DIAGNOSTICS_ARTIFACT, POST_INIT_HOOK_PROBE,
-    POST_INIT_HOOK_PROBE_ARTIFACT, STACK_HEADER_OFFSET, STARTUP_TRAMPOLINE, STEADY_LOOP_HOOK_PROBE,
+    POST_INIT_HOOK_PROBE_ARTIFACT, SENSOR_SHADOW_DIAGNOSTICS, SENSOR_SHADOW_DIAGNOSTICS_ARTIFACT,
+    STACK_HEADER_OFFSET, STARTUP_TRAMPOLINE, STEADY_LOOP_HOOK_PROBE,
     STEADY_LOOP_HOOK_PROBE_ARTIFACT, V449_BCD_DEVICE_OFFSET, WIRED_LOOP_HOOK_PROBE,
     WIRED_LOOP_HOOK_PROBE_ARTIFACT, parse_header, refresh_header_crc, sha256,
 };
@@ -32,6 +33,8 @@ const STEADY_LOOP_PATCH: usize = 0x1d3c2;
 const DISPATCHER_RETURN_PATCH: usize = 0x1c55a;
 const EXPERIMENT_DISPATCH: u32 = 0x22a0;
 const EXPERIMENT_CALL: usize = 0x22b2;
+const SENSOR_SHADOW_PATCH: usize = 0x1a798;
+const SENSOR_SHADOW_HOOK: u32 = 0x21d0;
 
 const DISPATCH: [u8; 18] = [
     0x0d, 0x28, 0x04, 0xd0, 0x0e, 0x28, 0x04, 0xd0, 0x0f, 0x28, 0x0b, 0xd0, 0x70, 0x47, 0x2c, 0x4b,
@@ -100,6 +103,34 @@ const PAGED_INPUT_DIAGNOSTICS_HELPER: [u8; 44] = [
     0x10, 0xb5, 0x07, 0x4b, 0x98, 0x47, 0x07, 0x49, 0x0a, 0x78, 0x05, 0x2a, 0x01, 0xd1, 0x00, 0x22,
     0x0a, 0x70, 0x10, 0xbd, 0x04, 0x49, 0x08, 0x18, 0x0e, 0xc8, 0x20, 0x1d, 0x0e, 0xc0, 0x70, 0x47,
     0x4d, 0x8f, 0x01, 0x00, 0x64, 0x02, 0x40, 0x00, 0x60, 0x01, 0x40, 0x00,
+];
+const SENSOR_SHADOW_ARM_AND_QUERY: [u8; 26] = [
+    0x10, 0xb5, 0x00, 0xf0, 0x0a, 0xf8, 0x2a, 0x48, 0x01, 0x21, 0x01, 0x72, 0xaa, 0x20, 0xe0, 0x70,
+    0x10, 0xbd, 0x27, 0x48, 0x00, 0x7a, 0x01, 0x28, 0x68, 0xe0,
+];
+const SENSOR_SHADOW_HELPER: [u8; 44] = [
+    0x09, 0x48, 0x06, 0xc8, 0x20, 0x1d, 0x06, 0xc0, 0x70, 0x47, 0x09, 0xd1, 0x39, 0x68, 0x32, 0x88,
+    0x73, 0x88, 0x1b, 0x04, 0x1a, 0x43, 0x08, 0x00, 0x10, 0x43, 0x01, 0xd0, 0x02, 0x48, 0x06, 0xc0,
+    0x34, 0x80, 0xb0, 0x1c, 0x70, 0x47, 0xc0, 0x46, 0x60, 0x13, 0x40, 0x00,
+];
+const SENSOR_SHADOW_DISPATCH: [u8; 18] = [
+    0x0d, 0x28, 0x04, 0xd0, 0x0e, 0x28, 0x04, 0xd0, 0x0f, 0x28, 0x73, 0xd0, 0x70, 0x47, 0x2c, 0x4b,
+    0x18, 0x47,
+];
+const SENSOR_SHADOW_CRITICAL_WORDS: [(usize, u32); 13] = [
+    (0x0c0, 0x0001_895d),
+    (0x0c4, 0x0040_1360),
+    (0x0c8, 0x0080_3000),
+    (0x0cc, 0x0000_807c),
+    (0x0d0, 0x7856_3412),
+    (0x0d4, 0x0000_807d),
+    (0x0d8, 0x19d2_bc9a),
+    (0x0dc, 0x0001_78eb),
+    (0x0e0, 0x0080_001c),
+    (0x0e4, 0x0000_22e8),
+    (0x0e8, 0x0080_6000),
+    (0x0ec, 0x0000_58a9),
+    (0x0f0, 0x0000_a958),
 ];
 const RUST_EXPERIMENT_ENTRY: [u8; 6] = [0x80, 0xb5, 0x00, 0xaf, 0x80, 0xbd];
 const CRITICAL_WORDS: [(usize, u32); 13] = [
@@ -905,6 +936,53 @@ pub fn build_paged_input_diagnostics(base: &[u8], injection: &[u8]) -> Result<Ve
     Ok(image)
 }
 
+/// Builds the marker-first per-sensor shadow diagnostic candidate.
+///
+/// # Errors
+///
+/// Returns an error unless the exact v4.53 base and reviewed shadow injection are supplied.
+pub fn build_sensor_shadow_diagnostics(base: &[u8], injection: &[u8]) -> Result<Vec<u8>, Error> {
+    STARTUP_TRAMPOLINE
+        .validate(base)
+        .map_err(|_| Error::BaseIdentity)?;
+    if injection.len() != INJECTION_END - INJECTION_START {
+        return Err(Error::InjectionSize {
+            actual: injection.len(),
+        });
+    }
+    if !SENSOR_SHADOW_DIAGNOSTICS_ARTIFACT.code_matches(injection) {
+        return Err(Error::InjectionIdentity);
+    }
+    require_base(base, SENSOR_SHADOW_PATCH, &[0x34, 0x80, 0x09, 0x48])?;
+
+    let mut image = base.to_vec();
+    replace(&mut image, INJECTION_START, injection)?;
+    replace(
+        &mut image,
+        RESET_BRANCH,
+        &encode_arm_b(
+            ArmAddress::new(u32::try_from(RESET_BRANCH).map_err(|_| Error::Layout)?)
+                .map_err(Error::Branch)?,
+            ArmAddress::new(TRAMPOLINE).map_err(Error::Branch)?,
+        )
+        .map_err(Error::Branch)?,
+    )?;
+    replace(
+        &mut image,
+        SENSOR_SHADOW_PATCH,
+        &encode_thumb_bl(
+            ThumbAddress::new(u32::try_from(SENSOR_SHADOW_PATCH).map_err(|_| Error::Layout)?)
+                .map_err(Error::Branch)?,
+            ThumbAddress::new(SENSOR_SHADOW_HOOK).map_err(Error::Branch)?,
+        )
+        .map_err(Error::Branch)?,
+    )?;
+    *image.get_mut(V449_BCD_DEVICE_OFFSET).ok_or(Error::Layout)? = 0x69;
+    refresh_header_crc(&mut image, APPLICATION_HEADER_OFFSET).map_err(|_| Error::Header)?;
+    refresh_header_crc(&mut image, STACK_HEADER_OFFSET).map_err(|_| Error::Header)?;
+    Ok(image)
+}
+
 /// Audits the guard, clear-before-call order, Rust entry, stock dispatcher, and return path.
 ///
 /// # Errors
@@ -1136,6 +1214,82 @@ pub fn verify_paged_input_diagnostics(
         &[(".carrier", 0x21ac, 0x120), (".trampoline", 0x22cc, 0x034)],
     )?;
     let payload = PAGED_INPUT_DIAGNOSTICS
+        .validate(image)
+        .map_err(|_| Error::ContainerIdentity)?;
+    Ok(Report {
+        injection_sha256: sha256(injection),
+        container_sha256: sha256(image),
+        payload_sha256: sha256(payload),
+        payload_crc: slimblade_protocol::updater_crc32(payload),
+    })
+}
+
+/// Audits the pre-clear shadow call, displaced instructions, recovery bytes, and stock paths.
+///
+/// # Errors
+///
+/// Returns the first failed identity, instruction, address, branch, header, or ELF invariant.
+pub fn verify_sensor_shadow_diagnostics(
+    base: &[u8],
+    image: &[u8],
+    injection: &[u8],
+    elf_bytes: &[u8],
+) -> Result<Report, Error> {
+    if image != build_sensor_shadow_diagnostics(base, injection)? {
+        return Err(Error::DerivedImage);
+    }
+    require(injection, 0, &SENSOR_SHADOW_DISPATCH)?;
+    require(injection, 0x12, &SENSOR_SHADOW_ARM_AND_QUERY)?;
+    require(injection, 0x0f4, &SENSOR_SHADOW_HELPER)?;
+    for (offset, expected) in SENSOR_SHADOW_CRITICAL_WORDS {
+        let actual = read_u32(injection, offset)?;
+        if actual != expected {
+            return Err(Error::Word { offset, actual });
+        }
+    }
+    let shadow_target = decode_thumb_bl(
+        read_array(image, SENSOR_SHADOW_PATCH)?,
+        ThumbAddress::new(u32::try_from(SENSOR_SHADOW_PATCH).map_err(|_| Error::Layout)?)
+            .map_err(Error::Branch)?,
+    )
+    .map_err(Error::Branch)?;
+    if shadow_target.get() != SENSOR_SHADOW_HOOK {
+        return Err(Error::Bytes {
+            offset: SENSOR_SHADOW_PATCH,
+        });
+    }
+    let (_, reset_target) = decode_arm_branch(
+        read_array(image, RESET_BRANCH)?,
+        ArmAddress::new(u32::try_from(RESET_BRANCH).map_err(|_| Error::Layout)?)
+            .map_err(Error::Branch)?,
+    )
+    .map_err(Error::Branch)?;
+    if reset_target.get() != TRAMPOLINE {
+        return Err(Error::Bytes {
+            offset: RESET_BRANCH,
+        });
+    }
+    if image.get(0x18f4c..0x19004) != base.get(0x18f4c..0x19004)
+        || image.get(0x1a74c..SENSOR_SHADOW_PATCH) != base.get(0x1a74c..SENSOR_SHADOW_PATCH)
+        || image.get(SENSOR_SHADOW_PATCH + 4..0x1a7c8) != base.get(SENSOR_SHADOW_PATCH + 4..0x1a7c8)
+        || image.get(0x1c550..0x1c58c) != base.get(0x1c550..0x1c58c)
+        || image.get(0x2300..0x2330) != base.get(0x2300..0x2330)
+    {
+        return Err(Error::Bytes {
+            offset: SENSOR_SHADOW_PATCH,
+        });
+    }
+    for offset in [STACK_HEADER_OFFSET, APPLICATION_HEADER_OFFSET] {
+        let header = parse_header(image, offset).map_err(|_| Error::Header)?;
+        if !header.crc_is_valid(image).map_err(|_| Error::Header)? {
+            return Err(Error::Header);
+        }
+    }
+    verify_elf(
+        elf_bytes,
+        &[(".carrier", 0x21ac, 0x120), (".trampoline", 0x22cc, 0x034)],
+    )?;
+    let payload = SENSOR_SHADOW_DIAGNOSTICS
         .validate(image)
         .map_err(|_| Error::ContainerIdentity)?;
     Ok(Report {
@@ -1415,6 +1569,25 @@ mod tests {
         })
     }
 
+    fn sensor_shadow_diagnostics_fixtures() -> Option<Fixtures> {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let target = root.join("firmware/bk3635-stock-harness/target");
+        Some(Fixtures {
+            base: read_if_present(root.join(
+                "firmware/startup_trampoline/build/DO_NOT_FLASH-stock-startup-trampoline.container.bin",
+            ))?,
+            injection: read_if_present(target.join(
+                "sensor-shadow-diagnostics/DO_NOT_FLASH-sensor-shadow-diagnostics.injection.bin",
+            ))?,
+            container: read_if_present(target.join(
+                "sensor-shadow-diagnostics/DO_NOT_FLASH-sensor-shadow-diagnostics.container.bin",
+            ))?,
+            elf: read_if_present(
+                target.join("thumbv5te-none-eabi/release/slimblade-sensor-shadow-diagnostics"),
+            )?,
+        })
+    }
+
     #[test]
     fn exact_candidate_rebuilds_and_passes() {
         let Some(data) = fixtures() else { return };
@@ -1505,6 +1678,52 @@ mod tests {
         data.injection[0x26] ^= 1;
         assert_eq!(
             build_paged_input_diagnostics(&data.base, &data.injection),
+            Err(Error::InjectionIdentity)
+        );
+    }
+
+    #[test]
+    fn sensor_shadow_diagnostics_rebuilds_and_passes() {
+        let Some(data) = sensor_shadow_diagnostics_fixtures() else {
+            return;
+        };
+        assert_eq!(
+            build_sensor_shadow_diagnostics(&data.base, &data.injection),
+            Ok(data.container.clone())
+        );
+        let report = verify_sensor_shadow_diagnostics(
+            &data.base,
+            &data.container,
+            &data.injection,
+            &data.elf,
+        )
+        .expect("audit exact sensor shadow diagnostic");
+        assert_eq!(report.payload_crc, 0x02f3_599e);
+    }
+
+    #[test]
+    fn sensor_shadow_diagnostics_preserves_proven_recovery_bytes() {
+        let Some(data) = sensor_shadow_diagnostics_fixtures() else {
+            return;
+        };
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let guard = std::fs::read(root.join(
+            "firmware/bk3635-stock-harness/target/experiment-dispatch-guard/DO_NOT_FLASH-experiment-dispatch-guard.injection.bin",
+        ))
+        .expect("read proven experiment guard");
+        assert_eq!(&data.injection[0x2c..0x0c4], &guard[0x2c..0x0c4]);
+        assert_eq!(&data.injection[0x0c8..0x0f4], &guard[0x0c8..0x0f4]);
+        assert_eq!(&data.injection[0x120..0x154], &guard[0x120..0x154]);
+    }
+
+    #[test]
+    fn sensor_shadow_diagnostics_rejects_hook_corruption() {
+        let Some(mut data) = sensor_shadow_diagnostics_fixtures() else {
+            return;
+        };
+        data.injection[0x0fe] ^= 1;
+        assert_eq!(
+            build_sensor_shadow_diagnostics(&data.base, &data.injection),
             Err(Error::InjectionIdentity)
         );
     }

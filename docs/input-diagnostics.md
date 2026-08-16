@@ -75,7 +75,95 @@ eight-byte-stride RAM page.
 The exact container was flashed on 2026-08-16. The resident loader answered
 `d2`, all 3,748 payload blocks echoed, and the application returned on the same
 physical USB path as `047d:80d7`, `bcdDevice=0466`, with the stock 170-byte
-report descriptor. The marker-first capture command has not yet been sent.
+report descriptor.
+
+The marker-first capture then confirmed:
+
+- signed combined X/Y motion at `0x00400192/194`;
+- debounced/current button masks at `0x00400164/166`;
+- processed/current button masks at `0x00400205/206`;
+- physical button bits `01`, `02`, `04`, and `08`.
+
+The per-sensor pairs remained zero because routine `0x1a74c` merges them into
+the combined pair and immediately clears all four halfwords before an
+asynchronous USB query can observe them.
+
+## v4.67 sensor-shadow result
+
+The stock instructions at `0x1a798` are replaced by one audited call. Before
+the stock clear, it copies sensor A (`0x00400174/176`) and sensor B
+(`0x004001da/1dc`) into the proven inactive buffer at `0x00401360`. It writes
+only when either pair is nonzero, then replays the displaced B-X clear and
+returns for the remaining stock clears.
+
+Command `0x0e` first committed the persistent recovery marker and set volatile
+byte `0x00401368` to one. Command `0x0f` returned the four signed shadow
+halfwords.
+
+- injection: 340 bytes, SHA-256
+  `4e84e88d2c5342fd574f1c6c6da6cdfcd5a03e4a7b9f3919b792c4484541c908`
+- container: 128112 bytes, SHA-256
+  `b28a938e22ebf5b860cb9299f09317316ec15bed83e0874b98def81c8ca34f5c`
+- payload SHA-256
+  `4f6160983173d3c05ed5d0a20b548b513dd431bef4e23791ef8b8108477d5de4`
+- payload CRC: `e67661e9`
+
+The marker implementation, its storage literals, and the reset trampoline are
+byte-identical to v4.64. Only the former mode-address literal at injection
+offset `0xc4` is changed to the volatile shadow base; the marker starts at
+offset `0x2c` but does not reference that literal.
+
+The device enumerated normally and retained all stock input behavior, but a
+15-second moving-ball capture returned only zero shadow values. The volatile
+activation byte lies in a stock response workspace and is not stable across
+the active loop, so it cannot guard the hook.
+
+## v4.68 persistent-address activation result
+
+The hook and stock patch remain at exactly the v4.67 addresses. Its eight-byte
+guard now reads the first byte at persistent marker address `0x807c` and
+activates only when it equals `0x12`, as written by the already proven
+marker-first command. Relative to v4.67, only three injection bytes change;
+the proven marker implementation, literal pool, reset trampoline, and sensor
+helper remain byte-identical.
+
+- injection: 340 bytes, SHA-256
+  `c1fb7d21503eecd9aba0ab567289e1fde8f9687b518f96bdce59844388ae8eee`
+- container: 128112 bytes, SHA-256
+  `4b17aa182772c563a095261cd243d448c303d4ebb3d8a844def30d11ff0cf300`
+- payload SHA-256
+  `40fa8ca71b5a1dbaa1ac08983c9fc04ac46cc274faa09f7da5528a9e4049f732`
+- payload CRC: `e1e8edbd`
+
+The exact image flashed and retained stock USB and input operation. During a
+properly coordinated moving-ball capture, all four shadow values still stayed
+zero. Address `0x807c` is a storage-controller word address rather than a
+direct CPU byte address containing `0x12`, so this guard remained dormant.
+
+## v4.69 delayed single-query candidate
+
+The firmware injection returns exactly to the audited v4.67 bytes. The host no
+longer sends `0x0f` immediately after arming: it waits ten seconds without any
+vendor query while the hook retains the last nonzero sample, then performs one
+read. This matters because the `0x0f` response copy overlaps byte
+`0x00401368`; polling at roughly 1 ms had cleared the volatile activation byte
+before physical movement could reach the hook.
+
+- injection: 340 bytes, SHA-256
+  `4e84e88d2c5342fd574f1c6c6da6cdfcd5a03e4a7b9f3919b792c4484541c908`
+- container: 128112 bytes, SHA-256
+  `8e2e0649994561f4e37c4e33dae7764db483aaedd0d20a306229ea854ac28b39`
+- payload SHA-256
+  `06decfff4f7e74c89225bd5ef6148a6065f3d27aaaac4b133f25b9e5e4e9f507`
+- payload CRC: `02f3599e`
+
+The exact image flashed on 2026-08-16, returned as `047d:80d7` with
+`bcdDevice 0469`, and retained its stock USB path. During an explicitly
+coordinated ten-second moving-ball window, the single delayed query returned
+sensor A `(1, 2)` and sensor B `(1, 2)`. This proves that the hook runs before
+the stock clear and that both raw sensor pairs can be exported through the
+stock vendor interface. The values are one captured instant, not calibrated
+axis labels or motion totals.
 
 ## Remaining live questions
 

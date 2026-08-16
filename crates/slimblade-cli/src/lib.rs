@@ -2,8 +2,9 @@ use slimblade_image::{
     ACTIVE_LOOP_HOOK_PROBE, DISPATCHER_RETURN_HOOK_PROBE, EXPERIMENT_DISPATCH_GUARD,
     EXPERIMENT_ENTRY_PROBE, FirmwareIdentity, INPUT_DIAGNOSTICS, LATE_MARKER_PROBE, OFFICIAL_V449,
     PAGED_INPUT_DIAGNOSTICS, POST_INIT_HOOK_PROBE, RECOVERY_CARRIER, RECOVERY_GUARD, RECOVERY_STUB,
-    RESET_TRAMPOLINE, RUST_RESPONSE_PROBE, STARTUP_TRAMPOLINE, STEADY_LOOP_HOOK_PROBE,
-    STOCK_HARNESS, USB_RECOVERY_PROBE, V449_DESCRIPTOR_PROBE, WIRED_LOOP_HOOK_PROBE,
+    RESET_TRAMPOLINE, RUST_RESPONSE_PROBE, SENSOR_SHADOW_DIAGNOSTICS, STARTUP_TRAMPOLINE,
+    STEADY_LOOP_HOOK_PROBE, STOCK_HARNESS, USB_RECOVERY_PROBE, V449_DESCRIPTOR_PROBE,
+    WIRED_LOOP_HOOK_PROBE,
 };
 use slimblade_protocol::NormalReport;
 
@@ -61,6 +62,13 @@ pub fn experiment_dispatch_arm_response_is_success(response: NormalReport) -> bo
     response.command_byte() == 0x0e
         && response.as_bytes().get(2) == Some(&0x01)
         && response.as_bytes().get(3) == Some(&0xa9)
+}
+
+#[must_use]
+pub fn sensor_shadow_arm_response_is_success(response: NormalReport) -> bool {
+    response.command_byte() == 0x0e
+        && response.as_bytes().get(2) == Some(&0x01)
+        && response.as_bytes().get(3) == Some(&0xaa)
 }
 
 #[must_use]
@@ -145,6 +153,28 @@ pub fn input_state_page(response: NormalReport, selector: u8) -> Option<InputSta
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct SensorShadow {
+    pub sensor_a_x: i16,
+    pub sensor_a_y: i16,
+    pub sensor_b_x: i16,
+    pub sensor_b_y: i16,
+}
+
+#[must_use]
+pub fn sensor_shadow(response: NormalReport) -> Option<SensorShadow> {
+    let bytes = response.as_bytes();
+    if response.command_byte() != 0x0f || bytes.get(2) != Some(&0x01) {
+        return None;
+    }
+    Some(SensorShadow {
+        sensor_a_x: i16::from_le_bytes([*bytes.get(4)?, *bytes.get(5)?]),
+        sensor_a_y: i16::from_le_bytes([*bytes.get(6)?, *bytes.get(7)?]),
+        sensor_b_x: i16::from_le_bytes([*bytes.get(8)?, *bytes.get(9)?]),
+        sensor_b_y: i16::from_le_bytes([*bytes.get(10)?, *bytes.get(11)?]),
+    })
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum FlashArtifact {
     OfficialV449,
     DescriptorProbe,
@@ -166,6 +196,7 @@ pub enum FlashArtifact {
     ExperimentDispatchGuard,
     InputDiagnostics,
     PagedInputDiagnostics,
+    SensorShadowDiagnostics,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -199,6 +230,7 @@ impl FlashArtifact {
             Self::ExperimentDispatchGuard => EXPERIMENT_DISPATCH_GUARD,
             Self::InputDiagnostics => INPUT_DIAGNOSTICS,
             Self::PagedInputDiagnostics => PAGED_INPUT_DIAGNOSTICS,
+            Self::SensorShadowDiagnostics => SENSOR_SHADOW_DIAGNOSTICS,
         }
     }
 
@@ -239,6 +271,9 @@ impl FlashArtifact {
             },
             Self::InputDiagnostics => PostFlashExpectation::Application { bcd_device: "0465" },
             Self::PagedInputDiagnostics => PostFlashExpectation::Application { bcd_device: "0466" },
+            Self::SensorShadowDiagnostics => {
+                PostFlashExpectation::Application { bcd_device: "0469" }
+            },
         }
     }
 }
@@ -470,6 +505,18 @@ mod tests {
     }
 
     #[test]
+    fn sensor_shadow_diagnostics_needs_exact_hash_confirmation() {
+        assert!(!FlashArtifact::SensorShadowDiagnostics.confirmation_matches("wrong"));
+        assert!(FlashArtifact::SensorShadowDiagnostics.confirmation_matches(
+            "8e2e0649994561f4e37c4e33dae7764db483aaedd0d20a306229ea854ac28b39"
+        ));
+        assert_eq!(
+            FlashArtifact::SensorShadowDiagnostics.post_flash_expectation(),
+            PostFlashExpectation::Application { bcd_device: "0469" }
+        );
+    }
+
+    #[test]
     #[allow(
         clippy::expect_used,
         clippy::indexing_slicing,
@@ -520,6 +567,30 @@ mod tests {
             })
         );
         assert_eq!(input_state_page(response, 2), None);
+    }
+
+    #[test]
+    #[allow(
+        clippy::expect_used,
+        clippy::indexing_slicing,
+        reason = "the fixed recorded response must parse for the assertion to be meaningful"
+    )]
+    fn sensor_shadow_decodes_four_signed_halfwords() {
+        let mut bytes = [
+            0x08, 0x0f, 0x01, 0x00, 0xfe, 0xff, 0x03, 0x00, 0xfc, 0xff, 0x05, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00,
+        ];
+        bytes[16] = slimblade_protocol::checksum(&bytes[..16]);
+        let response = NormalReport::parse(&bytes).expect("recorded sensor response is valid");
+        assert_eq!(
+            sensor_shadow(response),
+            Some(SensorShadow {
+                sensor_a_x: -2,
+                sensor_a_y: 3,
+                sensor_b_x: -4,
+                sensor_b_y: 5,
+            })
+        );
     }
 
     #[test]
@@ -652,5 +723,20 @@ mod tests {
         .expect("fixed experiment-dispatch response is valid");
         assert!(experiment_dispatch_arm_response_is_success(arm));
         assert!(!dispatcher_return_arm_response_is_success(arm));
+    }
+
+    #[test]
+    #[allow(
+        clippy::expect_used,
+        reason = "the fixed sensor response must parse for the assertion to be meaningful"
+    )]
+    fn sensor_shadow_response_requires_exact_signature() {
+        let arm = NormalReport::parse(&[
+            0x08, 0x0e, 0x01, 0xaa, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x94,
+        ])
+        .expect("fixed sensor arm response is valid");
+        assert!(sensor_shadow_arm_response_is_success(arm));
+        assert!(!experiment_dispatch_arm_response_is_success(arm));
     }
 }

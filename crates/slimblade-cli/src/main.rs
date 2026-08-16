@@ -11,8 +11,8 @@ use slimblade_cli::{
     active_loop_arm_response_is_success, dispatcher_return_arm_response_is_success,
     experiment_dispatch_arm_response_is_success, input_snapshot, input_state_page,
     late_marker_response_is_success, post_init_arm_response_is_success, post_init_hook_state,
-    rust_response_is_success, steady_loop_arm_response_is_success,
-    wired_loop_arm_response_is_success,
+    rust_response_is_success, sensor_shadow, sensor_shadow_arm_response_is_success,
+    steady_loop_arm_response_is_success, wired_loop_arm_response_is_success,
 };
 use slimblade_linux::UsbDevice;
 use slimblade_linux::flash::{transfer_payload, wait_for_queried_loader};
@@ -53,6 +53,9 @@ enum Command {
     CaptureState {
         confirmed: bool,
     },
+    CaptureSensors {
+        confirmed: bool,
+    },
     QueryLoader,
     Flash {
         artifact: FlashArtifact,
@@ -69,7 +72,7 @@ struct Arguments {
 }
 
 const fn usage() -> &'static str {
-    "usage:\n  slimblade [--device PATH] identify\n  slimblade [--device PATH] [--timeout-seconds N] enter-loader --confirm\n  slimblade [--device PATH] [--timeout-seconds N] set-late-marker --confirm\n  slimblade [--device PATH] [--timeout-seconds N] start-experiment --confirm\n  slimblade [--device PATH] [--timeout-seconds N] run-rust-response --confirm\n  slimblade [--device PATH] [--timeout-seconds N] run-post-init-hook --confirm\n  slimblade [--device PATH] [--timeout-seconds N] read-input --confirm\n  slimblade [--device PATH] [--timeout-seconds N] capture-input --confirm\n  slimblade [--device PATH] [--timeout-seconds N] capture-state --confirm\n  slimblade [--device PATH] [--timeout-seconds N] query-loader\n  slimblade [--device PATH] [--timeout-seconds N] FLASH_COMMAND --firmware PATH --confirm-sha256 HASH\n\nFLASH_COMMAND: restore-official-v449, flash-descriptor-probe, flash-recovery-carrier, flash-reset-trampoline, flash-recovery-stub, flash-startup-trampoline, flash-rust-guard, flash-usb-recovery-probe, flash-stock-harness, flash-late-marker-probe, flash-experiment-entry-probe, flash-rust-response-probe, flash-post-init-hook-probe, flash-wired-loop-hook-probe, flash-active-loop-hook-probe, flash-steady-loop-hook-probe, flash-dispatcher-return-hook-probe, flash-experiment-dispatch-guard, flash-input-diagnostics, or flash-paged-input-diagnostics"
+    "usage:\n  slimblade [--device PATH] identify\n  slimblade [--device PATH] [--timeout-seconds N] enter-loader --confirm\n  slimblade [--device PATH] [--timeout-seconds N] set-late-marker --confirm\n  slimblade [--device PATH] [--timeout-seconds N] start-experiment --confirm\n  slimblade [--device PATH] [--timeout-seconds N] run-rust-response --confirm\n  slimblade [--device PATH] [--timeout-seconds N] run-post-init-hook --confirm\n  slimblade [--device PATH] [--timeout-seconds N] read-input --confirm\n  slimblade [--device PATH] [--timeout-seconds N] capture-input --confirm\n  slimblade [--device PATH] [--timeout-seconds N] capture-state --confirm\n  slimblade [--device PATH] [--timeout-seconds N] capture-sensors --confirm\n  slimblade [--device PATH] [--timeout-seconds N] query-loader\n  slimblade [--device PATH] [--timeout-seconds N] FLASH_COMMAND --firmware PATH --confirm-sha256 HASH\n\nFLASH_COMMAND: restore-official-v449, flash-descriptor-probe, flash-recovery-carrier, flash-reset-trampoline, flash-recovery-stub, flash-startup-trampoline, flash-rust-guard, flash-usb-recovery-probe, flash-stock-harness, flash-late-marker-probe, flash-experiment-entry-probe, flash-rust-response-probe, flash-post-init-hook-probe, flash-wired-loop-hook-probe, flash-active-loop-hook-probe, flash-steady-loop-hook-probe, flash-dispatcher-return-hook-probe, flash-experiment-dispatch-guard, flash-input-diagnostics, flash-paged-input-diagnostics, or flash-sensor-shadow-diagnostics"
 }
 
 fn flash_artifact_for_command(command: &str) -> Option<FlashArtifact> {
@@ -94,6 +97,7 @@ fn flash_artifact_for_command(command: &str) -> Option<FlashArtifact> {
         "flash-experiment-dispatch-guard" => Some(FlashArtifact::ExperimentDispatchGuard),
         "flash-input-diagnostics" => Some(FlashArtifact::InputDiagnostics),
         "flash-paged-input-diagnostics" => Some(FlashArtifact::PagedInputDiagnostics),
+        "flash-sensor-shadow-diagnostics" => Some(FlashArtifact::SensorShadowDiagnostics),
         _ => None,
     }
 }
@@ -156,6 +160,7 @@ fn parse_arguments() -> Result<Arguments, String> {
         "read-input" => Command::ReadInput { confirmed },
         "capture-input" => Command::CaptureInput { confirmed },
         "capture-state" => Command::CaptureState { confirmed },
+        "capture-sensors" => Command::CaptureSensors { confirmed },
         "query-loader" => Command::QueryLoader,
         "restore-official-v449"
         | "flash-descriptor-probe"
@@ -176,7 +181,8 @@ fn parse_arguments() -> Result<Arguments, String> {
         | "flash-dispatcher-return-hook-probe"
         | "flash-experiment-dispatch-guard"
         | "flash-input-diagnostics"
-        | "flash-paged-input-diagnostics" => Command::Flash {
+        | "flash-paged-input-diagnostics"
+        | "flash-sensor-shadow-diagnostics" => Command::Flash {
             artifact: flash_artifact_for_command(command_name.as_str())
                 .ok_or_else(|| "unreachable flash command mapping".to_owned())?,
             firmware: firmware.ok_or_else(|| "flash command requires --firmware".to_owned())?,
@@ -194,7 +200,8 @@ fn parse_arguments() -> Result<Arguments, String> {
         | Command::RunPostInitHook { .. }
         | Command::ReadInput { .. }
         | Command::CaptureInput { .. }
-        | Command::CaptureState { .. } => DEFAULT_APPLICATION_DEVICE,
+        | Command::CaptureState { .. }
+        | Command::CaptureSensors { .. } => DEFAULT_APPLICATION_DEVICE,
         Command::QueryLoader | Command::Flash { .. } => DEFAULT_LOADER_DEVICE,
     };
     Ok(Arguments {
@@ -682,6 +689,60 @@ fn capture_state(device: &Path, timeout: Duration, confirmed: bool) -> Result<()
     Ok(())
 }
 
+fn open_sensor_shadow_diagnostics(device: &Path) -> Result<(UsbDevice, Hidraw), String> {
+    let parent = usb_parent_for_hidraw(device, Path::new(HIDRAW_SYSFS_ROOT))
+        .map_err(|error| format!("could not resolve USB parent: {error}"))?
+        .ok_or_else(|| "could not find USB parent".to_owned())?;
+    if parent.identity != KENSINGTON_WIRED_IDENTITY || parent.bcd_device.as_deref() != Some("0469")
+    {
+        return Err(format!(
+            "refusing sensor shadow diagnostic for identity {:04x}:{:04x} bcdDevice={:?}; expected 047d:80d7/0469",
+            parent.identity.vendor_id, parent.identity.product_id, parent.bcd_device
+        ));
+    }
+    let hidraw = Hidraw::open_read_write(device)
+        .map_err(|error| format!("could not open {}: {error}", device.display()))?;
+    let (_, identity) = hidraw
+        .identity()
+        .map_err(|error| format!("could not query HID identity: {error}"))?;
+    if identity != parent.identity {
+        return Err("HID identity and USB parent disagree".to_owned());
+    }
+    Ok((parent, hidraw))
+}
+
+fn capture_sensors(device: &Path, timeout: Duration, confirmed: bool) -> Result<(), String> {
+    if !confirmed {
+        return Err("refusing marker-first sensor capture without --confirm".to_owned());
+    }
+    let (parent, mut hidraw) = open_sensor_shadow_diagnostics(device)?;
+    let armed = exchange_vendor_command(&mut hidraw, 0x0e, timeout)?;
+    if !sensor_shadow_arm_response_is_success(armed) {
+        return Err("marker command did not return status 01 and signature aa".to_owned());
+    }
+    println!(
+        "sensor_capture=armed duration_ms=10000 sysfs={}",
+        parent.sysfs
+    );
+    thread::sleep(Duration::from_secs(10));
+    let response = exchange_vendor_command(&mut hidraw, 0x0f, timeout)?;
+    let snapshot = sensor_shadow(response)
+        .ok_or_else(|| "sensor shadow diagnostic returned a malformed response".to_owned())?;
+    println!(
+        "sensors a_x={} a_y={} b_x={} b_y={} sysfs={}",
+        snapshot.sensor_a_x,
+        snapshot.sensor_a_y,
+        snapshot.sensor_b_x,
+        snapshot.sensor_b_y,
+        parent.sysfs
+    );
+    println!(
+        "sensor_capture=complete duration_ms=10000 sysfs={}",
+        parent.sysfs
+    );
+    Ok(())
+}
+
 fn query_loader(device: &Path, timeout: Duration) -> Result<(), String> {
     let loader = wait_for_queried_loader(device, timeout.max(Duration::from_secs(8)))
         .map_err(|error| error.to_string())?;
@@ -813,6 +874,9 @@ fn run() -> Result<(), String> {
         },
         Command::CaptureState { confirmed } => {
             capture_state(&arguments.device, arguments.timeout, confirmed)
+        },
+        Command::CaptureSensors { confirmed } => {
+            capture_sensors(&arguments.device, arguments.timeout, confirmed)
         },
         Command::QueryLoader => query_loader(&arguments.device, arguments.timeout),
         Command::Flash {

@@ -8,6 +8,10 @@
     .equ MARKER_ADDRESS,           0x0000807c
     .equ STOCK_RECOVERY_COMMAND,   0x0001895d
     .equ STOCK_DELAY,              0x000178eb
+    .ifdef SENSOR_SHADOW_DIAGNOSTICS
+    .equ STOCK_MODE_ADDRESS,       0x00400264
+    .equ SENSOR_SHADOW_ADDRESS,    0x00401360
+    .else
     .ifdef POST_INIT_EXPERIMENT_DISPATCH_GUARD
     .equ STOCK_MODE_ADDRESS,       0x00400264
     .equ STOCK_VENDOR_DISPATCH,    0x00018f4d
@@ -42,6 +46,7 @@
     .endif
     .endif
     .endif
+    .endif
 
     .section .text.carrier, "ax", %progbits
     .thumb
@@ -57,7 +62,11 @@ carrier_dispatch:
     cmp r0, #0x0e
     beq carrier_late_marker
     cmp r0, #0x0f
+    .ifdef SENSOR_SHADOW_DIAGNOSTICS
+    beq input_snapshot
+    .else
     beq carrier_hook_state
+    .endif
     bx lr
 .Lstock_recovery:
     ldr r3, =STOCK_RECOVERY_COMMAND
@@ -96,6 +105,11 @@ carrier_late_marker:
     push {r4, lr}
     bl marker_set
     .ifdef POST_INIT_HOOK_PROBE
+    .ifdef SENSOR_SHADOW_DIAGNOSTICS
+    ldr r0, =SENSOR_SHADOW_ADDRESS
+    movs r1, #1
+    strb r1, [r0, #8]
+    .else
     ldr r0, =STOCK_MODE_ADDRESS
     .ifdef POST_INIT_EXPERIMENT_DISPATCH_GUARD
     movs r1, #5
@@ -119,6 +133,10 @@ carrier_late_marker:
     .endif
     .endif
     strb r1, [r0]
+    .endif
+    .ifdef SENSOR_SHADOW_DIAGNOSTICS
+    movs r0, #0xaa
+    .else
     .ifdef POST_INIT_EXPERIMENT_DISPATCH_GUARD
     movs r0, #0xa9
     .else
@@ -135,6 +153,7 @@ carrier_late_marker:
     movs r0, #0xa5
     .else
     movs r0, #0xa3
+    .endif
     .endif
     .endif
     .endif
@@ -163,6 +182,12 @@ carrier_late_marker:
 carrier_hook_state:
     .ifdef INPUT_DIAGNOSTICS
     /* Keep marker_set and every following proven carrier byte in place. */
+    .ifdef SENSOR_SHADOW_DIAGNOSTICS
+    ldr r0, =SENSOR_SHADOW_ADDRESS
+    ldrb r0, [r0, #8]
+    cmp r0, #1
+    b sensor_shadow_hook
+    .else
     .ifdef PAGED_INPUT_DIAGNOSTICS
     ldrb r0, [r5, #3]
     strb r0, [r4, #3]
@@ -173,6 +198,7 @@ carrier_hook_state:
     nop
     nop
     nop
+    .endif
     .endif
     .else
     ldr r0, =STOCK_MODE_ADDRESS
@@ -389,6 +415,7 @@ experiment_dispatch_guard_impl:
     .ifndef INPUT_DIAGNOSTICS
     bl experiment_entry
     .endif
+
 .Lexperiment_dispatch_return:
     pop {r4, pc}
     .size experiment_dispatch_guard_impl, . - experiment_dispatch_guard_impl
@@ -410,6 +437,44 @@ input_snapshot:
     bx lr
     .size input_snapshot, . - input_snapshot
     .endif
+    .ltorg
+    .endif
+
+    .ifdef SENSOR_SHADOW_DIAGNOSTICS
+/* Return the last nonzero per-sensor pairs captured immediately before clear. */
+    .thumb_func
+    .global input_snapshot
+    .type input_snapshot, %function
+input_snapshot:
+    ldr r0, =SENSOR_SHADOW_ADDRESS
+    ldmia r0!, {r1-r2}
+    adds r0, r4, #4
+    stmia r0!, {r1-r2}
+    bx lr
+    .size input_snapshot, . - input_snapshot
+
+/* Entered at 0x1a798 with A at r7, B at r6, and zero in r4. */
+    .thumb_func
+    .global sensor_shadow_hook
+    .type sensor_shadow_hook, %function
+sensor_shadow_hook:
+    bne .Lsensor_shadow_skip
+    ldr r1, [r7]
+    ldrh r2, [r6]
+    ldrh r3, [r6, #2]
+    lsls r3, #16
+    orrs r2, r3
+    movs r0, r1
+    orrs r0, r2
+    beq .Lsensor_shadow_skip
+    ldr r0, =SENSOR_SHADOW_ADDRESS
+    stmia r0!, {r1-r2}
+.Lsensor_shadow_skip:
+    strh r4, [r6]
+    adds r0, r6, #2
+    bx lr
+    .size sensor_shadow_hook, . - sensor_shadow_hook
+    nop
     .ltorg
     .endif
 
@@ -436,6 +501,7 @@ steady_loop_hook_impl:
 
     .ifdef POST_INIT_HOOK_PROBE
     .ifndef POST_INIT_EXPERIMENT_DISPATCH_GUARD
+    .ifndef SENSOR_SHADOW_DIAGNOSTICS
     .section .text.rust_probe, "ax", %progbits
     .thumb
     .thumb_func
@@ -466,6 +532,7 @@ post_init_hook:
     .endif
     .endif
     .size post_init_hook, . - post_init_hook
+    .endif
     .endif
     .endif
 

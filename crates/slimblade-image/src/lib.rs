@@ -45,7 +45,7 @@ impl ArtifactIdentity {
     }
 }
 
-pub const REFERENCE_ARTIFACTS: [ArtifactIdentity; 20] = [
+pub const REFERENCE_ARTIFACTS: [ArtifactIdentity; 21] = [
     ArtifactIdentity {
         name: "stock-startup-reference",
         code_sha256: parse_sha256(
@@ -222,6 +222,15 @@ pub const REFERENCE_ARTIFACTS: [ArtifactIdentity; 20] = [
             "c5fb2b865c6ba1993c673f989e5c811bfa661b31f8c6261d2ab04e95eab5692f",
         )),
     },
+    ArtifactIdentity {
+        name: "sensor-shadow-diagnostics",
+        code_sha256: parse_sha256(
+            "4e84e88d2c5342fd574f1c6c6da6cdfcd5a03e4a7b9f3919b792c4484541c908",
+        ),
+        container_sha256: Some(parse_sha256(
+            "8e2e0649994561f4e37c4e33dae7764db483aaedd0d20a306229ea854ac28b39",
+        )),
+    },
 ];
 
 pub const STOCK_STARTUP_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[0];
@@ -244,6 +253,7 @@ pub const DISPATCHER_RETURN_HOOK_PROBE_ARTIFACT: ArtifactIdentity = REFERENCE_AR
 pub const EXPERIMENT_DISPATCH_GUARD_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[17];
 pub const INPUT_DIAGNOSTICS_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[18];
 pub const PAGED_INPUT_DIAGNOSTICS_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[19];
+pub const SENSOR_SHADOW_DIAGNOSTICS_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[20];
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct FirmwareIdentity {
@@ -475,8 +485,14 @@ pub const PAGED_INPUT_DIAGNOSTICS: FirmwareIdentity = firmware_identity(
     "6006faab993f9ba83b30a365376ad889dfcbf20af22de057e98d2c680516723d",
     0x7ed6_3bf1,
 );
+pub const SENSOR_SHADOW_DIAGNOSTICS: FirmwareIdentity = firmware_identity(
+    "sensor-shadow-diagnostics-v4.69",
+    "8e2e0649994561f4e37c4e33dae7764db483aaedd0d20a306229ea854ac28b39",
+    "06decfff4f7e74c89225bd5ef6148a6065f3d27aaaac4b133f25b9e5e4e9f507",
+    0x02f3_599e,
+);
 
-pub const FLASHABLE_IMAGES: [FirmwareIdentity; 20] = [
+pub const FLASHABLE_IMAGES: [FirmwareIdentity; 21] = [
     OFFICIAL_V449,
     V449_DESCRIPTOR_PROBE,
     RECOVERY_CARRIER,
@@ -497,6 +513,7 @@ pub const FLASHABLE_IMAGES: [FirmwareIdentity; 20] = [
     EXPERIMENT_DISPATCH_GUARD,
     INPUT_DIAGNOSTICS,
     PAGED_INPUT_DIAGNOSTICS,
+    SENSOR_SHADOW_DIAGNOSTICS,
 ];
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -1237,14 +1254,31 @@ mod tests {
     }
 
     #[test]
+    fn sensor_shadow_diagnostics_payload_constants() {
+        assert_fixture(
+            SENSOR_SHADOW_DIAGNOSTICS,
+            "firmware/bk3635-stock-harness/target/sensor-shadow-diagnostics/DO_NOT_FLASH-sensor-shadow-diagnostics.container.bin",
+        );
+    }
+
+    #[test]
+    fn sensor_shadow_diagnostics_rejects_one_byte_corruption() {
+        assert_corruption_rejected(
+            SENSOR_SHADOW_DIAGNOSTICS,
+            "firmware/bk3635-stock-harness/target/sensor-shadow-diagnostics/DO_NOT_FLASH-sensor-shadow-diagnostics.container.bin",
+            0x1a798,
+        );
+    }
+
+    #[test]
     fn reference_artifact_manifest_is_unique_and_complete() {
-        assert_eq!(REFERENCE_ARTIFACTS.len(), 20);
+        assert_eq!(REFERENCE_ARTIFACTS.len(), 21);
         assert_eq!(
             REFERENCE_ARTIFACTS
                 .iter()
                 .filter(|artifact| artifact.container_sha256.is_some())
                 .count(),
-            18
+            19
         );
         for (index, artifact) in REFERENCE_ARTIFACTS.iter().enumerate() {
             assert_ne!(artifact.code_sha256, [0; 32]);
