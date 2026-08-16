@@ -6,10 +6,10 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use slimblade_image::{
     ACTIVE_LOOP_HOOK_PROBE_ARTIFACT, APPLICATION_PREFIX_OFFSET, ArtifactIdentity,
-    CUSTOM_MAIN_HANDOFF_PROBE_ARTIFACT, DISPATCHER_RETURN_HOOK_PROBE_ARTIFACT,
-    EXPERIMENT_DISPATCH_GUARD_ARTIFACT, EXPERIMENT_ENTRY_PROBE_ARTIFACT,
-    INPUT_DIAGNOSTICS_ARTIFACT, LATE_MARKER_PROBE_ARTIFACT, OFFICIAL_V449,
-    PAGED_INPUT_DIAGNOSTICS_ARTIFACT, POST_INIT_HOOK_PROBE_ARTIFACT, RECOVERY_GUARD,
+    CUSTOM_MAIN_HANDOFF_PROBE_ARTIFACT, CUSTOM_MAIN_USB_RECOVERY_PROBE_ARTIFACT,
+    DISPATCHER_RETURN_HOOK_PROBE_ARTIFACT, EXPERIMENT_DISPATCH_GUARD_ARTIFACT,
+    EXPERIMENT_ENTRY_PROBE_ARTIFACT, INPUT_DIAGNOSTICS_ARTIFACT, LATE_MARKER_PROBE_ARTIFACT,
+    OFFICIAL_V449, PAGED_INPUT_DIAGNOSTICS_ARTIFACT, POST_INIT_HOOK_PROBE_ARTIFACT, RECOVERY_GUARD,
     RECOVERY_GUARD_ARTIFACT, RUST_RESPONSE_PROBE_ARTIFACT, SENSOR_SHADOW_DIAGNOSTICS_ARTIFACT,
     STEADY_LOOP_HOOK_PROBE_ARTIFACT, STOCK_HARNESS_ARTIFACT, UNSOLICITED_REPORT_PROBE_ARTIFACT,
     USB_RECOVERY_PROBE, USB_RECOVERY_PROBE_ARTIFACT, WIRED_LOOP_HOOK_PROBE_ARTIFACT, sha256,
@@ -39,6 +39,7 @@ const DISPATCHER_RETURN_HOOK_PROBE_BINARY: &str = "slimblade-dispatcher-return-h
 const EXPERIMENT_DISPATCH_GUARD_BINARY: &str = "slimblade-experiment-dispatch-guard";
 const UNSOLICITED_REPORT_PROBE_BINARY: &str = "slimblade-unsolicited-report-probe";
 const CUSTOM_MAIN_HANDOFF_PROBE_BINARY: &str = "slimblade-custom-main-handoff-probe";
+const CUSTOM_MAIN_USB_RECOVERY_PROBE_BINARY: &str = "slimblade-custom-main-usb-recovery-probe";
 const INPUT_DIAGNOSTICS_BINARY: &str = "slimblade-input-diagnostics";
 const PAGED_INPUT_DIAGNOSTICS_BINARY: &str = "slimblade-paged-input-diagnostics";
 const SENSOR_SHADOW_DIAGNOSTICS_BINARY: &str = "slimblade-sensor-shadow-diagnostics";
@@ -154,6 +155,7 @@ fn host_checks(root: &Path) -> Result<(), String> {
     build_experiment_dispatch_guard(root)?;
     build_unsolicited_report_probe(root)?;
     build_custom_main_handoff_probe(root)?;
+    build_custom_main_usb_recovery_probe(root)?;
     build_input_diagnostics(root)?;
     build_paged_input_diagnostics(root)?;
     build_sensor_shadow_diagnostics(root)
@@ -837,6 +839,19 @@ fn build_custom_main_handoff_probe(root: &Path) -> Result<(), String> {
     )
 }
 
+fn build_custom_main_usb_recovery_probe(root: &Path) -> Result<(), String> {
+    build_hook_probe(
+        root,
+        CUSTOM_MAIN_USB_RECOVERY_PROBE_BINARY,
+        "custom-main-usb-recovery",
+        "custom-main-usb-recovery-probe",
+        "custom main USB recovery",
+        CUSTOM_MAIN_USB_RECOVERY_PROBE_ARTIFACT,
+        post_init_hook_probe::build_custom_main_usb_recovery_probe,
+        post_init_hook_probe::verify_custom_main_usb_recovery_probe,
+    )
+}
+
 fn build_input_diagnostics(root: &Path) -> Result<(), String> {
     build_hook_probe(
         root,
@@ -1162,7 +1177,7 @@ fn disassemble_stock(
 
 fn usage() {
     eprintln!(
-        "usage:\n  cargo xtask <check|rust-guard|usb-probe|stock-harness|late-marker-probe|experiment-entry-probe|rust-response-probe|post-init-hook-probe|wired-loop-hook-probe|active-loop-hook-probe|steady-loop-hook-probe|dispatcher-return-hook-probe|experiment-dispatch-guard|unsolicited-report-probe|custom-main-handoff-probe|input-diagnostics|paged-input-diagnostics|sensor-shadow-diagnostics|postlink|all>\n  cargo xtask disassemble-stock FIRMWARE START STOP <arm|thumb>"
+        "usage:\n  cargo xtask <check|rust-guard|usb-probe|stock-harness|late-marker-probe|experiment-entry-probe|rust-response-probe|post-init-hook-probe|wired-loop-hook-probe|active-loop-hook-probe|steady-loop-hook-probe|dispatcher-return-hook-probe|experiment-dispatch-guard|unsolicited-report-probe|custom-main-handoff-probe|custom-main-usb-recovery-probe|input-diagnostics|paged-input-diagnostics|sensor-shadow-diagnostics|postlink|all>\n  cargo xtask disassemble-stock FIRMWARE START STOP <arm|thumb>"
     );
 }
 
@@ -1192,6 +1207,9 @@ fn main() -> ExitCode {
         [command] if command == "unsolicited-report-probe" => build_unsolicited_report_probe(&root),
         [command] if command == "custom-main-handoff-probe" => {
             build_custom_main_handoff_probe(&root)
+        },
+        [command] if command == "custom-main-usb-recovery-probe" => {
+            build_custom_main_usb_recovery_probe(&root)
         },
         [command] if command == "input-diagnostics" => build_input_diagnostics(&root),
         [command] if command == "paged-input-diagnostics" => build_paged_input_diagnostics(&root),

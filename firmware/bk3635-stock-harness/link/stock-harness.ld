@@ -5,6 +5,7 @@ MEMORY
 {
     CARRIER (rx) : ORIGIN = 0x000021ac, LENGTH = 0x00000120
     TRAMPOLINE (rx) : ORIGIN = 0x000022cc, LENGTH = 0x00000034
+    CUSTOM_RUNTIME (rx) : ORIGIN = 0x0001c460, LENGTH = 0x00000160
 }
 
 SECTIONS
@@ -23,6 +24,11 @@ SECTIONS
     {
         KEEP(*(.text.trampoline))
     } > TRAMPOLINE
+
+    .custom_runtime 0x0001c460 :
+    {
+        KEEP(*(.text.custom_runtime))
+    } > CUSTOM_RUNTIME
 
     /DISCARD/ :
     {
@@ -43,3 +49,6 @@ ASSERT(ADDR(.probe) == 0x22c0, "probe address changed")
 ASSERT(ADDR(.probe) + SIZEOF(.probe) <= 0x22cc, "probe overlaps trampoline")
 ASSERT(ADDR(.trampoline) == 0x22cc, "trampoline address changed")
 ASSERT(ADDR(.trampoline) + SIZEOF(.trampoline) <= 0x2300, "trampoline overlaps IRQ")
+ASSERT(ADDR(.custom_runtime) == 0x1c460, "custom runtime address changed")
+ASSERT(ADDR(.custom_runtime) + SIZEOF(.custom_runtime) <= 0x1c5c0,
+       "custom runtime exceeds reclaimed wired-loop region")

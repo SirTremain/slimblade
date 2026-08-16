@@ -29,6 +29,8 @@ Kensington startup, USB, and interrupt handlers:
   one-shot re-arm of the stock endpoint-2 response path.
 - `slimblade-custom-main-handoff-probe`: the build-tested `0472` automatic
   post-init marker followed by a deliberate non-returning custom-main stand-in.
+- `slimblade-custom-main-usb-recovery-probe`: the build-tested `0473` automatic
+  marker followed by a minimal custom loop that services stock USB recovery.
 
 The linked injection occupies only the verified `0x21ac–0x22ff` stock gap.
 No build command accesses hardware. Exact artifact identities and the proposed

@@ -8,6 +8,10 @@
     .equ MARKER_ADDRESS,           0x0000807c
     .equ STOCK_RECOVERY_COMMAND,   0x0001895d
     .equ STOCK_DELAY,              0x000178eb
+    .ifdef CUSTOM_MAIN_STREAM_TRANSPORT_PROBE
+    .equ STOCK_WIRED_RUNTIME,      0x0001c410
+    .equ STOCK_VENDOR_TRANSMIT,    0x0001b4d1
+    .endif
     .ifdef SENSOR_SHADOW_DIAGNOSTICS
     .equ STOCK_MODE_ADDRESS,       0x00400264
     .equ SENSOR_SHADOW_ADDRESS,    0x00401360
@@ -407,6 +411,19 @@ dispatch_return_hook_impl:
     .endif
 
     .ifdef POST_INIT_EXPERIMENT_DISPATCH_GUARD
+    .ifdef CUSTOM_MAIN_USB_RECOVERY_PROBE
+/* Minimal custom main: service stock control reports without stock mouse work. */
+    .thumb_func
+    .global custom_main
+    .type custom_main, %function
+custom_main:
+    ldr r3, =STOCK_VENDOR_DISPATCH
+.Lcustom_main_usb_loop:
+    blx r3
+    b .Lcustom_main_usb_loop
+    .size custom_main, . - custom_main
+    .ltorg
+    .else
 /* Keeps AAPCS stack alignment and clears the arm before entering Rust. */
     .thumb_func
     .global experiment_dispatch_guard_impl
@@ -423,6 +440,14 @@ experiment_dispatch_guard_impl:
     strb r2, [r1]
     .ifndef INPUT_DIAGNOSTICS
     bl experiment_entry
+    .endif
+
+    .ifdef CUSTOM_MAIN_STREAM_TRANSPORT_PROBE
+/* Absolute Thumb aliases used by the typed Rust steady loop. */
+    .global stock_vendor_dispatch
+    .thumb_set stock_vendor_dispatch, STOCK_VENDOR_DISPATCH
+    .global stock_vendor_transmit
+    .thumb_set stock_vendor_transmit, STOCK_VENDOR_TRANSMIT
     .endif
 
 .Lexperiment_dispatch_return:
@@ -447,6 +472,7 @@ input_snapshot:
     .size input_snapshot, . - input_snapshot
     .endif
     .ltorg
+    .endif
     .endif
 
     .ifdef SENSOR_SHADOW_DIAGNOSTICS
@@ -547,6 +573,36 @@ custom_main_handoff:
 experiment_entry:
     bx lr
     .size experiment_entry, . - experiment_entry
+    .endif
+
+    .ifdef CUSTOM_MAIN_USB_RECOVERY_PROBE
+/* The protected handoff completes the marker before entering custom_main. */
+    .section .text.rust_probe, "ax", %progbits
+    .thumb
+    .thumb_func
+    .global custom_main_handoff
+    .type custom_main_handoff, %function
+custom_main_handoff:
+    push {r4, lr}
+    bl marker_set
+    b custom_main
+    .size custom_main_handoff, . - custom_main_handoff
+    .endif
+
+    .ifdef CUSTOM_MAIN_STREAM_TRANSPORT_PROBE
+/* Commit recovery, then run stock wired initialization into the replaced loop. */
+    .section .text.rust_probe, "ax", %progbits
+    .thumb
+    .thumb_func
+    .global custom_main_handoff
+    .type custom_main_handoff, %function
+custom_main_handoff:
+    push {r4, lr}
+    bl marker_set
+    bl STOCK_WIRED_RUNTIME
+.Lcustom_runtime_unexpected_return:
+    b .Lcustom_runtime_unexpected_return
+    .size custom_main_handoff, . - custom_main_handoff
     .endif
 
     .ifdef POST_INIT_HOOK_PROBE

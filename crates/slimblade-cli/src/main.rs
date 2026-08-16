@@ -84,7 +84,7 @@ struct Arguments {
 }
 
 const fn usage() -> &'static str {
-    "usage:\n  slimblade [--device PATH] identify\n  slimblade [--device PATH] [--timeout-seconds N] enter-loader --confirm\n  slimblade [--device PATH] [--timeout-seconds N] set-late-marker --confirm\n  slimblade [--device PATH] [--timeout-seconds N] start-experiment --confirm\n  slimblade [--device PATH] [--timeout-seconds N] run-rust-response --confirm\n  slimblade [--device PATH] [--timeout-seconds N] run-post-init-hook --confirm\n  slimblade [--device PATH] [--timeout-seconds N] run-unsolicited-report-probe --confirm\n  slimblade [--device PATH] [--timeout-seconds N] read-input --confirm\n  slimblade [--device PATH] [--timeout-seconds N] capture-input --confirm\n  slimblade [--device PATH] [--timeout-seconds N] capture-state --confirm\n  slimblade [--device PATH] [--timeout-seconds N] capture-sensors --confirm\n  slimblade [--device PATH] [--timeout-seconds N] poll-sensors --confirm\n  slimblade [--device PATH] [--timeout-seconds N] [--duration-seconds N] stream-sensors --confirm\n  slimblade [--device PATH] [--timeout-seconds N] query-loader\n  slimblade [--device PATH] [--timeout-seconds N] FLASH_COMMAND --firmware PATH --confirm-sha256 HASH\n\nFLASH_COMMAND: restore-official-v449, flash-descriptor-probe, flash-recovery-carrier, flash-reset-trampoline, flash-recovery-stub, flash-startup-trampoline, flash-rust-guard, flash-usb-recovery-probe, flash-stock-harness, flash-late-marker-probe, flash-experiment-entry-probe, flash-rust-response-probe, flash-post-init-hook-probe, flash-wired-loop-hook-probe, flash-active-loop-hook-probe, flash-steady-loop-hook-probe, flash-dispatcher-return-hook-probe, flash-experiment-dispatch-guard, flash-unsolicited-report-probe, flash-custom-main-handoff-probe, flash-input-diagnostics, flash-paged-input-diagnostics, or flash-sensor-shadow-diagnostics"
+    "usage:\n  slimblade [--device PATH] identify\n  slimblade [--device PATH] [--timeout-seconds N] enter-loader --confirm\n  slimblade [--device PATH] [--timeout-seconds N] set-late-marker --confirm\n  slimblade [--device PATH] [--timeout-seconds N] start-experiment --confirm\n  slimblade [--device PATH] [--timeout-seconds N] run-rust-response --confirm\n  slimblade [--device PATH] [--timeout-seconds N] run-post-init-hook --confirm\n  slimblade [--device PATH] [--timeout-seconds N] run-unsolicited-report-probe --confirm\n  slimblade [--device PATH] [--timeout-seconds N] read-input --confirm\n  slimblade [--device PATH] [--timeout-seconds N] capture-input --confirm\n  slimblade [--device PATH] [--timeout-seconds N] capture-state --confirm\n  slimblade [--device PATH] [--timeout-seconds N] capture-sensors --confirm\n  slimblade [--device PATH] [--timeout-seconds N] poll-sensors --confirm\n  slimblade [--device PATH] [--timeout-seconds N] [--duration-seconds N] stream-sensors --confirm\n  slimblade [--device PATH] [--timeout-seconds N] query-loader\n  slimblade [--device PATH] [--timeout-seconds N] FLASH_COMMAND --firmware PATH --confirm-sha256 HASH\n\nFLASH_COMMAND: restore-official-v449, flash-descriptor-probe, flash-recovery-carrier, flash-reset-trampoline, flash-recovery-stub, flash-startup-trampoline, flash-rust-guard, flash-usb-recovery-probe, flash-stock-harness, flash-late-marker-probe, flash-experiment-entry-probe, flash-rust-response-probe, flash-post-init-hook-probe, flash-wired-loop-hook-probe, flash-active-loop-hook-probe, flash-steady-loop-hook-probe, flash-dispatcher-return-hook-probe, flash-experiment-dispatch-guard, flash-unsolicited-report-probe, flash-custom-main-handoff-probe, flash-custom-main-usb-recovery-probe, flash-input-diagnostics, flash-paged-input-diagnostics, or flash-sensor-shadow-diagnostics"
 }
 
 fn flash_artifact_for_command(command: &str) -> Option<FlashArtifact> {
@@ -109,6 +109,7 @@ fn flash_artifact_for_command(command: &str) -> Option<FlashArtifact> {
         "flash-experiment-dispatch-guard" => Some(FlashArtifact::ExperimentDispatchGuard),
         "flash-unsolicited-report-probe" => Some(FlashArtifact::UnsolicitedReportProbe),
         "flash-custom-main-handoff-probe" => Some(FlashArtifact::CustomMainHandoffProbe),
+        "flash-custom-main-usb-recovery-probe" => Some(FlashArtifact::CustomMainUsbRecoveryProbe),
         "flash-input-diagnostics" => Some(FlashArtifact::InputDiagnostics),
         "flash-paged-input-diagnostics" => Some(FlashArtifact::PagedInputDiagnostics),
         "flash-sensor-shadow-diagnostics" => Some(FlashArtifact::SensorShadowDiagnostics),
@@ -219,6 +220,7 @@ fn parse_arguments() -> Result<Arguments, String> {
         | "flash-experiment-dispatch-guard"
         | "flash-unsolicited-report-probe"
         | "flash-custom-main-handoff-probe"
+        | "flash-custom-main-usb-recovery-probe"
         | "flash-input-diagnostics"
         | "flash-paged-input-diagnostics"
         | "flash-sensor-shadow-diagnostics" => Command::Flash {

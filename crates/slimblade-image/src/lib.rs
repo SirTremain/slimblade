@@ -45,7 +45,7 @@ impl ArtifactIdentity {
     }
 }
 
-pub const REFERENCE_ARTIFACTS: [ArtifactIdentity; 23] = [
+pub const REFERENCE_ARTIFACTS: [ArtifactIdentity; 24] = [
     ArtifactIdentity {
         name: "stock-startup-reference",
         code_sha256: parse_sha256(
@@ -249,6 +249,15 @@ pub const REFERENCE_ARTIFACTS: [ArtifactIdentity; 23] = [
             "401ab888a8512fa6ff74058fc78d329a3e4a34064614542ea3716d06be8dbf97",
         )),
     },
+    ArtifactIdentity {
+        name: "custom-main-usb-recovery-probe",
+        code_sha256: parse_sha256(
+            "af65cdb33e14e99b0a253874d65a06c86ebb0d43937df640c42c6c5657907f18",
+        ),
+        container_sha256: Some(parse_sha256(
+            "7c044eb8381b87ea3e383a114c066c569040b16c1becdfe079d4940a4392d7fa",
+        )),
+    },
 ];
 
 pub const STOCK_STARTUP_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[0];
@@ -274,6 +283,7 @@ pub const PAGED_INPUT_DIAGNOSTICS_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFAC
 pub const SENSOR_SHADOW_DIAGNOSTICS_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[20];
 pub const UNSOLICITED_REPORT_PROBE_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[21];
 pub const CUSTOM_MAIN_HANDOFF_PROBE_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[22];
+pub const CUSTOM_MAIN_USB_RECOVERY_PROBE_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[23];
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct FirmwareIdentity {
@@ -523,8 +533,14 @@ pub const CUSTOM_MAIN_HANDOFF_PROBE: FirmwareIdentity = firmware_identity(
     "3d5a0008095ca4ff3e486912842b619c8c9286b0e0702932345e644fb6ea0661",
     0x73c3_cfbe,
 );
+pub const CUSTOM_MAIN_USB_RECOVERY_PROBE: FirmwareIdentity = firmware_identity(
+    "custom-main-usb-recovery-probe-v4.73",
+    "7c044eb8381b87ea3e383a114c066c569040b16c1becdfe079d4940a4392d7fa",
+    "10bd22194a19c0c27d5120b461a7ff7a2897871ad13a255225d6e9953fcb3b5d",
+    0x7b3c_a402,
+);
 
-pub const FLASHABLE_IMAGES: [FirmwareIdentity; 23] = [
+pub const FLASHABLE_IMAGES: [FirmwareIdentity; 24] = [
     OFFICIAL_V449,
     V449_DESCRIPTOR_PROBE,
     RECOVERY_CARRIER,
@@ -548,6 +564,7 @@ pub const FLASHABLE_IMAGES: [FirmwareIdentity; 23] = [
     SENSOR_SHADOW_DIAGNOSTICS,
     UNSOLICITED_REPORT_PROBE,
     CUSTOM_MAIN_HANDOFF_PROBE,
+    CUSTOM_MAIN_USB_RECOVERY_PROBE,
 ];
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -1339,14 +1356,31 @@ mod tests {
     }
 
     #[test]
+    fn custom_main_usb_recovery_probe_payload_constants() {
+        assert_fixture(
+            CUSTOM_MAIN_USB_RECOVERY_PROBE,
+            "firmware/bk3635-stock-harness/target/custom-main-usb-recovery/DO_NOT_FLASH-custom-main-usb-recovery-probe.container.bin",
+        );
+    }
+
+    #[test]
+    fn custom_main_usb_recovery_probe_rejects_one_byte_corruption() {
+        assert_corruption_rejected(
+            CUSTOM_MAIN_USB_RECOVERY_PROBE,
+            "firmware/bk3635-stock-harness/target/custom-main-usb-recovery/DO_NOT_FLASH-custom-main-usb-recovery-probe.container.bin",
+            0x22a2,
+        );
+    }
+
+    #[test]
     fn reference_artifact_manifest_is_unique_and_complete() {
-        assert_eq!(REFERENCE_ARTIFACTS.len(), 23);
+        assert_eq!(REFERENCE_ARTIFACTS.len(), 24);
         assert_eq!(
             REFERENCE_ARTIFACTS
                 .iter()
                 .filter(|artifact| artifact.container_sha256.is_some())
                 .count(),
-            21
+            22
         );
         for (index, artifact) in REFERENCE_ARTIFACTS.iter().enumerate() {
             assert_ne!(artifact.code_sha256, [0; 32]);
@@ -1519,6 +1553,13 @@ mod tests {
                 "firmware/bk3635-stock-harness/target/custom-main-handoff/DO_NOT_FLASH-custom-main-handoff-probe.injection.bin",
                 Some(
                     "firmware/bk3635-stock-harness/target/custom-main-handoff/DO_NOT_FLASH-custom-main-handoff-probe.container.bin",
+                ),
+            ),
+            (
+                23,
+                "firmware/bk3635-stock-harness/target/custom-main-usb-recovery/DO_NOT_FLASH-custom-main-usb-recovery-probe.injection.bin",
+                Some(
+                    "firmware/bk3635-stock-harness/target/custom-main-usb-recovery/DO_NOT_FLASH-custom-main-usb-recovery-probe.container.bin",
                 ),
             ),
         ];

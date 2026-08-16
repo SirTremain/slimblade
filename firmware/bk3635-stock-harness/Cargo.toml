@@ -54,6 +54,14 @@ name = "slimblade-custom-main-handoff-probe"
 path = "src/custom_main_handoff_probe.rs"
 
 [[bin]]
+name = "slimblade-custom-main-usb-recovery-probe"
+path = "src/custom_main_usb_recovery_probe.rs"
+
+[[bin]]
+name = "slimblade-custom-main-stream-transport-probe"
+path = "src/custom_main_stream_transport_probe.rs"
+
+[[bin]]
 name = "slimblade-input-diagnostics"
 path = "src/input_diagnostics.rs"
 
@@ -74,6 +82,9 @@ lto = true
 opt-level = "s"
 panic = "abort"
 strip = false
+
+[dependencies]
+slimblade-protocol = { path = "../../crates/slimblade-protocol" }
 
 [lints.rust]
 unsafe_code = "warn"

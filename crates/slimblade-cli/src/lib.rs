@@ -1,10 +1,11 @@
 use slimblade_image::{
-    ACTIVE_LOOP_HOOK_PROBE, CUSTOM_MAIN_HANDOFF_PROBE, DISPATCHER_RETURN_HOOK_PROBE,
-    EXPERIMENT_DISPATCH_GUARD, EXPERIMENT_ENTRY_PROBE, FirmwareIdentity, INPUT_DIAGNOSTICS,
-    LATE_MARKER_PROBE, OFFICIAL_V449, PAGED_INPUT_DIAGNOSTICS, POST_INIT_HOOK_PROBE,
-    RECOVERY_CARRIER, RECOVERY_GUARD, RECOVERY_STUB, RESET_TRAMPOLINE, RUST_RESPONSE_PROBE,
-    SENSOR_SHADOW_DIAGNOSTICS, STARTUP_TRAMPOLINE, STEADY_LOOP_HOOK_PROBE, STOCK_HARNESS,
-    UNSOLICITED_REPORT_PROBE, USB_RECOVERY_PROBE, V449_DESCRIPTOR_PROBE, WIRED_LOOP_HOOK_PROBE,
+    ACTIVE_LOOP_HOOK_PROBE, CUSTOM_MAIN_HANDOFF_PROBE, CUSTOM_MAIN_USB_RECOVERY_PROBE,
+    DISPATCHER_RETURN_HOOK_PROBE, EXPERIMENT_DISPATCH_GUARD, EXPERIMENT_ENTRY_PROBE,
+    FirmwareIdentity, INPUT_DIAGNOSTICS, LATE_MARKER_PROBE, OFFICIAL_V449, PAGED_INPUT_DIAGNOSTICS,
+    POST_INIT_HOOK_PROBE, RECOVERY_CARRIER, RECOVERY_GUARD, RECOVERY_STUB, RESET_TRAMPOLINE,
+    RUST_RESPONSE_PROBE, SENSOR_SHADOW_DIAGNOSTICS, STARTUP_TRAMPOLINE, STEADY_LOOP_HOOK_PROBE,
+    STOCK_HARNESS, UNSOLICITED_REPORT_PROBE, USB_RECOVERY_PROBE, V449_DESCRIPTOR_PROBE,
+    WIRED_LOOP_HOOK_PROBE,
 };
 use slimblade_protocol::NormalReport;
 
@@ -358,6 +359,7 @@ pub enum FlashArtifact {
     SensorShadowDiagnostics,
     UnsolicitedReportProbe,
     CustomMainHandoffProbe,
+    CustomMainUsbRecoveryProbe,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -394,6 +396,7 @@ impl FlashArtifact {
             Self::SensorShadowDiagnostics => SENSOR_SHADOW_DIAGNOSTICS,
             Self::UnsolicitedReportProbe => UNSOLICITED_REPORT_PROBE,
             Self::CustomMainHandoffProbe => CUSTOM_MAIN_HANDOFF_PROBE,
+            Self::CustomMainUsbRecoveryProbe => CUSTOM_MAIN_USB_RECOVERY_PROBE,
         }
     }
 
@@ -442,6 +445,9 @@ impl FlashArtifact {
             },
             Self::CustomMainHandoffProbe => {
                 PostFlashExpectation::Application { bcd_device: "0472" }
+            },
+            Self::CustomMainUsbRecoveryProbe => {
+                PostFlashExpectation::Application { bcd_device: "0473" }
             },
         }
     }
@@ -670,6 +676,20 @@ mod tests {
         assert_eq!(
             FlashArtifact::CustomMainHandoffProbe.post_flash_expectation(),
             PostFlashExpectation::Application { bcd_device: "0472" }
+        );
+    }
+
+    #[test]
+    fn custom_main_usb_recovery_probe_needs_exact_hash_confirmation() {
+        assert!(!FlashArtifact::CustomMainUsbRecoveryProbe.confirmation_matches("wrong"));
+        assert!(
+            FlashArtifact::CustomMainUsbRecoveryProbe.confirmation_matches(
+                "7c044eb8381b87ea3e383a114c066c569040b16c1becdfe079d4940a4392d7fa"
+            )
+        );
+        assert_eq!(
+            FlashArtifact::CustomMainUsbRecoveryProbe.post_flash_expectation(),
+            PostFlashExpectation::Application { bcd_device: "0473" }
         );
     }
 

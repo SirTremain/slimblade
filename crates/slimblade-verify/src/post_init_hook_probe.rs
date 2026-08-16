@@ -2,7 +2,8 @@ use core::fmt;
 
 use slimblade_image::{
     ACTIVE_LOOP_HOOK_PROBE, ACTIVE_LOOP_HOOK_PROBE_ARTIFACT, APPLICATION_HEADER_OFFSET,
-    CUSTOM_MAIN_HANDOFF_PROBE, CUSTOM_MAIN_HANDOFF_PROBE_ARTIFACT, DISPATCHER_RETURN_HOOK_PROBE,
+    CUSTOM_MAIN_HANDOFF_PROBE, CUSTOM_MAIN_HANDOFF_PROBE_ARTIFACT, CUSTOM_MAIN_USB_RECOVERY_PROBE,
+    CUSTOM_MAIN_USB_RECOVERY_PROBE_ARTIFACT, DISPATCHER_RETURN_HOOK_PROBE,
     DISPATCHER_RETURN_HOOK_PROBE_ARTIFACT, EXPERIMENT_DISPATCH_GUARD,
     EXPERIMENT_DISPATCH_GUARD_ARTIFACT, INPUT_DIAGNOSTICS, INPUT_DIAGNOSTICS_ARTIFACT,
     PAGED_INPUT_DIAGNOSTICS, PAGED_INPUT_DIAGNOSTICS_ARTIFACT, POST_INIT_HOOK_PROBE,
@@ -149,6 +150,10 @@ const UNSOLICITED_REPORT_ENTRY: [u8; 12] = [
 ];
 const CUSTOM_MAIN_HANDOFF_ENTRY: [u8; 10] =
     [0x10, 0xb5, 0xff, 0xf7, 0x89, 0xff, 0xfe, 0xe7, 0x70, 0x47];
+const CUSTOM_MAIN_USB_LOOP: [u8; 12] = [
+    0x01, 0x4b, 0x98, 0x47, 0xfd, 0xe7, 0x00, 0x00, 0x4d, 0x8f, 0x01, 0x00,
+];
+const CUSTOM_MAIN_USB_HANDOFF: [u8; 8] = [0x10, 0xb5, 0xff, 0xf7, 0x89, 0xff, 0xeb, 0xe7];
 const CRITICAL_WORDS: [(usize, u32); 13] = [
     (0x0c0, 0x0001_895d),
     (0x0c4, 0x0040_0282),
@@ -952,6 +957,56 @@ pub fn build_custom_main_handoff_probe(base: &[u8], injection: &[u8]) -> Result<
     Ok(image)
 }
 
+/// Builds the automatic marker-first custom main that services stock USB recovery.
+///
+/// # Errors
+///
+/// Returns an error unless the exact v4.53 base and reviewed injection are supplied.
+pub fn build_custom_main_usb_recovery_probe(
+    base: &[u8],
+    injection: &[u8],
+) -> Result<Vec<u8>, Error> {
+    STARTUP_TRAMPOLINE
+        .validate(base)
+        .map_err(|_| Error::BaseIdentity)?;
+    if injection.len() != INJECTION_END - INJECTION_START {
+        return Err(Error::InjectionSize {
+            actual: injection.len(),
+        });
+    }
+    if !CUSTOM_MAIN_USB_RECOVERY_PROBE_ARTIFACT.code_matches(injection) {
+        return Err(Error::InjectionIdentity);
+    }
+    require_base(base, CUSTOM_MAIN_HANDOFF_PATCH, &[0x02, 0xf0, 0x02, 0xfc])?;
+
+    let mut image = base.to_vec();
+    replace(&mut image, INJECTION_START, injection)?;
+    replace(
+        &mut image,
+        RESET_BRANCH,
+        &encode_arm_b(
+            ArmAddress::new(u32::try_from(RESET_BRANCH).map_err(|_| Error::Layout)?)
+                .map_err(Error::Branch)?,
+            ArmAddress::new(TRAMPOLINE).map_err(Error::Branch)?,
+        )
+        .map_err(Error::Branch)?,
+    )?;
+    replace(
+        &mut image,
+        CUSTOM_MAIN_HANDOFF_PATCH,
+        &encode_thumb_bl(
+            ThumbAddress::new(u32::try_from(CUSTOM_MAIN_HANDOFF_PATCH).map_err(|_| Error::Layout)?)
+                .map_err(Error::Branch)?,
+            ThumbAddress::new(HOOK).map_err(Error::Branch)?,
+        )
+        .map_err(Error::Branch)?,
+    )?;
+    *image.get_mut(V449_BCD_DEVICE_OFFSET).ok_or(Error::Layout)? = 0x73;
+    refresh_header_crc(&mut image, APPLICATION_HEADER_OFFSET).map_err(|_| Error::Header)?;
+    refresh_header_crc(&mut image, STACK_HEADER_OFFSET).map_err(|_| Error::Header)?;
+    Ok(image)
+}
+
 /// Builds the marker-first, read-only stock input snapshot candidate.
 ///
 /// # Errors
@@ -1332,6 +1387,87 @@ pub fn verify_custom_main_handoff_probe(
         ],
     )?;
     let payload = CUSTOM_MAIN_HANDOFF_PROBE
+        .validate(image)
+        .map_err(|_| Error::ContainerIdentity)?;
+    Ok(Report {
+        injection_sha256: sha256(injection),
+        container_sha256: sha256(image),
+        payload_sha256: sha256(payload),
+        payload_crc: slimblade_protocol::updater_crc32(payload),
+    })
+}
+
+/// Audits marker-before-main ordering and the minimal stock USB-dispatch loop.
+///
+/// # Errors
+///
+/// Returns the first failed identity, instruction, branch, stock-path, header, or ELF invariant.
+pub fn verify_custom_main_usb_recovery_probe(
+    base: &[u8],
+    image: &[u8],
+    injection: &[u8],
+    elf_bytes: &[u8],
+) -> Result<Report, Error> {
+    if image != build_custom_main_usb_recovery_probe(base, injection)? {
+        return Err(Error::DerivedImage);
+    }
+    require(injection, 0, &DISPATCH)?;
+    require(injection, 0x12, &EXPERIMENT_DISPATCH_ARM_AND_QUERY)?;
+    require(injection, 0x0f4, &CUSTOM_MAIN_USB_LOOP)?;
+    require(injection, 0x114, &CUSTOM_MAIN_USB_HANDOFF)?;
+    for (offset, expected) in WIRED_CRITICAL_WORDS {
+        let actual = read_u32(injection, offset)?;
+        if actual != expected {
+            return Err(Error::Word { offset, actual });
+        }
+    }
+    if read_u32(injection, 0x0fc)? != 0x0001_8f4d {
+        return Err(Error::Bytes { offset: 0x0fc });
+    }
+    let marker_target = decode_thumb_bl(
+        read_array(injection, 0x116)?,
+        ThumbAddress::new(HOOK + 2).map_err(Error::Branch)?,
+    )
+    .map_err(Error::Branch)?;
+    if marker_target.get() != 0x21d8 {
+        return Err(Error::Bytes { offset: 0x116 });
+    }
+    let handoff_target = decode_thumb_bl(
+        read_array(image, CUSTOM_MAIN_HANDOFF_PATCH)?,
+        ThumbAddress::new(u32::try_from(CUSTOM_MAIN_HANDOFF_PATCH).map_err(|_| Error::Layout)?)
+            .map_err(Error::Branch)?,
+    )
+    .map_err(Error::Branch)?;
+    if handoff_target.get() != HOOK {
+        return Err(Error::Bytes {
+            offset: CUSTOM_MAIN_HANDOFF_PATCH,
+        });
+    }
+    if image.get(0x19878..CUSTOM_MAIN_HANDOFF_PATCH) != base.get(0x19878..CUSTOM_MAIN_HANDOFF_PATCH)
+        || image.get(0x19c0c..0x19c14) != base.get(0x19c0c..0x19c14)
+        || image.get(0x18f4c..0x19004) != base.get(0x18f4c..0x19004)
+        || image.get(0x1b4d0..0x1b534) != base.get(0x1b4d0..0x1b534)
+        || image.get(0x2300..0x2330) != base.get(0x2300..0x2330)
+    {
+        return Err(Error::Bytes {
+            offset: CUSTOM_MAIN_HANDOFF_PATCH,
+        });
+    }
+    for offset in [STACK_HEADER_OFFSET, APPLICATION_HEADER_OFFSET] {
+        let header = parse_header(image, offset).map_err(|_| Error::Header)?;
+        if !header.crc_is_valid(image).map_err(|_| Error::Header)? {
+            return Err(Error::Header);
+        }
+    }
+    verify_elf(
+        elf_bytes,
+        &[
+            (".carrier", 0x21ac, 0x100),
+            (".probe", 0x22c0, 0x008),
+            (".trampoline", 0x22cc, 0x034),
+        ],
+    )?;
+    let payload = CUSTOM_MAIN_USB_RECOVERY_PROBE
         .validate(image)
         .map_err(|_| Error::ContainerIdentity)?;
     Ok(Report {
@@ -1837,6 +1973,25 @@ mod tests {
             ))?,
             elf: read_if_present(target.join(
                 "thumbv5te-none-eabi/release/slimblade-custom-main-handoff-probe",
+            ))?,
+        })
+    }
+
+    fn custom_main_usb_recovery_fixtures() -> Option<Fixtures> {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let target = root.join("firmware/bk3635-stock-harness/target");
+        Some(Fixtures {
+            base: read_if_present(root.join(
+                "firmware/startup_trampoline/build/DO_NOT_FLASH-stock-startup-trampoline.container.bin",
+            ))?,
+            injection: read_if_present(target.join(
+                "custom-main-usb-recovery/DO_NOT_FLASH-custom-main-usb-recovery-probe.injection.bin",
+            ))?,
+            container: read_if_present(target.join(
+                "custom-main-usb-recovery/DO_NOT_FLASH-custom-main-usb-recovery-probe.container.bin",
+            ))?,
+            elf: read_if_present(target.join(
+                "thumbv5te-none-eabi/release/slimblade-custom-main-usb-recovery-probe",
             ))?,
         })
     }
@@ -2359,6 +2514,65 @@ mod tests {
         data.container[CUSTOM_MAIN_HANDOFF_PATCH] ^= 1;
         assert_eq!(
             verify_custom_main_handoff_probe(
+                &data.base,
+                &data.container,
+                &data.injection,
+                &data.elf,
+            ),
+            Err(Error::DerivedImage)
+        );
+    }
+
+    #[test]
+    fn custom_main_usb_recovery_candidate_rebuilds_and_passes() {
+        let Some(data) = custom_main_usb_recovery_fixtures() else {
+            return;
+        };
+        assert_eq!(
+            build_custom_main_usb_recovery_probe(&data.base, &data.injection),
+            Ok(data.container.clone())
+        );
+        let report = verify_custom_main_usb_recovery_probe(
+            &data.base,
+            &data.container,
+            &data.injection,
+            &data.elf,
+        )
+        .expect("audit exact custom-main USB recovery probe");
+        assert_eq!(report.payload_crc, 0x7b3c_a402);
+    }
+
+    #[test]
+    fn custom_main_usb_recovery_preserves_marker_and_trampoline() {
+        let Some(data) = custom_main_usb_recovery_fixtures() else {
+            return;
+        };
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let proven = std::fs::read(root.join(
+            "firmware/bk3635-stock-harness/target/custom-main-handoff/DO_NOT_FLASH-custom-main-handoff-probe.injection.bin",
+        ))
+        .expect("read live-tested custom-main handoff injection");
+        assert_eq!(&data.injection[..0x0f4], &proven[..0x0f4]);
+        assert_eq!(&data.injection[0x120..], &proven[0x120..]);
+    }
+
+    #[test]
+    fn custom_main_usb_recovery_rejects_dispatch_and_handoff_corruption() {
+        let Some(mut data) = custom_main_usb_recovery_fixtures() else {
+            return;
+        };
+        data.injection[0x0fc] ^= 1;
+        assert_eq!(
+            build_custom_main_usb_recovery_probe(&data.base, &data.injection),
+            Err(Error::InjectionIdentity)
+        );
+
+        let Some(mut data) = custom_main_usb_recovery_fixtures() else {
+            return;
+        };
+        data.container[CUSTOM_MAIN_HANDOFF_PATCH] ^= 1;
+        assert_eq!(
+            verify_custom_main_usb_recovery_probe(
                 &data.base,
                 &data.container,
                 &data.injection,
