@@ -259,3 +259,64 @@ SHA-256
 all 3,748 restore blocks echoed. The application returned as `047d:80d7`,
 `bcdDevice 0453`, with its 170-byte descriptor and expected input interfaces.
 This completes the `0463` functional and recovery gates.
+
+The user confirmed normal ball movement, scrolling, and button operation after
+the final restore. No device function was lost during the complete test.
+
+## `0464` experiment dispatcher
+
+The build-only `0464` candidate turns the proven `0463` boundary into a reusable
+one-shot Rust entry. Command `0x0e` first commits the persistent recovery marker,
+then writes state `5` and returns signature `a9`. The wrapper calls the exact
+stock vendor dispatcher at odd Thumb address `0x18f4d`; after it returns, the
+wrapper clears state `5` to `0` before calling Rust `experiment_entry` at
+`0x22c0`. The initial Rust entry is a no-op that returns.
+
+The wrapper saves `{r4, lr}`, preserving the 8-byte AAPCS stack alignment at
+both nested call boundaries. Its stock-dispatch call, clear-before-Rust order,
+Rust call target, return path, ELF geometry, symbols, headers, and exact image
+are mechanically audited. Corruption tests cover the dispatcher literal, Rust
+entry, and patched stock call site.
+
+| Artifact | Identity |
+| --- | --- |
+| Injection, 340 bytes | `218eca02efff1692aa2c47603e11369c848f94f235f31c6cb50432efa0fdd8fb` |
+| Container, 128,112 bytes | `dd720ba30fc05b9c401eb1f182f62bb217a57a03a3788ccc421806e06f30ac48` |
+| Payload | `91069f91ac42e4621022514e04af0571ad5c9f52bbebcf192a8bdd9466a26e22` |
+| Payload CRC | `70574845` |
+
+`cargo xtask experiment-dispatch-guard` reproduces and audits the candidate.
+The exact container was flashed on 2026-08-15 through resident loader
+`25a7:fabe`; all 3,748 blocks echoed. It returned at the same physical USB path
+as `047d:80d7`, `bcdDevice 0464`, with the stock 170-byte vendor descriptor.
+Command `0x0e` has not been sent, so the marker and Rust experiment remain
+unarmed. The remaining staged gates are normal unarmed input, explicit `a9`
+arm with observed `5 -> 0`, normal input, then cold-power recovery and
+restoration of audited `0453`.
+
+The user confirmed normal ball movement, scrolling, and button operation with
+the unarmed `0464` dispatcher installed. This passes the dormant-wrapper gate.
+
+The explicit marker-first experiment passed on 2026-08-15. Preflight returned
+state `00`; command `0x0e` committed the marker and returned exact signature
+`a9`; the first subsequent query returned state `00`. The Rust no-op therefore
+ran once and returned after the wrapper cleared its arm. The application
+remained `047d:80d7`, `bcdDevice 0464`, with its 170-byte descriptor at the same
+USB path. Physical input and cold-power recovery remain to be confirmed.
+
+On 2026-08-16 the user confirmed normal ball movement, scrolling, and button
+operation after the armed Rust entry. The host then rebooted; afterward the
+device still identified as `047d:80d7`, `bcdDevice 0464`, with its 170-byte
+descriptor, and no resident loader was present. This verifies survival of the
+host reboot but not cold-power recovery because the USB port remained powered.
+
+Cold-power recovery then passed. After five seconds without USB power, the same
+physical path returned as resident loader `25a7:fabe`; its non-writing query
+returned `d2`. This completes the `0464` unarmed, armed-return, normal-input,
+host-reboot, and independent cold-power recovery gates. No restore image had
+been written at the time of this observation.
+
+The exact `0464` container was then reflashed as the development baseline. All
+3,748 blocks echoed, and the application returned at the same USB path as
+`047d:80d7`, `bcdDevice 0464`, with its 170-byte descriptor. The clean image
+replaced the test marker, so the Rust experiment is unarmed again.

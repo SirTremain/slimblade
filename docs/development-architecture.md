@@ -73,6 +73,13 @@ cold-power recovery returned the resident loader. Audited `0453` was then
 restored. This establishes the dispatcher-return boundary as the safe entry
 point for subsequent experimental code.
 
-After that gate, map the protected wired-USB call graph and reclaim only code
-whose wired-mode unreachability is demonstrated by static references and live
-tests.
+The build-only `0464` candidate now uses that boundary as a permanent one-shot
+dispatcher. Its command path commits the marker, arms state `5`, clears the arm
+before entering a returning Rust function, and preserves 8-byte stack alignment.
+The first Rust entry is intentionally a no-op. It must pass the same unarmed,
+armed, input, and cold-power gates before experimental sensor or USB logic is
+added.
+
+After that gate, expand the Rust entry behind storage-isolation and post-link
+audits, map the protected wired-USB call graph, and reclaim only code whose
+wired-mode unreachability is demonstrated by static references and live tests.

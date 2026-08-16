@@ -8,6 +8,10 @@
     .equ MARKER_ADDRESS,           0x0000807c
     .equ STOCK_RECOVERY_COMMAND,   0x0001895d
     .equ STOCK_DELAY,              0x000178eb
+    .ifdef POST_INIT_EXPERIMENT_DISPATCH_GUARD
+    .equ STOCK_MODE_ADDRESS,       0x00400264
+    .equ STOCK_VENDOR_DISPATCH,    0x00018f4d
+    .else
     .ifdef POST_INIT_DISPATCH_RETURN_HOOK_PROBE
     .equ STOCK_MODE_ADDRESS,       0x00400264
     .equ STOCK_VENDOR_DISPATCH,    0x00018f4d
@@ -26,6 +30,7 @@
     .else
     .equ STOCK_MODE_ADDRESS,       0x00400282
     .equ STOCK_MAIN_LOOP,          0x00019bf3
+    .endif
     .endif
     .endif
     .endif
@@ -85,6 +90,9 @@ carrier_late_marker:
     bl marker_set
     .ifdef POST_INIT_HOOK_PROBE
     ldr r0, =STOCK_MODE_ADDRESS
+    .ifdef POST_INIT_EXPERIMENT_DISPATCH_GUARD
+    movs r1, #5
+    .else
     .ifdef POST_INIT_DISPATCH_RETURN_HOOK_PROBE
     movs r1, #5
     .else
@@ -102,7 +110,11 @@ carrier_late_marker:
     .endif
     .endif
     .endif
+    .endif
     strb r1, [r0]
+    .ifdef POST_INIT_EXPERIMENT_DISPATCH_GUARD
+    movs r0, #0xa9
+    .else
     .ifdef POST_INIT_DISPATCH_RETURN_HOOK_PROBE
     movs r0, #0xa8
     .else
@@ -116,6 +128,7 @@ carrier_late_marker:
     movs r0, #0xa5
     .else
     movs r0, #0xa3
+    .endif
     .endif
     .endif
     .endif
@@ -336,6 +349,28 @@ dispatch_return_hook_impl:
     .ltorg
     .endif
 
+    .ifdef POST_INIT_EXPERIMENT_DISPATCH_GUARD
+/* Keeps AAPCS stack alignment and clears the arm before entering Rust. */
+    .thumb_func
+    .global experiment_dispatch_guard_impl
+    .type experiment_dispatch_guard_impl, %function
+experiment_dispatch_guard_impl:
+    push {r4, lr}
+    ldr r3, =STOCK_VENDOR_DISPATCH
+    blx r3
+    ldr r1, =STOCK_MODE_ADDRESS
+    ldrb r2, [r1]
+    cmp r2, #5
+    bne .Lexperiment_dispatch_return
+    movs r2, #0
+    strb r2, [r1]
+    bl experiment_entry
+.Lexperiment_dispatch_return:
+    pop {r4, pc}
+    .size experiment_dispatch_guard_impl, . - experiment_dispatch_guard_impl
+    .ltorg
+    .endif
+
     .ifdef POST_INIT_STEADY_LOOP_HOOK_PROBE
 /* Calls the displaced stock service first, then consumes armed state 5. */
     .thumb_func
@@ -358,6 +393,7 @@ steady_loop_hook_impl:
     .endif
 
     .ifdef POST_INIT_HOOK_PROBE
+    .ifndef POST_INIT_EXPERIMENT_DISPATCH_GUARD
     .section .text.rust_probe, "ax", %progbits
     .thumb
     .thumb_func
@@ -388,6 +424,7 @@ post_init_hook:
     .endif
     .endif
     .size post_init_hook, . - post_init_hook
+    .endif
     .endif
 
     .section .text.trampoline, "ax", %progbits

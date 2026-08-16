@@ -12,8 +12,8 @@ Rust 1.97.1; the isolated `thumbv5te-none-eabi` firmware workspace pins nightly
 2026-08-14 and builds `core` from source.
 
 - `cargo xtask check`: format, lint and test the stable host workspace, then
-  format, lint, release-build, extract, pack, and exact-hash-check the ARMv5TE
-  marker-first guard.
+  build and audit every recorded ARMv5TE artifact through the `0464`
+  experiment dispatcher.
 - `cargo xtask rust-guard`: build only the Rust firmware guard and place its
   verified code/container under `firmware/bk3635-rs/target/guard/`.
 - `cargo xtask usb-probe`: rebuild the exact guard prefix and the isolated
@@ -41,6 +41,10 @@ Rust 1.97.1; the isolated `thumbv5te-none-eabi` firmware workspace pins nightly
   candidate that wraps the proven live vendor-dispatcher call, calls the exact
   stock Thumb entry first, and consumes armed state `5` only after it returns.
   It does not access or flash the device.
+- `cargo xtask experiment-dispatch-guard`: build and audit the `0464` one-shot
+  Rust dispatcher. It preserves stack alignment, clears state `5` before the
+  Rust call, and locks the exact call targets, symbols, ELF sections, image,
+  payload, and CRC. It does not access or flash the device.
 - `cargo xtask postlink`: rerun the Rust guard ELF symbol audit.
 - `cargo xtask all`: alias the complete Rust-only `check` gate.
 - `cargo xtask disassemble-stock FIRMWARE START STOP arm|thumb`: hash-lock an
@@ -103,6 +107,9 @@ SHA-256 is
 The build-only post-initialization hook is tracked in
 [`post-init-marker.md`](post-init-marker.md). Its locked container SHA-256 is
 `133f5241efecc23c7cc2fffcc0fdb34c37f5a3f840362938c27a2bc5353c1de1`.
+The same document tracks the reusable `0464` Rust dispatcher; its locked
+container SHA-256 is
+`dd720ba30fc05b9c401eb1f182f62bb217a57a03a3788ccc421806e06f30ac48`.
 
 The protocol crate is dependency-free and `no_std`. It reproduces the existing
 17-byte and 49-byte command reports, updater CRC, preparation report and B1

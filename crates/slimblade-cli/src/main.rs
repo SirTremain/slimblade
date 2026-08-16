@@ -6,9 +6,10 @@ use std::process::ExitCode;
 
 use slimblade_cli::{
     FlashArtifact, PostFlashExpectation, active_loop_arm_response_is_success,
-    dispatcher_return_arm_response_is_success, late_marker_response_is_success,
-    post_init_arm_response_is_success, post_init_hook_state, rust_response_is_success,
-    steady_loop_arm_response_is_success, wired_loop_arm_response_is_success,
+    dispatcher_return_arm_response_is_success, experiment_dispatch_arm_response_is_success,
+    late_marker_response_is_success, post_init_arm_response_is_success, post_init_hook_state,
+    rust_response_is_success, steady_loop_arm_response_is_success,
+    wired_loop_arm_response_is_success,
 };
 use slimblade_linux::flash::{transfer_payload, wait_for_queried_loader};
 use slimblade_linux::hidraw::Hidraw;
@@ -55,7 +56,7 @@ struct Arguments {
 }
 
 const fn usage() -> &'static str {
-    "usage:\n  slimblade [--device PATH] identify\n  slimblade [--device PATH] [--timeout-seconds N] enter-loader --confirm\n  slimblade [--device PATH] [--timeout-seconds N] set-late-marker --confirm\n  slimblade [--device PATH] [--timeout-seconds N] start-experiment --confirm\n  slimblade [--device PATH] [--timeout-seconds N] run-rust-response --confirm\n  slimblade [--device PATH] [--timeout-seconds N] run-post-init-hook --confirm\n  slimblade [--device PATH] [--timeout-seconds N] query-loader\n  slimblade [--device PATH] [--timeout-seconds N] FLASH_COMMAND --firmware PATH --confirm-sha256 HASH\n\nFLASH_COMMAND: restore-official-v449, flash-descriptor-probe, flash-recovery-carrier, flash-reset-trampoline, flash-recovery-stub, flash-startup-trampoline, flash-rust-guard, flash-usb-recovery-probe, flash-stock-harness, flash-late-marker-probe, flash-experiment-entry-probe, flash-rust-response-probe, flash-post-init-hook-probe, flash-wired-loop-hook-probe, flash-active-loop-hook-probe, flash-steady-loop-hook-probe, or flash-dispatcher-return-hook-probe"
+    "usage:\n  slimblade [--device PATH] identify\n  slimblade [--device PATH] [--timeout-seconds N] enter-loader --confirm\n  slimblade [--device PATH] [--timeout-seconds N] set-late-marker --confirm\n  slimblade [--device PATH] [--timeout-seconds N] start-experiment --confirm\n  slimblade [--device PATH] [--timeout-seconds N] run-rust-response --confirm\n  slimblade [--device PATH] [--timeout-seconds N] run-post-init-hook --confirm\n  slimblade [--device PATH] [--timeout-seconds N] query-loader\n  slimblade [--device PATH] [--timeout-seconds N] FLASH_COMMAND --firmware PATH --confirm-sha256 HASH\n\nFLASH_COMMAND: restore-official-v449, flash-descriptor-probe, flash-recovery-carrier, flash-reset-trampoline, flash-recovery-stub, flash-startup-trampoline, flash-rust-guard, flash-usb-recovery-probe, flash-stock-harness, flash-late-marker-probe, flash-experiment-entry-probe, flash-rust-response-probe, flash-post-init-hook-probe, flash-wired-loop-hook-probe, flash-active-loop-hook-probe, flash-steady-loop-hook-probe, flash-dispatcher-return-hook-probe, or flash-experiment-dispatch-guard"
 }
 
 fn flash_artifact_for_command(command: &str) -> Option<FlashArtifact> {
@@ -77,6 +78,7 @@ fn flash_artifact_for_command(command: &str) -> Option<FlashArtifact> {
         "flash-active-loop-hook-probe" => Some(FlashArtifact::ActiveLoopHookProbe),
         "flash-steady-loop-hook-probe" => Some(FlashArtifact::SteadyLoopHookProbe),
         "flash-dispatcher-return-hook-probe" => Some(FlashArtifact::DispatcherReturnHookProbe),
+        "flash-experiment-dispatch-guard" => Some(FlashArtifact::ExperimentDispatchGuard),
         _ => None,
     }
 }
@@ -153,7 +155,8 @@ fn parse_arguments() -> Result<Arguments, String> {
         | "flash-wired-loop-hook-probe"
         | "flash-active-loop-hook-probe"
         | "flash-steady-loop-hook-probe"
-        | "flash-dispatcher-return-hook-probe" => Command::Flash {
+        | "flash-dispatcher-return-hook-probe"
+        | "flash-experiment-dispatch-guard" => Command::Flash {
             artifact: flash_artifact_for_command(command_name.as_str())
                 .ok_or_else(|| "unreachable flash command mapping".to_owned())?,
             firmware: firmware.ok_or_else(|| "flash command requires --firmware".to_owned())?,
@@ -392,9 +395,10 @@ fn run_post_init_hook(device: &Path, timeout: Duration, confirmed: bool) -> Resu
         Some("0461") => (0_u8, 0xa6_u8, 5_u8),
         Some("0462") => (0_u8, 0xa7_u8, 5_u8),
         Some("0463") => (0_u8, 0xa8_u8, 5_u8),
+        Some("0464") => (0_u8, 0xa9_u8, 5_u8),
         _ => {
             return Err(format!(
-                "refusing post-init hook command for bcdDevice={:?}; expected 0459, 0460, 0461, 0462, or 0463",
+                "refusing post-init hook command for bcdDevice={:?}; expected 0459, 0460, 0461, 0462, 0463, or 0464",
                 parent.bcd_device
             ));
         },
@@ -422,6 +426,7 @@ fn run_post_init_hook(device: &Path, timeout: Duration, confirmed: bool) -> Resu
         0xa6 => active_loop_arm_response_is_success(armed),
         0xa7 => steady_loop_arm_response_is_success(armed),
         0xa8 => dispatcher_return_arm_response_is_success(armed),
+        0xa9 => experiment_dispatch_arm_response_is_success(armed),
         _ => false,
     };
     if !arm_succeeded {

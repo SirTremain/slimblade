@@ -45,7 +45,7 @@ impl ArtifactIdentity {
     }
 }
 
-pub const REFERENCE_ARTIFACTS: [ArtifactIdentity; 17] = [
+pub const REFERENCE_ARTIFACTS: [ArtifactIdentity; 18] = [
     ArtifactIdentity {
         name: "stock-startup-reference",
         code_sha256: parse_sha256(
@@ -195,6 +195,15 @@ pub const REFERENCE_ARTIFACTS: [ArtifactIdentity; 17] = [
             "e79d8a05f0ed65ae6f3059885e02899c1adbb10be3d320f30829d1e8623b2656",
         )),
     },
+    ArtifactIdentity {
+        name: "experiment-dispatch-guard",
+        code_sha256: parse_sha256(
+            "218eca02efff1692aa2c47603e11369c848f94f235f31c6cb50432efa0fdd8fb",
+        ),
+        container_sha256: Some(parse_sha256(
+            "dd720ba30fc05b9c401eb1f182f62bb217a57a03a3788ccc421806e06f30ac48",
+        )),
+    },
 ];
 
 pub const STOCK_STARTUP_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[0];
@@ -214,6 +223,7 @@ pub const WIRED_LOOP_HOOK_PROBE_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS
 pub const ACTIVE_LOOP_HOOK_PROBE_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[14];
 pub const STEADY_LOOP_HOOK_PROBE_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[15];
 pub const DISPATCHER_RETURN_HOOK_PROBE_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[16];
+pub const EXPERIMENT_DISPATCH_GUARD_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[17];
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct FirmwareIdentity {
@@ -427,8 +437,14 @@ pub const DISPATCHER_RETURN_HOOK_PROBE: FirmwareIdentity = firmware_identity(
     "257588ae7bcbfb1192221a0a2604ae10e776aab0c4526dc38ffcdf6992780191",
     0x860c_2809,
 );
+pub const EXPERIMENT_DISPATCH_GUARD: FirmwareIdentity = firmware_identity(
+    "experiment-dispatch-guard-v4.64",
+    "dd720ba30fc05b9c401eb1f182f62bb217a57a03a3788ccc421806e06f30ac48",
+    "91069f91ac42e4621022514e04af0571ad5c9f52bbebcf192a8bdd9466a26e22",
+    0x7057_4845,
+);
 
-pub const FLASHABLE_IMAGES: [FirmwareIdentity; 12] = [
+pub const FLASHABLE_IMAGES: [FirmwareIdentity; 18] = [
     OFFICIAL_V449,
     V449_DESCRIPTOR_PROBE,
     RECOVERY_CARRIER,
@@ -441,6 +457,12 @@ pub const FLASHABLE_IMAGES: [FirmwareIdentity; 12] = [
     LATE_MARKER_PROBE,
     EXPERIMENT_ENTRY_PROBE,
     RUST_RESPONSE_PROBE,
+    POST_INIT_HOOK_PROBE,
+    WIRED_LOOP_HOOK_PROBE,
+    ACTIVE_LOOP_HOOK_PROBE,
+    STEADY_LOOP_HOOK_PROBE,
+    DISPATCHER_RETURN_HOOK_PROBE,
+    EXPERIMENT_DISPATCH_GUARD,
 ];
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -1130,14 +1152,31 @@ mod tests {
     }
 
     #[test]
+    fn experiment_dispatch_guard_payload_constants() {
+        assert_fixture(
+            EXPERIMENT_DISPATCH_GUARD,
+            "firmware/bk3635-stock-harness/target/experiment-dispatch-guard/DO_NOT_FLASH-experiment-dispatch-guard.container.bin",
+        );
+    }
+
+    #[test]
+    fn experiment_dispatch_guard_rejects_one_byte_corruption() {
+        assert_corruption_rejected(
+            EXPERIMENT_DISPATCH_GUARD,
+            "firmware/bk3635-stock-harness/target/experiment-dispatch-guard/DO_NOT_FLASH-experiment-dispatch-guard.container.bin",
+            0x22c0,
+        );
+    }
+
+    #[test]
     fn reference_artifact_manifest_is_unique_and_complete() {
-        assert_eq!(REFERENCE_ARTIFACTS.len(), 17);
+        assert_eq!(REFERENCE_ARTIFACTS.len(), 18);
         assert_eq!(
             REFERENCE_ARTIFACTS
                 .iter()
                 .filter(|artifact| artifact.container_sha256.is_some())
                 .count(),
-            15
+            16
         );
         for (index, artifact) in REFERENCE_ARTIFACTS.iter().enumerate() {
             assert_ne!(artifact.code_sha256, [0; 32]);
@@ -1268,6 +1307,13 @@ mod tests {
                 "firmware/bk3635-stock-harness/target/dispatcher-return-hook/DO_NOT_FLASH-dispatcher-return-hook-probe.injection.bin",
                 Some(
                     "firmware/bk3635-stock-harness/target/dispatcher-return-hook/DO_NOT_FLASH-dispatcher-return-hook-probe.container.bin",
+                ),
+            ),
+            (
+                17,
+                "firmware/bk3635-stock-harness/target/experiment-dispatch-guard/DO_NOT_FLASH-experiment-dispatch-guard.injection.bin",
+                Some(
+                    "firmware/bk3635-stock-harness/target/experiment-dispatch-guard/DO_NOT_FLASH-experiment-dispatch-guard.container.bin",
                 ),
             ),
         ];
