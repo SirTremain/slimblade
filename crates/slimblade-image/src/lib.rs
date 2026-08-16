@@ -225,10 +225,10 @@ pub const REFERENCE_ARTIFACTS: [ArtifactIdentity; 21] = [
     ArtifactIdentity {
         name: "sensor-shadow-diagnostics",
         code_sha256: parse_sha256(
-            "4e84e88d2c5342fd574f1c6c6da6cdfcd5a03e4a7b9f3919b792c4484541c908",
+            "c8ddcddb97770a1d6bf4d0c0bf9a35fbbec7cc46a7656330d675119aee98f6ef",
         ),
         container_sha256: Some(parse_sha256(
-            "8e2e0649994561f4e37c4e33dae7764db483aaedd0d20a306229ea854ac28b39",
+            "111f22eaf0db16bf2df2ba29187c9fbf151ca578385a5ad288c31b3f064657e4",
         )),
     },
 ];
@@ -486,10 +486,10 @@ pub const PAGED_INPUT_DIAGNOSTICS: FirmwareIdentity = firmware_identity(
     0x7ed6_3bf1,
 );
 pub const SENSOR_SHADOW_DIAGNOSTICS: FirmwareIdentity = firmware_identity(
-    "sensor-shadow-diagnostics-v4.69",
-    "8e2e0649994561f4e37c4e33dae7764db483aaedd0d20a306229ea854ac28b39",
-    "06decfff4f7e74c89225bd5ef6148a6065f3d27aaaac4b133f25b9e5e4e9f507",
-    0x02f3_599e,
+    "sensor-shadow-diagnostics-v4.70",
+    "111f22eaf0db16bf2df2ba29187c9fbf151ca578385a5ad288c31b3f064657e4",
+    "b465bd7d0a0f0379a767a9bbf6ba7f81aab52c9a265b9bafc462d89e64441475",
+    0x96bd_3f6d,
 );
 
 pub const FLASHABLE_IMAGES: [FirmwareIdentity; 21] = [

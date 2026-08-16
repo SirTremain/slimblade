@@ -113,10 +113,9 @@ byte-identical to v4.64. Only the former mode-address literal at injection
 offset `0xc4` is changed to the volatile shadow base; the marker starts at
 offset `0x2c` but does not reference that literal.
 
-The device enumerated normally and retained all stock input behavior, but a
-15-second moving-ball capture returned only zero shadow values. The volatile
-activation byte lies in a stock response workspace and is not stable across
-the active loop, so it cannot guard the hook.
+The device enumerated normally and retained all stock input behavior, but its
+capture returned only zero shadow values. Physical movement was not explicitly
+coordinated with that capture window, so the result did not test the hook.
 
 ## v4.68 persistent-address activation result
 
@@ -142,12 +141,10 @@ direct CPU byte address containing `0x12`, so this guard remained dormant.
 
 ## v4.69 delayed single-query candidate
 
-The firmware injection returns exactly to the audited v4.67 bytes. The host no
-longer sends `0x0f` immediately after arming: it waits ten seconds without any
-vendor query while the hook retains the last nonzero sample, then performs one
-read. This matters because the `0x0f` response copy overlaps byte
-`0x00401368`; polling at roughly 1 ms had cleared the volatile activation byte
-before physical movement could reach the hook.
+The firmware injection returns exactly to the audited v4.67 bytes. The host
+waits ten seconds after arming while the hook retains the last nonzero sample,
+then performs one read. This gives the user an explicit, coordinated physical
+movement window and removes continuous host polling as a variable.
 
 - injection: 340 bytes, SHA-256
   `4e84e88d2c5342fd574f1c6c6da6cdfcd5a03e4a7b9f3919b792c4484541c908`
@@ -165,13 +162,127 @@ the stock clear and that both raw sensor pairs can be exported through the
 stock vendor interface. The values are one captured instant, not calibrated
 axis labels or motion totals.
 
+Static review also confirms that the stock vendor response is at
+`0x004015b0`, separate from the shadow at `0x00401360`. A host-only
+`poll-sensors` command can therefore issue repeated `0x0f` reads without
+another marker write.
+
+The coordinated live poll passed on 2026-08-16. Over 15 seconds it returned
+roughly 3,748 changing snapshots with signed changes on all four channels.
+Observed examples included A `(-2, 2)` with B `(2, 2)`, and A `(2, 2)` with B
+`(-3, 3)`. This proves continuous RAM-only reads and independent dual-sensor
+motion; controlled single-axis and rotation runs are still required to label
+the physical axes and signs.
+
+The first controlled clockwise rotation run returned 4,956 host samples and
+1,933 changing snapshots. Its signed sums were A-X `159`, A-Y `-3808`, B-X
+`-168`, and B-Y `-3296`, with ranges A-X `-1..1`, A-Y `-4..1`, B-X `-1..1`,
+and B-Y `-4..1`. Both Y channels strongly dominated in the negative direction.
+
+A coordinated anticlockwise run returned 4,957 host samples and 1,501 changing
+snapshots. Its signed sums were A-X `339`, A-Y `4782`, B-X `255`, and B-Y
+`5152`, with ranges A-X `-1..2`, A-Y `-1..6`, B-X `-1..1`, and B-Y `-1..7`.
+This confirms the direction reversal: the candidate `Z_raw = A_Y + B_Y` was
+`-7104` clockwise and `+9934` anticlockwise. The corresponding X sums were only
+`-9` and `+594`. This strongly identifies the sum of the two observed Y fields
+as a rotation-sensitive channel.
+
+A controlled rightward pointer-motion run returned 5,001 host samples and
+2,014 changing snapshots. Its signed sums were A-X `-328`, A-Y `-158`, B-X
+`4886`, and B-Y `-2549`, with ranges A-X `-1..2`, A-Y `-2..2`, B-X `-2..6`,
+and B-Y `-5..1`. The candidate Y sum was `-2707`, so it is materially
+contaminated by horizontal translation and cannot be used alone as Z rotation.
+
+The opposite leftward run returned 5,001 samples and 2,478 changing snapshots.
+Its signed sums were A-X `-299`, A-Y `-255`, B-X `-2289`, and B-Y `1205`, with
+ranges A-X `-1..1`, A-Y `-2..2`, B-X `-4..3`, and B-Y `-1..2`. The dominant
+B channels reversed together. Their ratio was notably stable: B-Y/B-X was
+`-0.522` rightward and `-0.526` leftward. Therefore a term close to
+`B_Y + 0.524 * B_X` rejects horizontal translation. The A-channel residuals
+and vertical translation still need characterization before fixing a complete
+Z transform.
+
+A controlled upward pointer-motion run returned 5,001 samples and 2,136
+changing snapshots. Its signed sums were A-X `-1769`, A-Y `1299`, B-X `375`,
+and B-Y `1628`, with ranges A-X `-6..2`, A-Y `-1..3`, B-X `-1..1`, and B-Y
+`-2..4`. Vertical translation therefore has substantial projections onto both
+observed Y fields and A-X. A downward run is required to establish their
+direction-reversing ratios before deriving the rotation transform.
+
+The downward run returned 5,001 samples and 2,128 changing snapshots. Its
+signed sums were A-X `2298`, A-Y `183`, B-X `-256`, and B-Y `-158`, with
+ranges A-X `-3..4`, A-Y `-1..1`, B-X `-1..1`, and B-Y `-1..1`. A-X cleanly
+reversed, but the remaining channel totals were not proportional to the upward
+run.
+
+These host totals are not calibration-quality measurements. The v4.69 hook
+retains the last nonzero sensor tuple, while the host polls faster than stock
+sensor updates. A retained tuple can therefore be included in the sum more than
+once. A sequence-numbered shadow revision is required so the host can reject
+duplicate reads before fitting the physical motion transform.
+
+## v4.70 sequence-numbered shadow
+
+The response now includes an 8-bit sequence at byte 12. It increments exactly
+once whenever the pre-clear hook captures a nonzero four-halfword tuple and
+wraps modulo 256. Repeated USB reads retain both the tuple and sequence, while
+identical deltas from consecutive stock passes have distinct sequences.
+
+- injection: 340 bytes, SHA-256
+  `c8ddcddb97770a1d6bf4d0c0bf9a35fbbec7cc46a7656330d675119aee98f6ef`
+- container: 128112 bytes, SHA-256
+  `111f22eaf0db16bf2df2ba29187c9fbf151ca578385a5ad288c31b3f064657e4`
+- payload SHA-256
+  `b465bd7d0a0f0379a767a9bbf6ba7f81aab52c9a265b9bafc462d89e64441475`
+- payload CRC: `96bd3f6d`
+
+The stock sensor call now targets the always-active hook path already exercised
+by v4.67. Its obsolete eight-byte volatile activation wrapper is reused as the
+counter helper. The marker writer at injection offsets `0x2c..0xf3` and reset
+trampoline at `0x120..0x153` remain byte-identical to the proven guard. No code
+or data is placed outside the existing injection region.
+
+The Rust tracker accepts a tuple only when its sequence changes, reports gaps
+as skipped firmware samples, handles wraparound, and rejects a changed tuple
+with an unchanged sequence. `stream-sensors` emits initial and new samples as
+newline-delimited JSON; it omits retained USB reads. A gap of 256 or more
+nonzero samples between reads remains ambiguous with an 8-bit counter.
+
+The exact v4.70 image was flashed on 2026-08-16. All 3,748 blocks echoed, and
+the application returned on the same physical path as `047d:80d7`,
+`bcdDevice=0470`, with the stock 170-byte report descriptor. An idle two-second
+stream made 668 USB polls and emitted no changed sample.
+
+A coordinated five-second moving-ball stream then made 1,648 USB polls,
+received 1,261 changed samples, and detected 2,124 skipped sequence values.
+Multiple modulo-256 wraps and identical consecutive delta tuples were accepted
+without inconsistency. This live-proves the counter and duplicate rejection,
+but also shows that the roughly 330 Hz host query loop undersamples roughly 677
+nonzero firmware updates per second during fast motion. The current stream is
+useful for diagnostics but cannot yet preserve every motion delta.
+
+Replacing the host's retry sleep with `poll(2)` produced the same idle result:
+668 command-response exchanges in two seconds. The experiment was removed
+because it added no throughput. The limiting factor is the request-response
+exchange rather than host read wake-up.
+
+The live full-speed configuration descriptors observed on 2026-08-16 declare
+mouse endpoint `0x81` and 17-byte vendor endpoint `0x82` as interrupt-IN with
+`bInterval=1`. Each can therefore be scheduled once per 1 ms USB frame. The
+preferred host-interface direction is a continuous report on `0x82`, with
+relative sensor deltas accumulated only until the next poll and current button
+state sampled into the report. This avoids both a stale event queue and the
+extra `SET_REPORT` round trip before every diagnostic response.
+
 ## Remaining live questions
 
 - Report byte 1 is the effective button mask.
 - Report bytes 2 through 5 are signed X/Y motion accumulated from both optical
   sensors.
 - Report bytes 6 through 9 contain wheel and other input/status fields.
+- Identify the stock endpoint-`0x82` report-submission path and its busy/ready
+  state before attempting continuous sensor reports.
 
-Idle, individual-button, translation, and ball-rotation captures will label
-the live fields before any sensor configuration or direct sensor-bus access is
-attempted.
+Translation captures will determine the remaining physical-axis transform and
+quantify leakage into the candidate rotation channel before any sensor
+configuration or direct sensor-bus access is attempted.

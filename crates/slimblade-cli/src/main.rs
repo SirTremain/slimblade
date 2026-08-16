@@ -1,18 +1,20 @@
 use core::time::Duration;
 use std::env;
 use std::fs;
+use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::thread;
 use std::time::Instant;
 
 use slimblade_cli::{
-    FlashArtifact, InputSnapshot, InputStatePage, PostFlashExpectation,
-    active_loop_arm_response_is_success, dispatcher_return_arm_response_is_success,
-    experiment_dispatch_arm_response_is_success, input_snapshot, input_state_page,
-    late_marker_response_is_success, post_init_arm_response_is_success, post_init_hook_state,
-    rust_response_is_success, sensor_shadow, sensor_shadow_arm_response_is_success,
-    steady_loop_arm_response_is_success, wired_loop_arm_response_is_success,
+    FlashArtifact, InputSnapshot, InputStatePage, PostFlashExpectation, SensorObservationKind,
+    SensorShadow, SensorTracker, active_loop_arm_response_is_success,
+    dispatcher_return_arm_response_is_success, experiment_dispatch_arm_response_is_success,
+    input_snapshot, input_state_page, late_marker_response_is_success,
+    post_init_arm_response_is_success, post_init_hook_state, rust_response_is_success,
+    sensor_shadow, sensor_shadow_arm_response_is_success, steady_loop_arm_response_is_success,
+    wired_loop_arm_response_is_success,
 };
 use slimblade_linux::UsbDevice;
 use slimblade_linux::flash::{transfer_payload, wait_for_queried_loader};
@@ -56,6 +58,13 @@ enum Command {
     CaptureSensors {
         confirmed: bool,
     },
+    PollSensors {
+        confirmed: bool,
+    },
+    StreamSensors {
+        confirmed: bool,
+        duration: Option<Duration>,
+    },
     QueryLoader,
     Flash {
         artifact: FlashArtifact,
@@ -72,7 +81,7 @@ struct Arguments {
 }
 
 const fn usage() -> &'static str {
-    "usage:\n  slimblade [--device PATH] identify\n  slimblade [--device PATH] [--timeout-seconds N] enter-loader --confirm\n  slimblade [--device PATH] [--timeout-seconds N] set-late-marker --confirm\n  slimblade [--device PATH] [--timeout-seconds N] start-experiment --confirm\n  slimblade [--device PATH] [--timeout-seconds N] run-rust-response --confirm\n  slimblade [--device PATH] [--timeout-seconds N] run-post-init-hook --confirm\n  slimblade [--device PATH] [--timeout-seconds N] read-input --confirm\n  slimblade [--device PATH] [--timeout-seconds N] capture-input --confirm\n  slimblade [--device PATH] [--timeout-seconds N] capture-state --confirm\n  slimblade [--device PATH] [--timeout-seconds N] capture-sensors --confirm\n  slimblade [--device PATH] [--timeout-seconds N] query-loader\n  slimblade [--device PATH] [--timeout-seconds N] FLASH_COMMAND --firmware PATH --confirm-sha256 HASH\n\nFLASH_COMMAND: restore-official-v449, flash-descriptor-probe, flash-recovery-carrier, flash-reset-trampoline, flash-recovery-stub, flash-startup-trampoline, flash-rust-guard, flash-usb-recovery-probe, flash-stock-harness, flash-late-marker-probe, flash-experiment-entry-probe, flash-rust-response-probe, flash-post-init-hook-probe, flash-wired-loop-hook-probe, flash-active-loop-hook-probe, flash-steady-loop-hook-probe, flash-dispatcher-return-hook-probe, flash-experiment-dispatch-guard, flash-input-diagnostics, flash-paged-input-diagnostics, or flash-sensor-shadow-diagnostics"
+    "usage:\n  slimblade [--device PATH] identify\n  slimblade [--device PATH] [--timeout-seconds N] enter-loader --confirm\n  slimblade [--device PATH] [--timeout-seconds N] set-late-marker --confirm\n  slimblade [--device PATH] [--timeout-seconds N] start-experiment --confirm\n  slimblade [--device PATH] [--timeout-seconds N] run-rust-response --confirm\n  slimblade [--device PATH] [--timeout-seconds N] run-post-init-hook --confirm\n  slimblade [--device PATH] [--timeout-seconds N] read-input --confirm\n  slimblade [--device PATH] [--timeout-seconds N] capture-input --confirm\n  slimblade [--device PATH] [--timeout-seconds N] capture-state --confirm\n  slimblade [--device PATH] [--timeout-seconds N] capture-sensors --confirm\n  slimblade [--device PATH] [--timeout-seconds N] poll-sensors --confirm\n  slimblade [--device PATH] [--timeout-seconds N] [--duration-seconds N] stream-sensors --confirm\n  slimblade [--device PATH] [--timeout-seconds N] query-loader\n  slimblade [--device PATH] [--timeout-seconds N] FLASH_COMMAND --firmware PATH --confirm-sha256 HASH\n\nFLASH_COMMAND: restore-official-v449, flash-descriptor-probe, flash-recovery-carrier, flash-reset-trampoline, flash-recovery-stub, flash-startup-trampoline, flash-rust-guard, flash-usb-recovery-probe, flash-stock-harness, flash-late-marker-probe, flash-experiment-entry-probe, flash-rust-response-probe, flash-post-init-hook-probe, flash-wired-loop-hook-probe, flash-active-loop-hook-probe, flash-steady-loop-hook-probe, flash-dispatcher-return-hook-probe, flash-experiment-dispatch-guard, flash-input-diagnostics, flash-paged-input-diagnostics, or flash-sensor-shadow-diagnostics"
 }
 
 fn flash_artifact_for_command(command: &str) -> Option<FlashArtifact> {
@@ -112,10 +121,30 @@ fn take_value(arguments: &[String], index: &mut usize, option: &str) -> Result<S
         .ok_or_else(|| format!("{option} requires a value"))
 }
 
+fn take_duration(
+    arguments: &[String],
+    index: &mut usize,
+    option: &str,
+) -> Result<Duration, String> {
+    let value = take_value(arguments, index, option)?;
+    value
+        .parse::<u64>()
+        .map(Duration::from_secs)
+        .map_err(|error| format!("invalid {option} value {value:?}: {error}"))
+}
+
+const fn default_device(command: &Command) -> &'static str {
+    match command {
+        Command::QueryLoader | Command::Flash { .. } => DEFAULT_LOADER_DEVICE,
+        _ => DEFAULT_APPLICATION_DEVICE,
+    }
+}
+
 fn parse_arguments() -> Result<Arguments, String> {
     let raw: Vec<String> = env::args().skip(1).collect();
     let mut device = None;
     let mut timeout = Duration::from_secs(3);
+    let mut stream_duration = None;
     let mut command_name = None;
     let mut confirmed = false;
     let mut firmware = None;
@@ -127,12 +156,9 @@ fn parse_arguments() -> Result<Arguments, String> {
             .ok_or_else(|| "argument index out of bounds".to_owned())?;
         match argument.as_str() {
             "--device" => device = Some(PathBuf::from(take_value(&raw, &mut index, argument)?)),
-            "--timeout-seconds" => {
-                let value = take_value(&raw, &mut index, argument)?;
-                let seconds = value
-                    .parse::<u64>()
-                    .map_err(|error| format!("invalid timeout {value:?}: {error}"))?;
-                timeout = Duration::from_secs(seconds);
+            "--timeout-seconds" => timeout = take_duration(&raw, &mut index, argument)?,
+            "--duration-seconds" => {
+                stream_duration = Some(take_duration(&raw, &mut index, argument)?);
             },
             "--confirm" => confirmed = true,
             "--firmware" => {
@@ -161,6 +187,11 @@ fn parse_arguments() -> Result<Arguments, String> {
         "capture-input" => Command::CaptureInput { confirmed },
         "capture-state" => Command::CaptureState { confirmed },
         "capture-sensors" => Command::CaptureSensors { confirmed },
+        "poll-sensors" => Command::PollSensors { confirmed },
+        "stream-sensors" => Command::StreamSensors {
+            confirmed,
+            duration: stream_duration,
+        },
         "query-loader" => Command::QueryLoader,
         "restore-official-v449"
         | "flash-descriptor-probe"
@@ -191,19 +222,10 @@ fn parse_arguments() -> Result<Arguments, String> {
         },
         value => return Err(format!("unknown command {value:?}")),
     };
-    let default_device = match command {
-        Command::Identify
-        | Command::EnterLoader { .. }
-        | Command::SetLateMarker { .. }
-        | Command::StartExperiment { .. }
-        | Command::RunRustResponse { .. }
-        | Command::RunPostInitHook { .. }
-        | Command::ReadInput { .. }
-        | Command::CaptureInput { .. }
-        | Command::CaptureState { .. }
-        | Command::CaptureSensors { .. } => DEFAULT_APPLICATION_DEVICE,
-        Command::QueryLoader | Command::Flash { .. } => DEFAULT_LOADER_DEVICE,
-    };
+    if stream_duration.is_some() && !matches!(&command, Command::StreamSensors { .. }) {
+        return Err("--duration-seconds is only valid with stream-sensors".to_owned());
+    }
+    let default_device = default_device(&command);
     Ok(Arguments {
         device: device.unwrap_or_else(|| PathBuf::from(default_device)),
         timeout,
@@ -693,10 +715,10 @@ fn open_sensor_shadow_diagnostics(device: &Path) -> Result<(UsbDevice, Hidraw), 
     let parent = usb_parent_for_hidraw(device, Path::new(HIDRAW_SYSFS_ROOT))
         .map_err(|error| format!("could not resolve USB parent: {error}"))?
         .ok_or_else(|| "could not find USB parent".to_owned())?;
-    if parent.identity != KENSINGTON_WIRED_IDENTITY || parent.bcd_device.as_deref() != Some("0469")
+    if parent.identity != KENSINGTON_WIRED_IDENTITY || parent.bcd_device.as_deref() != Some("0470")
     {
         return Err(format!(
-            "refusing sensor shadow diagnostic for identity {:04x}:{:04x} bcdDevice={:?}; expected 047d:80d7/0469",
+            "refusing sensor shadow diagnostic for identity {:04x}:{:04x} bcdDevice={:?}; expected 047d:80d7/0470",
             parent.identity.vendor_id, parent.identity.product_id, parent.bcd_device
         ));
     }
@@ -729,7 +751,8 @@ fn capture_sensors(device: &Path, timeout: Duration, confirmed: bool) -> Result<
     let snapshot = sensor_shadow(response)
         .ok_or_else(|| "sensor shadow diagnostic returned a malformed response".to_owned())?;
     println!(
-        "sensors a_x={} a_y={} b_x={} b_y={} sysfs={}",
+        "sensors sequence={} a_x={} a_y={} b_x={} b_y={} sysfs={}",
+        snapshot.sequence,
         snapshot.sensor_a_x,
         snapshot.sensor_a_y,
         snapshot.sensor_b_x,
@@ -740,6 +763,180 @@ fn capture_sensors(device: &Path, timeout: Duration, confirmed: bool) -> Result<
         "sensor_capture=complete duration_ms=10000 sysfs={}",
         parent.sysfs
     );
+    Ok(())
+}
+
+#[derive(Clone, Copy, Debug)]
+struct AxisStats {
+    minimum: i16,
+    maximum: i16,
+}
+
+impl AxisStats {
+    const fn new() -> Self {
+        Self {
+            minimum: i16::MAX,
+            maximum: i16::MIN,
+        }
+    }
+
+    fn observe(&mut self, value: i16) {
+        self.minimum = self.minimum.min(value);
+        self.maximum = self.maximum.max(value);
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+struct SensorPollStats {
+    a_x: AxisStats,
+    a_y: AxisStats,
+    b_x: AxisStats,
+    b_y: AxisStats,
+}
+
+impl SensorPollStats {
+    const fn new() -> Self {
+        Self {
+            a_x: AxisStats::new(),
+            a_y: AxisStats::new(),
+            b_x: AxisStats::new(),
+            b_y: AxisStats::new(),
+        }
+    }
+
+    fn observe_changed(&mut self, sample: SensorShadow) {
+        self.a_x.observe(sample.sensor_a_x);
+        self.a_y.observe(sample.sensor_a_y);
+        self.b_x.observe(sample.sensor_b_x);
+        self.b_y.observe(sample.sensor_b_y);
+    }
+}
+
+fn poll_sensors(device: &Path, timeout: Duration, confirmed: bool) -> Result<(), String> {
+    if !confirmed {
+        return Err("refusing RAM-only sensor polling without --confirm".to_owned());
+    }
+    let (parent, mut hidraw) = open_sensor_shadow_diagnostics(device)?;
+    let started = Instant::now();
+    let duration = Duration::from_secs(15);
+    let mut tracker = SensorTracker::default();
+    let mut stats = SensorPollStats::new();
+    let mut next_report = Duration::ZERO;
+    while started.elapsed() < duration {
+        let response = exchange_vendor_command(&mut hidraw, 0x0f, timeout)?;
+        let snapshot = sensor_shadow(response)
+            .ok_or_else(|| "sensor shadow diagnostic returned a malformed response".to_owned())?;
+        let observation = tracker
+            .observe(snapshot)
+            .map_err(|error| error.to_string())?;
+        if observation.kind == SensorObservationKind::Changed {
+            stats.observe_changed(snapshot);
+        }
+        let elapsed = started.elapsed();
+        if elapsed >= next_report {
+            println!(
+                "sensors elapsed_ms={} sequence={} a_x={} a_y={} b_x={} b_y={} sysfs={}",
+                elapsed.as_millis(),
+                snapshot.sequence,
+                snapshot.sensor_a_x,
+                snapshot.sensor_a_y,
+                snapshot.sensor_b_x,
+                snapshot.sensor_b_y,
+                parent.sysfs
+            );
+            next_report = next_report
+                .checked_add(Duration::from_millis(250))
+                .ok_or_else(|| "sensor report interval overflow".to_owned())?;
+        }
+    }
+    let totals = tracker.totals();
+    println!(
+        "sensor_poll=complete duration_ms=15000 polls={} changed_samples={} skipped_samples={} a_x_min={} a_x_max={} a_x_sum={} a_y_min={} a_y_max={} a_y_sum={} b_x_min={} b_x_max={} b_x_sum={} b_y_min={} b_y_max={} b_y_sum={} sysfs={}",
+        tracker.polls(),
+        tracker.changed_samples(),
+        tracker.skipped_samples(),
+        stats.a_x.minimum,
+        stats.a_x.maximum,
+        totals.sensor_a_x,
+        stats.a_y.minimum,
+        stats.a_y.maximum,
+        totals.sensor_a_y,
+        stats.b_x.minimum,
+        stats.b_x.maximum,
+        totals.sensor_b_x,
+        stats.b_y.minimum,
+        stats.b_y.maximum,
+        totals.sensor_b_y,
+        parent.sysfs
+    );
+    Ok(())
+}
+
+fn stream_sensors(
+    device: &Path,
+    timeout: Duration,
+    duration: Option<Duration>,
+    confirmed: bool,
+) -> Result<(), String> {
+    if !confirmed {
+        return Err("refusing RAM-only sensor streaming without --confirm".to_owned());
+    }
+    let (parent, mut hidraw) = open_sensor_shadow_diagnostics(device)?;
+    eprintln!(
+        "sensor_stream=started format=ndjson bcd_device=0470 sysfs={}",
+        parent.sysfs
+    );
+    let started = Instant::now();
+    let mut tracker = SensorTracker::default();
+    let stdout = io::stdout();
+    let mut output = stdout.lock();
+    while duration.is_none_or(|limit| started.elapsed() < limit) {
+        let response = exchange_vendor_command(&mut hidraw, 0x0f, timeout)?;
+        let snapshot = sensor_shadow(response)
+            .ok_or_else(|| "sensor shadow diagnostic returned a malformed response".to_owned())?;
+        let observation = tracker
+            .observe(snapshot)
+            .map_err(|error| error.to_string())?;
+        let kind = match observation.kind {
+            SensorObservationKind::Initial => "initial",
+            SensorObservationKind::Changed => "sample",
+            SensorObservationKind::Retained => continue,
+        };
+        writeln!(
+            output,
+            "{{\"type\":\"{kind}\",\"elapsed_us\":{},\"sequence\":{},\"sequence_gap\":{},\"skipped_total\":{},\"a_x\":{},\"a_y\":{},\"b_x\":{},\"b_y\":{},\"a_x_total\":{},\"a_y_total\":{},\"b_x_total\":{},\"b_y_total\":{}}}",
+            started.elapsed().as_micros(),
+            snapshot.sequence,
+            observation.sequence_gap,
+            observation.skipped_samples,
+            snapshot.sensor_a_x,
+            snapshot.sensor_a_y,
+            snapshot.sensor_b_x,
+            snapshot.sensor_b_y,
+            observation.totals.sensor_a_x,
+            observation.totals.sensor_a_y,
+            observation.totals.sensor_b_x,
+            observation.totals.sensor_b_y,
+        )
+        .map_err(|error| format!("could not write sensor stream: {error}"))?;
+        output
+            .flush()
+            .map_err(|error| format!("could not flush sensor stream: {error}"))?;
+    }
+    let totals = tracker.totals();
+    writeln!(
+        output,
+        "{{\"type\":\"summary\",\"elapsed_us\":{},\"polls\":{},\"changed_samples\":{},\"skipped_samples\":{},\"a_x_total\":{},\"a_y_total\":{},\"b_x_total\":{},\"b_y_total\":{}}}",
+        started.elapsed().as_micros(),
+        tracker.polls(),
+        tracker.changed_samples(),
+        tracker.skipped_samples(),
+        totals.sensor_a_x,
+        totals.sensor_a_y,
+        totals.sensor_b_x,
+        totals.sensor_b_y,
+    )
+    .map_err(|error| format!("could not write sensor stream summary: {error}"))?;
     Ok(())
 }
 
@@ -878,6 +1075,13 @@ fn run() -> Result<(), String> {
         Command::CaptureSensors { confirmed } => {
             capture_sensors(&arguments.device, arguments.timeout, confirmed)
         },
+        Command::PollSensors { confirmed } => {
+            poll_sensors(&arguments.device, arguments.timeout, confirmed)
+        },
+        Command::StreamSensors {
+            confirmed,
+            duration,
+        } => stream_sensors(&arguments.device, arguments.timeout, duration, confirmed),
         Command::QueryLoader => query_loader(&arguments.device, arguments.timeout),
         Command::Flash {
             artifact,
@@ -900,5 +1104,38 @@ fn main() -> ExitCode {
             eprintln!("{error}\n{}", usage());
             ExitCode::from(2)
         },
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{SensorPollStats, SensorShadow};
+
+    #[test]
+    fn sensor_poll_stats_track_changed_ranges() {
+        let mut stats = SensorPollStats::new();
+        stats.observe_changed(SensorShadow {
+            sequence: 1,
+            sensor_a_x: -2,
+            sensor_a_y: 3,
+            sensor_b_x: 4,
+            sensor_b_y: -5,
+        });
+        stats.observe_changed(SensorShadow {
+            sequence: 2,
+            sensor_a_x: 6,
+            sensor_a_y: -7,
+            sensor_b_x: -8,
+            sensor_b_y: 9,
+        });
+
+        assert_eq!(stats.a_x.minimum, -2);
+        assert_eq!(stats.a_x.maximum, 6);
+        assert_eq!(stats.a_y.minimum, -7);
+        assert_eq!(stats.a_y.maximum, 3);
+        assert_eq!(stats.b_x.minimum, -8);
+        assert_eq!(stats.b_x.maximum, 4);
+        assert_eq!(stats.b_y.minimum, -5);
+        assert_eq!(stats.b_y.maximum, 9);
     }
 }

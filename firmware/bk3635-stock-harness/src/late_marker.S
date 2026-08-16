@@ -107,7 +107,7 @@ carrier_late_marker:
     .ifdef POST_INIT_HOOK_PROBE
     .ifdef SENSOR_SHADOW_DIAGNOSTICS
     ldr r0, =SENSOR_SHADOW_ADDRESS
-    movs r1, #1
+    movs r1, #0
     strb r1, [r0, #8]
     .else
     ldr r0, =STOCK_MODE_ADDRESS
@@ -176,18 +176,23 @@ carrier_late_marker:
     .size carrier_late_marker, . - carrier_late_marker
 
     .ifdef POST_INIT_HOOK_PROBE
+    .ifdef SENSOR_SHADOW_DIAGNOSTICS
+    .thumb_func
+    .global sensor_sequence_increment
+    .type sensor_sequence_increment, %function
+sensor_sequence_increment:
+    ldrb r3, [r0]
+    adds r3, #1
+    strb r3, [r0]
+    b .Lsensor_shadow_skip
+    .size sensor_sequence_increment, . - sensor_sequence_increment
+    .else
     .thumb_func
     .global carrier_hook_state
     .type carrier_hook_state, %function
 carrier_hook_state:
     .ifdef INPUT_DIAGNOSTICS
     /* Keep marker_set and every following proven carrier byte in place. */
-    .ifdef SENSOR_SHADOW_DIAGNOSTICS
-    ldr r0, =SENSOR_SHADOW_ADDRESS
-    ldrb r0, [r0, #8]
-    cmp r0, #1
-    b sensor_shadow_hook
-    .else
     .ifdef PAGED_INPUT_DIAGNOSTICS
     ldrb r0, [r5, #3]
     strb r0, [r4, #3]
@@ -199,7 +204,6 @@ carrier_hook_state:
     nop
     nop
     .endif
-    .endif
     .else
     ldr r0, =STOCK_MODE_ADDRESS
     ldrb r0, [r0]
@@ -207,6 +211,7 @@ carrier_hook_state:
     bx lr
     .endif
     .size carrier_hook_state, . - carrier_hook_state
+    .endif
     .else
     .ifdef RUST_RESPONSE_PROBE
     .thumb_func
@@ -447,9 +452,9 @@ input_snapshot:
     .type input_snapshot, %function
 input_snapshot:
     ldr r0, =SENSOR_SHADOW_ADDRESS
-    ldmia r0!, {r1-r2}
+    ldmia r0!, {r1-r3}
     adds r0, r4, #4
-    stmia r0!, {r1-r2}
+    stmia r0!, {r1-r3}
     bx lr
     .size input_snapshot, . - input_snapshot
 
@@ -458,7 +463,6 @@ input_snapshot:
     .global sensor_shadow_hook
     .type sensor_shadow_hook, %function
 sensor_shadow_hook:
-    bne .Lsensor_shadow_skip
     ldr r1, [r7]
     ldrh r2, [r6]
     ldrh r3, [r6, #2]
@@ -469,6 +473,7 @@ sensor_shadow_hook:
     beq .Lsensor_shadow_skip
     ldr r0, =SENSOR_SHADOW_ADDRESS
     stmia r0!, {r1-r2}
+    b sensor_sequence_increment
 .Lsensor_shadow_skip:
     strh r4, [r6]
     adds r0, r6, #2

@@ -23,8 +23,8 @@ Kensington startup, USB, and interrupt handlers:
   its chosen stock report buffer remained zero during wired input.
 - `slimblade-paged-input-diagnostics`: the build-only `0466` selector-based
   snapshot of proven button, combined-motion, and per-sensor RAM windows.
-- `slimblade-sensor-shadow-diagnostics`: the build-only `0467` pre-clear
-  per-sensor shadow, dormant until its marker-first activation command.
+- `slimblade-sensor-shadow-diagnostics`: the live-tested `0470` pre-clear
+  per-sensor shadow with a modulo-256 sequence for duplicate-free host reads.
 
 The linked injection occupies only the verified `0x21ac–0x22ff` stock gap.
 No build command accesses hardware. Exact artifact identities and the proposed

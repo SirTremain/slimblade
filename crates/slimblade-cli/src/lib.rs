@@ -154,10 +154,161 @@ pub fn input_state_page(response: NormalReport, selector: u8) -> Option<InputSta
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct SensorShadow {
+    pub sequence: u8,
     pub sensor_a_x: i16,
     pub sensor_a_y: i16,
     pub sensor_b_x: i16,
     pub sensor_b_y: i16,
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct SensorTotals {
+    pub sensor_a_x: i64,
+    pub sensor_a_y: i64,
+    pub sensor_b_x: i64,
+    pub sensor_b_y: i64,
+}
+
+impl SensorTotals {
+    fn checked_add(self, sample: SensorShadow) -> Option<Self> {
+        Some(Self {
+            sensor_a_x: self.sensor_a_x.checked_add(i64::from(sample.sensor_a_x))?,
+            sensor_a_y: self.sensor_a_y.checked_add(i64::from(sample.sensor_a_y))?,
+            sensor_b_x: self.sensor_b_x.checked_add(i64::from(sample.sensor_b_x))?,
+            sensor_b_y: self.sensor_b_y.checked_add(i64::from(sample.sensor_b_y))?,
+        })
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum SensorObservationKind {
+    Initial,
+    Changed,
+    Retained,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct SensorObservation {
+    pub kind: SensorObservationKind,
+    pub sequence_gap: u8,
+    pub polls: u64,
+    pub changed_samples: u64,
+    pub skipped_samples: u64,
+    pub sample: SensorShadow,
+    pub totals: SensorTotals,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum SensorTrackerError {
+    PollCounterOverflow,
+    ChangedCounterOverflow,
+    SkippedCounterOverflow,
+    TotalOverflow,
+    InconsistentRetainedSample,
+}
+
+impl core::fmt::Display for SensorTrackerError {
+    fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Self::PollCounterOverflow => formatter.write_str("sensor poll counter overflow"),
+            Self::ChangedCounterOverflow => {
+                formatter.write_str("changed sensor tuple counter overflow")
+            },
+            Self::SkippedCounterOverflow => {
+                formatter.write_str("skipped sensor sample counter overflow")
+            },
+            Self::TotalOverflow => formatter.write_str("sensor total overflow"),
+            Self::InconsistentRetainedSample => {
+                formatter.write_str("sensor values changed without a sequence change")
+            },
+        }
+    }
+}
+
+impl core::error::Error for SensorTrackerError {}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct SensorTracker {
+    previous: Option<SensorShadow>,
+    polls: u64,
+    changed_samples: u64,
+    skipped_samples: u64,
+    totals: SensorTotals,
+}
+
+impl SensorTracker {
+    #[must_use]
+    pub const fn polls(&self) -> u64 {
+        self.polls
+    }
+
+    #[must_use]
+    pub const fn changed_samples(&self) -> u64 {
+        self.changed_samples
+    }
+
+    #[must_use]
+    pub const fn skipped_samples(&self) -> u64 {
+        self.skipped_samples
+    }
+
+    #[must_use]
+    pub const fn totals(&self) -> SensorTotals {
+        self.totals
+    }
+
+    /// Classifies a USB observation and accumulates each new sequence once.
+    ///
+    /// The v4.70 sequence wraps modulo 256. This remains unambiguous while
+    /// fewer than 256 nonzero firmware samples occur between USB reads.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error instead of wrapping a counter or signed total.
+    pub fn observe(
+        &mut self,
+        sample: SensorShadow,
+    ) -> Result<SensorObservation, SensorTrackerError> {
+        self.polls = self
+            .polls
+            .checked_add(1)
+            .ok_or(SensorTrackerError::PollCounterOverflow)?;
+        let (kind, sequence_gap) = match self.previous {
+            None => (SensorObservationKind::Initial, 0),
+            Some(previous) if previous.sequence == sample.sequence => {
+                if previous != sample {
+                    return Err(SensorTrackerError::InconsistentRetainedSample);
+                }
+                (SensorObservationKind::Retained, 0)
+            },
+            Some(previous) => {
+                let sequence_gap = sample.sequence.wrapping_sub(previous.sequence);
+                self.changed_samples = self
+                    .changed_samples
+                    .checked_add(1)
+                    .ok_or(SensorTrackerError::ChangedCounterOverflow)?;
+                self.skipped_samples = self
+                    .skipped_samples
+                    .checked_add(u64::from(sequence_gap.saturating_sub(1)))
+                    .ok_or(SensorTrackerError::SkippedCounterOverflow)?;
+                self.totals = self
+                    .totals
+                    .checked_add(sample)
+                    .ok_or(SensorTrackerError::TotalOverflow)?;
+                (SensorObservationKind::Changed, sequence_gap)
+            },
+        };
+        self.previous = Some(sample);
+        Ok(SensorObservation {
+            kind,
+            sequence_gap,
+            polls: self.polls,
+            changed_samples: self.changed_samples,
+            skipped_samples: self.skipped_samples,
+            sample,
+            totals: self.totals,
+        })
+    }
 }
 
 #[must_use]
@@ -167,6 +318,7 @@ pub fn sensor_shadow(response: NormalReport) -> Option<SensorShadow> {
         return None;
     }
     Some(SensorShadow {
+        sequence: *bytes.get(12)?,
         sensor_a_x: i16::from_le_bytes([*bytes.get(4)?, *bytes.get(5)?]),
         sensor_a_y: i16::from_le_bytes([*bytes.get(6)?, *bytes.get(7)?]),
         sensor_b_x: i16::from_le_bytes([*bytes.get(8)?, *bytes.get(9)?]),
@@ -272,7 +424,7 @@ impl FlashArtifact {
             Self::InputDiagnostics => PostFlashExpectation::Application { bcd_device: "0465" },
             Self::PagedInputDiagnostics => PostFlashExpectation::Application { bcd_device: "0466" },
             Self::SensorShadowDiagnostics => {
-                PostFlashExpectation::Application { bcd_device: "0469" }
+                PostFlashExpectation::Application { bcd_device: "0470" }
             },
         }
     }
@@ -508,11 +660,11 @@ mod tests {
     fn sensor_shadow_diagnostics_needs_exact_hash_confirmation() {
         assert!(!FlashArtifact::SensorShadowDiagnostics.confirmation_matches("wrong"));
         assert!(FlashArtifact::SensorShadowDiagnostics.confirmation_matches(
-            "8e2e0649994561f4e37c4e33dae7764db483aaedd0d20a306229ea854ac28b39"
+            "111f22eaf0db16bf2df2ba29187c9fbf151ca578385a5ad288c31b3f064657e4"
         ));
         assert_eq!(
             FlashArtifact::SensorShadowDiagnostics.post_flash_expectation(),
-            PostFlashExpectation::Application { bcd_device: "0469" }
+            PostFlashExpectation::Application { bcd_device: "0470" }
         );
     }
 
@@ -585,11 +737,95 @@ mod tests {
         assert_eq!(
             sensor_shadow(response),
             Some(SensorShadow {
+                sequence: 0,
                 sensor_a_x: -2,
                 sensor_a_y: 3,
                 sensor_b_x: -4,
                 sensor_b_y: 5,
             })
+        );
+    }
+
+    #[test]
+    #[allow(
+        clippy::expect_used,
+        reason = "the tracker operations are expected to remain within fixed test bounds"
+    )]
+    fn sensor_tracker_counts_each_sequence_once_and_accepts_identical_deltas() {
+        let mut tracker = SensorTracker::default();
+        let initial = SensorShadow {
+            sequence: 254,
+            sensor_a_x: 1,
+            sensor_a_y: -2,
+            sensor_b_x: 3,
+            sensor_b_y: -4,
+        };
+        let repeated_delta = SensorShadow {
+            sequence: 255,
+            ..initial
+        };
+        let wrapped_delta = SensorShadow {
+            sequence: 0,
+            ..initial
+        };
+
+        let first = tracker.observe(initial).expect("initial observation");
+        let retained = tracker.observe(initial).expect("retained observation");
+        let changed = tracker
+            .observe(repeated_delta)
+            .expect("changed observation");
+        let wrapped = tracker.observe(wrapped_delta).expect("wrapped observation");
+
+        assert_eq!(first.kind, SensorObservationKind::Initial);
+        assert_eq!(retained.kind, SensorObservationKind::Retained);
+        assert_eq!(changed.kind, SensorObservationKind::Changed);
+        assert_eq!(changed.sequence_gap, 1);
+        assert_eq!(wrapped.kind, SensorObservationKind::Changed);
+        assert_eq!(wrapped.sequence_gap, 1);
+        assert_eq!(tracker.polls(), 4);
+        assert_eq!(tracker.changed_samples(), 2);
+        assert_eq!(tracker.skipped_samples(), 0);
+        assert_eq!(
+            tracker.totals(),
+            SensorTotals {
+                sensor_a_x: 2,
+                sensor_a_y: -4,
+                sensor_b_x: 6,
+                sensor_b_y: -8,
+            }
+        );
+    }
+
+    #[test]
+    #[allow(
+        clippy::expect_used,
+        reason = "the tracker operations are expected to remain within fixed test bounds"
+    )]
+    fn sensor_tracker_reports_skipped_sequences_and_rejects_torn_reads() {
+        let mut tracker = SensorTracker::default();
+        let initial = SensorShadow {
+            sequence: 10,
+            sensor_a_x: 1,
+            sensor_a_y: 2,
+            sensor_b_x: 3,
+            sensor_b_y: 4,
+        };
+        tracker.observe(initial).expect("initial observation");
+        let skipped = tracker
+            .observe(SensorShadow {
+                sequence: 13,
+                sensor_a_x: -1,
+                ..initial
+            })
+            .expect("observation after skipped sequences");
+        assert_eq!(skipped.sequence_gap, 3);
+        assert_eq!(skipped.skipped_samples, 2);
+        assert_eq!(
+            tracker.observe(SensorShadow {
+                sensor_a_y: -2,
+                ..skipped.sample
+            }),
+            Err(SensorTrackerError::InconsistentRetainedSample)
         );
     }
 
