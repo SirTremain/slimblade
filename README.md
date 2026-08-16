@@ -18,6 +18,8 @@ Compact notes on the Kensington SlimBlade Pro sensor and firmware interface.
 - [Release-blocking marker reachability gate](docs/marker-reachability-gate.md)
 - [Rust migration plan](docs/rust-migration-plan.md)
 - [Board observations](docs/board-observations.md)
+- [Hardware-assisted loader entry](docs/hardware-loader-entry.md)
+- [Embedded development workbench](docs/embedded-workbench.md)
 
 Active development support:
 
