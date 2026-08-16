@@ -25,6 +25,10 @@ Kensington startup, USB, and interrupt handlers:
   snapshot of proven button, combined-motion, and per-sensor RAM windows.
 - `slimblade-sensor-shadow-diagnostics`: the live-tested `0470` pre-clear
   per-sensor shadow with a modulo-256 sequence for duplicate-free host reads.
+- `slimblade-unsolicited-report-probe`: the build-tested `0471` marker-first
+  one-shot re-arm of the stock endpoint-2 response path.
+- `slimblade-custom-main-handoff-probe`: the build-tested `0472` automatic
+  post-init marker followed by a deliberate non-returning custom-main stand-in.
 
 The linked injection occupies only the verified `0x21ac–0x22ff` stock gap.
 No build command accesses hardware. Exact artifact identities and the proposed

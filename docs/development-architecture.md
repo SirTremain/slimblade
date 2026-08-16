@@ -8,6 +8,10 @@ Stock mouse behaviour is replaceable. The useful stock boundary is the proven
 startup, persistent-marker path, wired USB enumeration, endpoint service, and
 resident-loader command. Wireless operation is outside project scope.
 
+The selected custom-runtime boundary is the sole mode-0 call at `0x19c08`.
+It follows global initialization, stock USB initialization, and the wired
+transition handler. See [`custom-main-handoff.md`](custom-main-handoff.md).
+
 | Layer | Initial policy | Long-term direction |
 | --- | --- | --- |
 | Startup and recovery | Protect and byte-audit | Keep a minimal verified boot boundary |
@@ -29,14 +33,22 @@ application flash, or the protected pre-marker control flow.
 
 1. Use the existing 17-byte vendor reports for register reads, sensor snapshots,
    button states, and low-rate diagnostics.
-2. Add a RAM ring buffer or reuse a stock interrupt-IN endpoint if polling is
+2. Reuse endpoint `0x82` at its declared 1 ms interval for continuous raw
+   sensor reports, accumulating relative deltas only until successful submit.
+3. Extend the existing report payload or descriptor only if 16 data bytes are
    insufficient.
-3. Extend HID/vendor descriptors and reports for continuous raw rotation.
 4. Replace the low-level USB stack only if the stock transport cannot meet the
    required bandwidth or semantics.
 
 The first read-only snapshot ABI and its safety checks are recorded in
 [`input-diagnostics.md`](input-diagnostics.md).
+
+The version-1 continuous report remains 17 bytes and uses the existing report
+ID and checksum: `08 20 01 flags`, four little-endian signed sensor halfwords,
+current buttons, contribution count, little-endian 16-bit report sequence, and
+checksum. Flags distinguish accumulator or contribution-count saturation.
+Relative deltas are cleared only after a report has been accepted by the stock
+endpoint-2 submission path.
 
 Known anchors already include the vendor dispatcher at `0x18f50–0x18fee`, its
 carrier call at `0x18fba`, stock loader entry near `0x1895d`, response handling

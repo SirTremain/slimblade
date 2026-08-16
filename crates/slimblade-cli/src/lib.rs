@@ -1,10 +1,10 @@
 use slimblade_image::{
-    ACTIVE_LOOP_HOOK_PROBE, DISPATCHER_RETURN_HOOK_PROBE, EXPERIMENT_DISPATCH_GUARD,
-    EXPERIMENT_ENTRY_PROBE, FirmwareIdentity, INPUT_DIAGNOSTICS, LATE_MARKER_PROBE, OFFICIAL_V449,
-    PAGED_INPUT_DIAGNOSTICS, POST_INIT_HOOK_PROBE, RECOVERY_CARRIER, RECOVERY_GUARD, RECOVERY_STUB,
-    RESET_TRAMPOLINE, RUST_RESPONSE_PROBE, SENSOR_SHADOW_DIAGNOSTICS, STARTUP_TRAMPOLINE,
-    STEADY_LOOP_HOOK_PROBE, STOCK_HARNESS, USB_RECOVERY_PROBE, V449_DESCRIPTOR_PROBE,
-    WIRED_LOOP_HOOK_PROBE,
+    ACTIVE_LOOP_HOOK_PROBE, CUSTOM_MAIN_HANDOFF_PROBE, DISPATCHER_RETURN_HOOK_PROBE,
+    EXPERIMENT_DISPATCH_GUARD, EXPERIMENT_ENTRY_PROBE, FirmwareIdentity, INPUT_DIAGNOSTICS,
+    LATE_MARKER_PROBE, OFFICIAL_V449, PAGED_INPUT_DIAGNOSTICS, POST_INIT_HOOK_PROBE,
+    RECOVERY_CARRIER, RECOVERY_GUARD, RECOVERY_STUB, RESET_TRAMPOLINE, RUST_RESPONSE_PROBE,
+    SENSOR_SHADOW_DIAGNOSTICS, STARTUP_TRAMPOLINE, STEADY_LOOP_HOOK_PROBE, STOCK_HARNESS,
+    UNSOLICITED_REPORT_PROBE, USB_RECOVERY_PROBE, V449_DESCRIPTOR_PROBE, WIRED_LOOP_HOOK_PROBE,
 };
 use slimblade_protocol::NormalReport;
 
@@ -69,6 +69,13 @@ pub fn sensor_shadow_arm_response_is_success(response: NormalReport) -> bool {
     response.command_byte() == 0x0e
         && response.as_bytes().get(2) == Some(&0x01)
         && response.as_bytes().get(3) == Some(&0xaa)
+}
+
+#[must_use]
+pub fn unsolicited_report_probe_response_is_success(response: NormalReport) -> bool {
+    response.command_byte() == 0x0e
+        && response.as_bytes().get(2) == Some(&0x01)
+        && response.as_bytes().get(3) == Some(&0xab)
 }
 
 #[must_use]
@@ -349,6 +356,8 @@ pub enum FlashArtifact {
     InputDiagnostics,
     PagedInputDiagnostics,
     SensorShadowDiagnostics,
+    UnsolicitedReportProbe,
+    CustomMainHandoffProbe,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -383,6 +392,8 @@ impl FlashArtifact {
             Self::InputDiagnostics => INPUT_DIAGNOSTICS,
             Self::PagedInputDiagnostics => PAGED_INPUT_DIAGNOSTICS,
             Self::SensorShadowDiagnostics => SENSOR_SHADOW_DIAGNOSTICS,
+            Self::UnsolicitedReportProbe => UNSOLICITED_REPORT_PROBE,
+            Self::CustomMainHandoffProbe => CUSTOM_MAIN_HANDOFF_PROBE,
         }
     }
 
@@ -425,6 +436,12 @@ impl FlashArtifact {
             Self::PagedInputDiagnostics => PostFlashExpectation::Application { bcd_device: "0466" },
             Self::SensorShadowDiagnostics => {
                 PostFlashExpectation::Application { bcd_device: "0470" }
+            },
+            Self::UnsolicitedReportProbe => {
+                PostFlashExpectation::Application { bcd_device: "0471" }
+            },
+            Self::CustomMainHandoffProbe => {
+                PostFlashExpectation::Application { bcd_device: "0472" }
             },
         }
     }
@@ -629,6 +646,30 @@ mod tests {
         assert_eq!(
             FlashArtifact::ExperimentDispatchGuard.post_flash_expectation(),
             PostFlashExpectation::Application { bcd_device: "0464" }
+        );
+    }
+
+    #[test]
+    fn unsolicited_report_probe_needs_exact_hash_confirmation() {
+        assert!(!FlashArtifact::UnsolicitedReportProbe.confirmation_matches("wrong"));
+        assert!(FlashArtifact::UnsolicitedReportProbe.confirmation_matches(
+            "342b8e7ed2891e9b495eaa6078bb738241a7dc49be67d61506d248ce4aafcf21"
+        ));
+        assert_eq!(
+            FlashArtifact::UnsolicitedReportProbe.post_flash_expectation(),
+            PostFlashExpectation::Application { bcd_device: "0471" }
+        );
+    }
+
+    #[test]
+    fn custom_main_handoff_probe_needs_exact_hash_confirmation() {
+        assert!(!FlashArtifact::CustomMainHandoffProbe.confirmation_matches("wrong"));
+        assert!(FlashArtifact::CustomMainHandoffProbe.confirmation_matches(
+            "401ab888a8512fa6ff74058fc78d329a3e4a34064614542ea3716d06be8dbf97"
+        ));
+        assert_eq!(
+            FlashArtifact::CustomMainHandoffProbe.post_flash_expectation(),
+            PostFlashExpectation::Application { bcd_device: "0472" }
         );
     }
 
@@ -974,5 +1015,20 @@ mod tests {
         .expect("fixed sensor arm response is valid");
         assert!(sensor_shadow_arm_response_is_success(arm));
         assert!(!experiment_dispatch_arm_response_is_success(arm));
+    }
+
+    #[test]
+    #[allow(
+        clippy::expect_used,
+        reason = "the fixed unsolicited-report response must parse for the assertion to be meaningful"
+    )]
+    fn unsolicited_report_response_requires_exact_signature() {
+        let response = NormalReport::parse(&[
+            0x08, 0x0e, 0x01, 0xab, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x93,
+        ])
+        .expect("fixed unsolicited-report response is valid");
+        assert!(unsolicited_report_probe_response_is_success(response));
+        assert!(!sensor_shadow_arm_response_is_success(response));
     }
 }

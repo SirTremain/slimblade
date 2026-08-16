@@ -5,6 +5,12 @@ use core::fmt;
 pub const APPLICATION_PAYLOAD_OFFSET: u32 = 0x2000;
 pub const NORMAL_REPORT_ID: u8 = 0x08;
 pub const NORMAL_REPORT_LENGTH: usize = 17;
+pub const SENSOR_STREAM_COMMAND: u8 = 0x20;
+pub const SENSOR_STREAM_VERSION: u8 = 1;
+pub const SENSOR_STREAM_ACCUMULATOR_SATURATED: u8 = 1 << 0;
+pub const SENSOR_STREAM_SAMPLE_COUNT_SATURATED: u8 = 1 << 1;
+pub const SENSOR_STREAM_KNOWN_FLAGS: u8 =
+    SENSOR_STREAM_ACCUMULATOR_SATURATED | SENSOR_STREAM_SAMPLE_COUNT_SATURATED;
 pub const USB_SETUP_PACKET_LENGTH: usize = 8;
 pub const BOOT_REPORT_ID: u8 = 0x06;
 pub const BOOT_REPORT_LENGTH: usize = 49;
@@ -120,6 +126,102 @@ impl NormalReport {
         self.0[1]
     }
 }
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct SensorStreamReport {
+    pub flags: u8,
+    pub sensor_a_x: i16,
+    pub sensor_a_y: i16,
+    pub sensor_b_x: i16,
+    pub sensor_b_y: i16,
+    pub buttons: u8,
+    pub sample_count: u8,
+    pub sequence: u16,
+}
+
+impl SensorStreamReport {
+    /// Encodes a version-1 raw-sensor stream report with the normal checksum.
+    #[must_use]
+    pub const fn encode(self) -> NormalReport {
+        let mut bytes = [0_u8; NORMAL_REPORT_LENGTH];
+        bytes[0] = NORMAL_REPORT_ID;
+        bytes[1] = SENSOR_STREAM_COMMAND;
+        bytes[2] = SENSOR_STREAM_VERSION;
+        bytes[3] = self.flags;
+        let axis_bytes = self.sensor_a_x.to_le_bytes();
+        bytes[4] = axis_bytes[0];
+        bytes[5] = axis_bytes[1];
+        let axis_bytes = self.sensor_a_y.to_le_bytes();
+        bytes[6] = axis_bytes[0];
+        bytes[7] = axis_bytes[1];
+        let axis_bytes = self.sensor_b_x.to_le_bytes();
+        bytes[8] = axis_bytes[0];
+        bytes[9] = axis_bytes[1];
+        let axis_bytes = self.sensor_b_y.to_le_bytes();
+        bytes[10] = axis_bytes[0];
+        bytes[11] = axis_bytes[1];
+        bytes[12] = self.buttons;
+        bytes[13] = self.sample_count;
+        let [sequence_low, sequence_high] = self.sequence.to_le_bytes();
+        bytes[14] = sequence_low;
+        bytes[15] = sequence_high;
+        bytes[16] = checksum(&bytes);
+        NormalReport(bytes)
+    }
+
+    /// Decodes a checksum-validated normal report as the version-1 sensor stream ABI.
+    ///
+    /// # Errors
+    ///
+    /// Rejects another command, version, or any flag not defined by this version.
+    pub const fn decode(report: NormalReport) -> Result<Self, SensorStreamReportError> {
+        let bytes = report.0;
+        if bytes[1] != SENSOR_STREAM_COMMAND {
+            return Err(SensorStreamReportError::WrongCommand(bytes[1]));
+        }
+        if bytes[2] != SENSOR_STREAM_VERSION {
+            return Err(SensorStreamReportError::WrongVersion(bytes[2]));
+        }
+        if bytes[3] & !SENSOR_STREAM_KNOWN_FLAGS != 0 {
+            return Err(SensorStreamReportError::UnknownFlags(bytes[3]));
+        }
+        Ok(Self {
+            flags: bytes[3],
+            sensor_a_x: i16::from_le_bytes([bytes[4], bytes[5]]),
+            sensor_a_y: i16::from_le_bytes([bytes[6], bytes[7]]),
+            sensor_b_x: i16::from_le_bytes([bytes[8], bytes[9]]),
+            sensor_b_y: i16::from_le_bytes([bytes[10], bytes[11]]),
+            buttons: bytes[12],
+            sample_count: bytes[13],
+            sequence: u16::from_le_bytes([bytes[14], bytes[15]]),
+        })
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum SensorStreamReportError {
+    WrongCommand(u8),
+    WrongVersion(u8),
+    UnknownFlags(u8),
+}
+
+impl fmt::Display for SensorStreamReportError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::WrongCommand(actual) => {
+                write!(formatter, "expected sensor command 0x20, got {actual:#04x}")
+            },
+            Self::WrongVersion(actual) => {
+                write!(formatter, "expected sensor stream version 1, got {actual}")
+            },
+            Self::UnknownFlags(actual) => {
+                write!(formatter, "sensor stream has unknown flags {actual:#04x}")
+            },
+        }
+    }
+}
+
+impl core::error::Error for SensorStreamReportError {}
 
 /// Accepts only a valid normal-mode report carrying the expected command byte.
 #[must_use]
@@ -411,6 +513,68 @@ mod tests {
         assert!(matches!(
             NormalReport::parse(&wrong_id),
             Err(ReportParseError::WrongReportId { .. })
+        ));
+    }
+
+    #[test]
+    fn sensor_stream_report_round_trips_every_field() {
+        let expected = SensorStreamReport {
+            flags: SENSOR_STREAM_ACCUMULATOR_SATURATED,
+            sensor_a_x: -1234,
+            sensor_a_y: 2345,
+            sensor_b_x: i16::MIN,
+            sensor_b_y: i16::MAX,
+            buttons: 0x15,
+            sample_count: 7,
+            sequence: 0xabcd,
+        };
+        let encoded = expected.encode();
+        assert!(checksum_is_valid(encoded.as_bytes()));
+        assert_eq!(SensorStreamReport::decode(encoded), Ok(expected));
+    }
+
+    #[test]
+    fn sensor_stream_report_rejects_wrong_type_version_and_flags() {
+        let base = SensorStreamReport {
+            flags: 0,
+            sensor_a_x: 0,
+            sensor_a_y: 0,
+            sensor_b_x: 0,
+            sensor_b_y: 0,
+            buttons: 0,
+            sample_count: 0,
+            sequence: 0,
+        }
+        .encode();
+
+        let mut bytes = *base.as_bytes();
+        bytes[1] ^= 1;
+        bytes[16] = 0;
+        bytes[16] = checksum(&bytes);
+        let report = NormalReport::parse(&bytes).expect("wrong command retains a valid envelope");
+        assert!(matches!(
+            SensorStreamReport::decode(report),
+            Err(SensorStreamReportError::WrongCommand(_))
+        ));
+
+        bytes = *base.as_bytes();
+        bytes[2] = SENSOR_STREAM_VERSION + 1;
+        bytes[16] = 0;
+        bytes[16] = checksum(&bytes);
+        let report = NormalReport::parse(&bytes).expect("wrong version retains a valid envelope");
+        assert!(matches!(
+            SensorStreamReport::decode(report),
+            Err(SensorStreamReportError::WrongVersion(_))
+        ));
+
+        bytes = *base.as_bytes();
+        bytes[3] = 0x80;
+        bytes[16] = 0;
+        bytes[16] = checksum(&bytes);
+        let report = NormalReport::parse(&bytes).expect("unknown flags retain a valid envelope");
+        assert!(matches!(
+            SensorStreamReport::decode(report),
+            Err(SensorStreamReportError::UnknownFlags(_))
         ));
     }
 

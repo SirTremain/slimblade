@@ -2,13 +2,15 @@ use core::fmt;
 
 use slimblade_image::{
     ACTIVE_LOOP_HOOK_PROBE, ACTIVE_LOOP_HOOK_PROBE_ARTIFACT, APPLICATION_HEADER_OFFSET,
-    DISPATCHER_RETURN_HOOK_PROBE, DISPATCHER_RETURN_HOOK_PROBE_ARTIFACT, EXPERIMENT_DISPATCH_GUARD,
+    CUSTOM_MAIN_HANDOFF_PROBE, CUSTOM_MAIN_HANDOFF_PROBE_ARTIFACT, DISPATCHER_RETURN_HOOK_PROBE,
+    DISPATCHER_RETURN_HOOK_PROBE_ARTIFACT, EXPERIMENT_DISPATCH_GUARD,
     EXPERIMENT_DISPATCH_GUARD_ARTIFACT, INPUT_DIAGNOSTICS, INPUT_DIAGNOSTICS_ARTIFACT,
     PAGED_INPUT_DIAGNOSTICS, PAGED_INPUT_DIAGNOSTICS_ARTIFACT, POST_INIT_HOOK_PROBE,
     POST_INIT_HOOK_PROBE_ARTIFACT, SENSOR_SHADOW_DIAGNOSTICS, SENSOR_SHADOW_DIAGNOSTICS_ARTIFACT,
     STACK_HEADER_OFFSET, STARTUP_TRAMPOLINE, STEADY_LOOP_HOOK_PROBE,
-    STEADY_LOOP_HOOK_PROBE_ARTIFACT, V449_BCD_DEVICE_OFFSET, WIRED_LOOP_HOOK_PROBE,
-    WIRED_LOOP_HOOK_PROBE_ARTIFACT, parse_header, refresh_header_crc, sha256,
+    STEADY_LOOP_HOOK_PROBE_ARTIFACT, UNSOLICITED_REPORT_PROBE, UNSOLICITED_REPORT_PROBE_ARTIFACT,
+    V449_BCD_DEVICE_OFFSET, WIRED_LOOP_HOOK_PROBE, WIRED_LOOP_HOOK_PROBE_ARTIFACT, parse_header,
+    refresh_header_crc, sha256,
 };
 
 use crate::{
@@ -31,6 +33,7 @@ const WIRED_MAIN_LOOP: u32 = 0x19b4a;
 const ACTIVE_LOOP_PATCH: usize = 0x1cfcc;
 const STEADY_LOOP_PATCH: usize = 0x1d3c2;
 const DISPATCHER_RETURN_PATCH: usize = 0x1c55a;
+const CUSTOM_MAIN_HANDOFF_PATCH: usize = 0x19c08;
 const EXPERIMENT_DISPATCH: u32 = 0x22a0;
 const EXPERIMENT_CALL: usize = 0x22b2;
 const SENSOR_SHADOW_PATCH: usize = 0x1a798;
@@ -82,9 +85,17 @@ const EXPERIMENT_DISPATCH_ARM_AND_QUERY: [u8; 26] = [
     0x10, 0xb5, 0x00, 0xf0, 0x0a, 0xf8, 0x2a, 0x48, 0x05, 0x21, 0x01, 0x70, 0xa9, 0x20, 0xe0, 0x70,
     0x10, 0xbd, 0x27, 0x48, 0x00, 0x78, 0xe0, 0x70, 0x70, 0x47,
 ];
+const UNSOLICITED_REPORT_ARM_AND_QUERY: [u8; 26] = [
+    0x10, 0xb5, 0x00, 0xf0, 0x0a, 0xf8, 0x2a, 0x48, 0x05, 0x21, 0x01, 0x70, 0xab, 0x20, 0xe0, 0x70,
+    0x10, 0xbd, 0x27, 0x48, 0x00, 0x78, 0xe0, 0x70, 0x70, 0x47,
+];
 const EXPERIMENT_DISPATCH_HELPER: [u8; 32] = [
     0x10, 0xb5, 0x05, 0x4b, 0x98, 0x47, 0x05, 0x49, 0x0a, 0x78, 0x05, 0x2a, 0x03, 0xd1, 0x00, 0x22,
     0x0a, 0x70, 0x00, 0xf0, 0x05, 0xf8, 0x10, 0xbd, 0x4d, 0x8f, 0x01, 0x00, 0x64, 0x02, 0x40, 0x00,
+];
+const CUSTOM_MAIN_RETAINED_DISPATCH_HELPER: [u8; 32] = [
+    0x10, 0xb5, 0x05, 0x4b, 0x98, 0x47, 0x05, 0x49, 0x0a, 0x78, 0x05, 0x2a, 0x03, 0xd1, 0x00, 0x22,
+    0x0a, 0x70, 0x00, 0xf0, 0x09, 0xf8, 0x10, 0xbd, 0x4d, 0x8f, 0x01, 0x00, 0x64, 0x02, 0x40, 0x00,
 ];
 const INPUT_DIAGNOSTICS_ARM_AND_QUERY: [u8; 26] = [
     0x10, 0xb5, 0x00, 0xf0, 0x0a, 0xf8, 0x2a, 0x48, 0x05, 0x21, 0x01, 0x70, 0xa9, 0x20, 0xe0, 0x70,
@@ -133,6 +144,11 @@ const SENSOR_SHADOW_CRITICAL_WORDS: [(usize, u32); 13] = [
     (0x0f0, 0x0000_a958),
 ];
 const RUST_EXPERIMENT_ENTRY: [u8; 6] = [0x80, 0xb5, 0x00, 0xaf, 0x80, 0xbd];
+const UNSOLICITED_REPORT_ENTRY: [u8; 12] = [
+    0x01, 0x48, 0x01, 0x21, 0xc1, 0x70, 0x70, 0x47, 0x71, 0x03, 0x40, 0x00,
+];
+const CUSTOM_MAIN_HANDOFF_ENTRY: [u8; 10] =
+    [0x10, 0xb5, 0xff, 0xf7, 0x89, 0xff, 0xfe, 0xe7, 0x70, 0x47];
 const CRITICAL_WORDS: [(usize, u32); 13] = [
     (0x0c0, 0x0001_895d),
     (0x0c4, 0x0040_0282),
@@ -842,6 +858,100 @@ pub fn build_experiment_dispatch(base: &[u8], injection: &[u8]) -> Result<Vec<u8
     Ok(image)
 }
 
+/// Builds the marker-first one-shot unsolicited endpoint-2 report probe.
+///
+/// # Errors
+///
+/// Returns an error unless the exact v4.53 base and reviewed injection are supplied.
+pub fn build_unsolicited_report_probe(base: &[u8], injection: &[u8]) -> Result<Vec<u8>, Error> {
+    STARTUP_TRAMPOLINE
+        .validate(base)
+        .map_err(|_| Error::BaseIdentity)?;
+    if injection.len() != INJECTION_END - INJECTION_START {
+        return Err(Error::InjectionSize {
+            actual: injection.len(),
+        });
+    }
+    if !UNSOLICITED_REPORT_PROBE_ARTIFACT.code_matches(injection) {
+        return Err(Error::InjectionIdentity);
+    }
+    require_base(base, DISPATCHER_RETURN_PATCH, &[0xfc, 0xf7, 0xf7, 0xfc])?;
+
+    let mut image = base.to_vec();
+    replace(&mut image, INJECTION_START, injection)?;
+    replace(
+        &mut image,
+        RESET_BRANCH,
+        &encode_arm_b(
+            ArmAddress::new(u32::try_from(RESET_BRANCH).map_err(|_| Error::Layout)?)
+                .map_err(Error::Branch)?,
+            ArmAddress::new(TRAMPOLINE).map_err(Error::Branch)?,
+        )
+        .map_err(Error::Branch)?,
+    )?;
+    replace(
+        &mut image,
+        DISPATCHER_RETURN_PATCH,
+        &encode_thumb_bl(
+            ThumbAddress::new(u32::try_from(DISPATCHER_RETURN_PATCH).map_err(|_| Error::Layout)?)
+                .map_err(Error::Branch)?,
+            ThumbAddress::new(EXPERIMENT_DISPATCH).map_err(Error::Branch)?,
+        )
+        .map_err(Error::Branch)?,
+    )?;
+    *image.get_mut(V449_BCD_DEVICE_OFFSET).ok_or(Error::Layout)? = 0x71;
+    refresh_header_crc(&mut image, APPLICATION_HEADER_OFFSET).map_err(|_| Error::Header)?;
+    refresh_header_crc(&mut image, STACK_HEADER_OFFSET).map_err(|_| Error::Header)?;
+    Ok(image)
+}
+
+/// Builds the automatic marker-first handoff that replaces the stock wired runtime.
+///
+/// # Errors
+///
+/// Returns an error unless the exact v4.53 base and reviewed injection are supplied.
+pub fn build_custom_main_handoff_probe(base: &[u8], injection: &[u8]) -> Result<Vec<u8>, Error> {
+    STARTUP_TRAMPOLINE
+        .validate(base)
+        .map_err(|_| Error::BaseIdentity)?;
+    if injection.len() != INJECTION_END - INJECTION_START {
+        return Err(Error::InjectionSize {
+            actual: injection.len(),
+        });
+    }
+    if !CUSTOM_MAIN_HANDOFF_PROBE_ARTIFACT.code_matches(injection) {
+        return Err(Error::InjectionIdentity);
+    }
+    require_base(base, CUSTOM_MAIN_HANDOFF_PATCH, &[0x02, 0xf0, 0x02, 0xfc])?;
+
+    let mut image = base.to_vec();
+    replace(&mut image, INJECTION_START, injection)?;
+    replace(
+        &mut image,
+        RESET_BRANCH,
+        &encode_arm_b(
+            ArmAddress::new(u32::try_from(RESET_BRANCH).map_err(|_| Error::Layout)?)
+                .map_err(Error::Branch)?,
+            ArmAddress::new(TRAMPOLINE).map_err(Error::Branch)?,
+        )
+        .map_err(Error::Branch)?,
+    )?;
+    replace(
+        &mut image,
+        CUSTOM_MAIN_HANDOFF_PATCH,
+        &encode_thumb_bl(
+            ThumbAddress::new(u32::try_from(CUSTOM_MAIN_HANDOFF_PATCH).map_err(|_| Error::Layout)?)
+                .map_err(Error::Branch)?,
+            ThumbAddress::new(HOOK).map_err(Error::Branch)?,
+        )
+        .map_err(Error::Branch)?,
+    )?;
+    *image.get_mut(V449_BCD_DEVICE_OFFSET).ok_or(Error::Layout)? = 0x72;
+    refresh_header_crc(&mut image, APPLICATION_HEADER_OFFSET).map_err(|_| Error::Header)?;
+    refresh_header_crc(&mut image, STACK_HEADER_OFFSET).map_err(|_| Error::Header)?;
+    Ok(image)
+}
+
 /// Builds the marker-first, read-only stock input snapshot candidate.
 ///
 /// # Errors
@@ -1056,6 +1166,172 @@ pub fn verify_experiment_dispatch(
         ],
     )?;
     let payload = EXPERIMENT_DISPATCH_GUARD
+        .validate(image)
+        .map_err(|_| Error::ContainerIdentity)?;
+    Ok(Report {
+        injection_sha256: sha256(injection),
+        container_sha256: sha256(image),
+        payload_sha256: sha256(payload),
+        payload_crc: slimblade_protocol::updater_crc32(payload),
+    })
+}
+
+/// Audits the marker-first one-shot endpoint-2 re-arm probe.
+///
+/// # Errors
+///
+/// Returns the first failed identity, instruction, branch, stock-path, header, or ELF invariant.
+pub fn verify_unsolicited_report_probe(
+    base: &[u8],
+    image: &[u8],
+    injection: &[u8],
+    elf_bytes: &[u8],
+) -> Result<Report, Error> {
+    if image != build_unsolicited_report_probe(base, injection)? {
+        return Err(Error::DerivedImage);
+    }
+    require(injection, 0, &DISPATCH)?;
+    require(injection, 0x12, &UNSOLICITED_REPORT_ARM_AND_QUERY)?;
+    require(injection, 0x0f4, &EXPERIMENT_DISPATCH_HELPER)?;
+    require(injection, 0x114, &UNSOLICITED_REPORT_ENTRY)?;
+    for (offset, expected) in WIRED_CRITICAL_WORDS {
+        let actual = read_u32(injection, offset)?;
+        if actual != expected {
+            return Err(Error::Word { offset, actual });
+        }
+    }
+    if read_u32(injection, 0x10c)? != 0x0001_8f4d
+        || read_u32(injection, 0x110)? != 0x0040_0264
+        || read_u32(injection, 0x11c)? != 0x0040_0371
+    {
+        return Err(Error::Bytes { offset: 0x10c });
+    }
+    let wrapper_target = decode_thumb_bl(
+        read_array(image, DISPATCHER_RETURN_PATCH)?,
+        ThumbAddress::new(u32::try_from(DISPATCHER_RETURN_PATCH).map_err(|_| Error::Layout)?)
+            .map_err(Error::Branch)?,
+    )
+    .map_err(Error::Branch)?;
+    if wrapper_target.get() != EXPERIMENT_DISPATCH {
+        return Err(Error::Bytes {
+            offset: DISPATCHER_RETURN_PATCH,
+        });
+    }
+    let probe_target = decode_thumb_bl(
+        read_array(image, EXPERIMENT_CALL)?,
+        ThumbAddress::new(u32::try_from(EXPERIMENT_CALL).map_err(|_| Error::Layout)?)
+            .map_err(Error::Branch)?,
+    )
+    .map_err(Error::Branch)?;
+    if probe_target.get() != HOOK {
+        return Err(Error::Bytes {
+            offset: EXPERIMENT_CALL,
+        });
+    }
+    if image.get(0x11ef4..0x11f28) != base.get(0x11ef4..0x11f28)
+        || image.get(0x18f4c..0x19004) != base.get(0x18f4c..0x19004)
+        || image.get(0x1b4d0..0x1b534) != base.get(0x1b4d0..0x1b534)
+        || image.get(0x1c550..0x1c55a) != base.get(0x1c550..0x1c55a)
+        || image.get(0x1c55e..0x1c58c) != base.get(0x1c55e..0x1c58c)
+        || image.get(0x2300..0x2330) != base.get(0x2300..0x2330)
+    {
+        return Err(Error::Bytes {
+            offset: DISPATCHER_RETURN_PATCH,
+        });
+    }
+    for offset in [STACK_HEADER_OFFSET, APPLICATION_HEADER_OFFSET] {
+        let header = parse_header(image, offset).map_err(|_| Error::Header)?;
+        if !header.crc_is_valid(image).map_err(|_| Error::Header)? {
+            return Err(Error::Header);
+        }
+    }
+    verify_elf(
+        elf_bytes,
+        &[
+            (".carrier", 0x21ac, 0x114),
+            (".probe", 0x22c0, 0x00c),
+            (".trampoline", 0x22cc, 0x034),
+        ],
+    )?;
+    let payload = UNSOLICITED_REPORT_PROBE
+        .validate(image)
+        .map_err(|_| Error::ContainerIdentity)?;
+    Ok(Report {
+        injection_sha256: sha256(injection),
+        container_sha256: sha256(image),
+        payload_sha256: sha256(payload),
+        payload_crc: slimblade_protocol::updater_crc32(payload),
+    })
+}
+
+/// Audits the post-init boundary, marker-before-custom ordering, and deliberate non-return.
+///
+/// # Errors
+///
+/// Returns the first failed identity, instruction, branch, stock-path, header, or ELF invariant.
+pub fn verify_custom_main_handoff_probe(
+    base: &[u8],
+    image: &[u8],
+    injection: &[u8],
+    elf_bytes: &[u8],
+) -> Result<Report, Error> {
+    if image != build_custom_main_handoff_probe(base, injection)? {
+        return Err(Error::DerivedImage);
+    }
+    require(injection, 0, &DISPATCH)?;
+    require(injection, 0x12, &EXPERIMENT_DISPATCH_ARM_AND_QUERY)?;
+    require(injection, 0x0f4, &CUSTOM_MAIN_RETAINED_DISPATCH_HELPER)?;
+    require(injection, 0x114, &CUSTOM_MAIN_HANDOFF_ENTRY)?;
+    for (offset, expected) in WIRED_CRITICAL_WORDS {
+        let actual = read_u32(injection, offset)?;
+        if actual != expected {
+            return Err(Error::Word { offset, actual });
+        }
+    }
+    let marker_target = decode_thumb_bl(
+        read_array(injection, 0x116)?,
+        ThumbAddress::new(HOOK + 2).map_err(Error::Branch)?,
+    )
+    .map_err(Error::Branch)?;
+    if marker_target.get() != 0x21d8 {
+        return Err(Error::Bytes { offset: 0x116 });
+    }
+    let handoff_target = decode_thumb_bl(
+        read_array(image, CUSTOM_MAIN_HANDOFF_PATCH)?,
+        ThumbAddress::new(u32::try_from(CUSTOM_MAIN_HANDOFF_PATCH).map_err(|_| Error::Layout)?)
+            .map_err(Error::Branch)?,
+    )
+    .map_err(Error::Branch)?;
+    if handoff_target.get() != HOOK {
+        return Err(Error::Bytes {
+            offset: CUSTOM_MAIN_HANDOFF_PATCH,
+        });
+    }
+    if image.get(0x19878..CUSTOM_MAIN_HANDOFF_PATCH) != base.get(0x19878..CUSTOM_MAIN_HANDOFF_PATCH)
+        || image.get(0x19c0c..0x19c14) != base.get(0x19c0c..0x19c14)
+        || image.get(0x1c410..0x1c5c0) != base.get(0x1c410..0x1c5c0)
+        || image.get(0x1c5c0..0x1c878) != base.get(0x1c5c0..0x1c878)
+        || image.get(0x2300..0x2330) != base.get(0x2300..0x2330)
+    {
+        return Err(Error::Bytes {
+            offset: CUSTOM_MAIN_HANDOFF_PATCH,
+        });
+    }
+    for offset in [STACK_HEADER_OFFSET, APPLICATION_HEADER_OFFSET] {
+        let header = parse_header(image, offset).map_err(|_| Error::Header)?;
+        if !header.crc_is_valid(image).map_err(|_| Error::Header)? {
+            return Err(Error::Header);
+        }
+    }
+    verify_elf(
+        elf_bytes,
+        &[
+            (".carrier", 0x21ac, 0x114),
+            (".probe", 0x22c0, 0x00a),
+            (".trampoline", 0x22cc, 0x034),
+        ],
+    )?;
+    let payload = CUSTOM_MAIN_HANDOFF_PROBE
         .validate(image)
         .map_err(|_| Error::ContainerIdentity)?;
     Ok(Report {
@@ -1527,6 +1803,44 @@ mod tests {
         })
     }
 
+    fn unsolicited_report_fixtures() -> Option<Fixtures> {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let target = root.join("firmware/bk3635-stock-harness/target");
+        Some(Fixtures {
+            base: read_if_present(root.join(
+                "firmware/startup_trampoline/build/DO_NOT_FLASH-stock-startup-trampoline.container.bin",
+            ))?,
+            injection: read_if_present(target.join(
+                "unsolicited-report-probe/DO_NOT_FLASH-unsolicited-report-probe.injection.bin",
+            ))?,
+            container: read_if_present(target.join(
+                "unsolicited-report-probe/DO_NOT_FLASH-unsolicited-report-probe.container.bin",
+            ))?,
+            elf: read_if_present(target.join(
+                "thumbv5te-none-eabi/release/slimblade-unsolicited-report-probe",
+            ))?,
+        })
+    }
+
+    fn custom_main_handoff_fixtures() -> Option<Fixtures> {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let target = root.join("firmware/bk3635-stock-harness/target");
+        Some(Fixtures {
+            base: read_if_present(root.join(
+                "firmware/startup_trampoline/build/DO_NOT_FLASH-stock-startup-trampoline.container.bin",
+            ))?,
+            injection: read_if_present(target.join(
+                "custom-main-handoff/DO_NOT_FLASH-custom-main-handoff-probe.injection.bin",
+            ))?,
+            container: read_if_present(target.join(
+                "custom-main-handoff/DO_NOT_FLASH-custom-main-handoff-probe.container.bin",
+            ))?,
+            elf: read_if_present(target.join(
+                "thumbv5te-none-eabi/release/slimblade-custom-main-handoff-probe",
+            ))?,
+        })
+    }
+
     fn input_diagnostics_fixtures() -> Option<Fixtures> {
         let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
         let target = root.join("firmware/bk3635-stock-harness/target");
@@ -1931,6 +2245,125 @@ mod tests {
         data.container[DISPATCHER_RETURN_PATCH] ^= 1;
         assert_eq!(
             verify_experiment_dispatch(&data.base, &data.container, &data.injection, &data.elf,),
+            Err(Error::DerivedImage)
+        );
+    }
+
+    #[test]
+    fn unsolicited_report_candidate_rebuilds_and_passes() {
+        let Some(data) = unsolicited_report_fixtures() else {
+            return;
+        };
+        assert_eq!(
+            build_unsolicited_report_probe(&data.base, &data.injection),
+            Ok(data.container.clone())
+        );
+        let report = verify_unsolicited_report_probe(
+            &data.base,
+            &data.container,
+            &data.injection,
+            &data.elf,
+        )
+        .expect("audit exact unsolicited-report probe");
+        assert_eq!(report.payload_crc, 0x4b61_d5a9);
+    }
+
+    #[test]
+    fn unsolicited_report_candidate_locks_pending_byte_and_stock_senders() {
+        let Some(mut data) = unsolicited_report_fixtures() else {
+            return;
+        };
+        data.injection[0x114] ^= 1;
+        assert_eq!(
+            build_unsolicited_report_probe(&data.base, &data.injection),
+            Err(Error::InjectionIdentity)
+        );
+
+        let Some(mut data) = unsolicited_report_fixtures() else {
+            return;
+        };
+        data.container[0x11ef4] ^= 1;
+        assert_eq!(
+            verify_unsolicited_report_probe(
+                &data.base,
+                &data.container,
+                &data.injection,
+                &data.elf,
+            ),
+            Err(Error::DerivedImage)
+        );
+    }
+
+    #[test]
+    fn unsolicited_report_candidate_preserves_proven_guard_and_trampoline() {
+        let Some(data) = unsolicited_report_fixtures() else {
+            return;
+        };
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let proven = std::fs::read(root.join(
+            "firmware/bk3635-stock-harness/target/experiment-dispatch-guard/DO_NOT_FLASH-experiment-dispatch-guard.injection.bin",
+        ))
+        .expect("read proven experiment-dispatch guard");
+        assert_eq!(&data.injection[..0x1e], &proven[..0x1e]);
+        assert_eq!(&data.injection[0x1f..0x114], &proven[0x1f..0x114]);
+        assert_eq!(&data.injection[0x120..], &proven[0x120..]);
+    }
+
+    #[test]
+    fn custom_main_handoff_candidate_rebuilds_and_passes() {
+        let Some(data) = custom_main_handoff_fixtures() else {
+            return;
+        };
+        assert_eq!(
+            build_custom_main_handoff_probe(&data.base, &data.injection),
+            Ok(data.container.clone())
+        );
+        let report = verify_custom_main_handoff_probe(
+            &data.base,
+            &data.container,
+            &data.injection,
+            &data.elf,
+        )
+        .expect("audit exact custom-main handoff probe");
+        assert_eq!(report.payload_crc, 0x73c3_cfbe);
+    }
+
+    #[test]
+    fn custom_main_handoff_preserves_live_marker_and_trampoline() {
+        let Some(data) = custom_main_handoff_fixtures() else {
+            return;
+        };
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let proven = std::fs::read(root.join(
+            "firmware/bk3635-stock-harness/target/unsolicited-report-probe/DO_NOT_FLASH-unsolicited-report-probe.injection.bin",
+        ))
+        .expect("read live-tested unsolicited-report injection");
+        assert_eq!(&data.injection[0x2c..0x0f4], &proven[0x2c..0x0f4]);
+        assert_eq!(&data.injection[0x120..], &proven[0x120..]);
+    }
+
+    #[test]
+    fn custom_main_handoff_rejects_entry_and_call_site_corruption() {
+        let Some(mut data) = custom_main_handoff_fixtures() else {
+            return;
+        };
+        data.injection[0x116] ^= 1;
+        assert_eq!(
+            build_custom_main_handoff_probe(&data.base, &data.injection),
+            Err(Error::InjectionIdentity)
+        );
+
+        let Some(mut data) = custom_main_handoff_fixtures() else {
+            return;
+        };
+        data.container[CUSTOM_MAIN_HANDOFF_PATCH] ^= 1;
+        assert_eq!(
+            verify_custom_main_handoff_probe(
+                &data.base,
+                &data.container,
+                &data.injection,
+                &data.elf,
+            ),
             Err(Error::DerivedImage)
         );
     }

@@ -274,14 +274,52 @@ relative sensor deltas accumulated only until the next poll and current button
 state sampled into the report. This avoids both a stale event queue and the
 extra `SET_REPORT` round trip before every diagnostic response.
 
+## v4.71 unsolicited endpoint-2 probe
+
+Static tracing identified stock mouse transmitter `0x1b3fc` and vendor
+transmitter `0x1b4d0`. Both wait for USB configuration, the corresponding
+endpoint-ready byte, and idle endpoint state before copying and submitting a
+report. The vendor transmitter calls the unchanged endpoint-2 helper at
+`0x11ef4`; the wired loop reaches the vendor dispatcher immediately after the
+normal mouse transmitter.
+
+The one-shot `0471` candidate uses the proven dispatcher-return wrapper.
+Command `0x0e` commits the recovery marker and returns signature `ab`. After
+the acknowledged response has followed the stock submission path, a 12-byte
+probe writes only `1` to stock vendor-response-pending byte `0x00400374`.
+Untouched stock code must then retry and emit the retained response on endpoint
+`0x82` without another host request. The host requires exactly two identical
+responses and rejects an unexpected third report.
+
+- injection: 340 bytes, SHA-256
+  `85182857013afa4fe091a31691cc2c43163afd6b9d39fee6b907bac73a5fe8fb`
+- container: 128112 bytes, SHA-256
+  `342b8e7ed2891e9b495eaa6078bb738241a7dc49be67d61506d248ce4aafcf21`
+- payload SHA-256
+  `c7b6c7fedc423777f1f1ad46ae4c6b95e86ec38b4e72e4c06cf759345e7a0597`
+- payload CRC: `4b61d5a9`
+
+The injection differs from the live-tested `0464` guard only at its response
+signature and the former 12-byte no-op probe region. Marker, storage, startup,
+reset-trampoline, dispatcher-wrapper, and all stock endpoint sender bytes are
+locked unchanged.
+
+The exact candidate was flashed on 2026-08-16. All 3,748 blocks echoed and it
+returned at the same physical path as `047d:80d7`, `bcdDevice=0471`. A single
+marker-first `0x0e` write produced one acknowledged signature-`ab` response,
+then one byte-identical unsolicited response without another host write; no
+third response arrived. Command `0x0d` subsequently reached resident loader
+`25a7:fabe`. Reflashing the same locked image and repeating the one-shot probe
+both passed, leaving the persistent recovery marker armed.
+
 ## Remaining live questions
 
 - Report byte 1 is the effective button mask.
 - Report bytes 2 through 5 are signed X/Y motion accumulated from both optical
   sensors.
 - Report bytes 6 through 9 contain wheel and other input/status fields.
-- Identify the stock endpoint-`0x82` report-submission path and its busy/ready
-  state before attempting continuous sensor reports.
+- Allocate reviewed executable space for sensor accumulation and continuous
+  report construction without modifying the protected recovery region.
 
 Translation captures will determine the remaining physical-axis transform and
 quantify leakage into the candidate rotation channel before any sensor

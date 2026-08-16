@@ -46,6 +46,14 @@ name = "slimblade-experiment-dispatch-guard"
 path = "src/experiment_dispatch_guard.rs"
 
 [[bin]]
+name = "slimblade-unsolicited-report-probe"
+path = "src/unsolicited_report_probe.rs"
+
+[[bin]]
+name = "slimblade-custom-main-handoff-probe"
+path = "src/custom_main_handoff_probe.rs"
+
+[[bin]]
 name = "slimblade-input-diagnostics"
 path = "src/input_diagnostics.rs"
 

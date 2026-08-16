@@ -138,7 +138,11 @@ carrier_late_marker:
     movs r0, #0xaa
     .else
     .ifdef POST_INIT_EXPERIMENT_DISPATCH_GUARD
+    .ifdef UNSOLICITED_REPORT_PROBE
+    movs r0, #0xab
+    .else
     movs r0, #0xa9
+    .endif
     .else
     .ifdef POST_INIT_DISPATCH_RETURN_HOOK_PROBE
     movs r0, #0xa8
@@ -502,6 +506,47 @@ steady_loop_hook_impl:
     pop {pc}
     .size steady_loop_hook_impl, . - steady_loop_hook_impl
     .ltorg
+    .endif
+
+    .ifdef UNSOLICITED_REPORT_PROBE
+/* Re-arm the retained stock response after its acknowledged submission. */
+    .section .text.rust_probe, "ax", %progbits
+    .thumb
+    .thumb_func
+    .global experiment_entry
+    .type experiment_entry, %function
+experiment_entry:
+    ldr r0, .Lvendor_response_state
+    movs r1, #1
+    strb r1, [r0, #3]
+    bx lr
+    .balign 4
+.Lvendor_response_state:
+    .word 0x00400371
+    .size experiment_entry, . - experiment_entry
+    .endif
+
+    .ifdef CUSTOM_MAIN_HANDOFF_PROBE
+/* Entered once after stock wired initialization. Marker completion precedes custom code. */
+    .section .text.rust_probe, "ax", %progbits
+    .thumb
+    .thumb_func
+    .global custom_main_handoff
+    .type custom_main_handoff, %function
+custom_main_handoff:
+    push {r4, lr}
+    bl marker_set
+.Lcustom_main_hang:
+    b .Lcustom_main_hang
+    .size custom_main_handoff, . - custom_main_handoff
+
+/* Satisfy the retained, unreachable experiment-dispatch guard. */
+    .thumb_func
+    .global experiment_entry
+    .type experiment_entry, %function
+experiment_entry:
+    bx lr
+    .size experiment_entry, . - experiment_entry
     .endif
 
     .ifdef POST_INIT_HOOK_PROBE

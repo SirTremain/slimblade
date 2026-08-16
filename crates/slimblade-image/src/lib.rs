@@ -45,7 +45,7 @@ impl ArtifactIdentity {
     }
 }
 
-pub const REFERENCE_ARTIFACTS: [ArtifactIdentity; 21] = [
+pub const REFERENCE_ARTIFACTS: [ArtifactIdentity; 23] = [
     ArtifactIdentity {
         name: "stock-startup-reference",
         code_sha256: parse_sha256(
@@ -231,6 +231,24 @@ pub const REFERENCE_ARTIFACTS: [ArtifactIdentity; 21] = [
             "111f22eaf0db16bf2df2ba29187c9fbf151ca578385a5ad288c31b3f064657e4",
         )),
     },
+    ArtifactIdentity {
+        name: "unsolicited-report-probe",
+        code_sha256: parse_sha256(
+            "85182857013afa4fe091a31691cc2c43163afd6b9d39fee6b907bac73a5fe8fb",
+        ),
+        container_sha256: Some(parse_sha256(
+            "342b8e7ed2891e9b495eaa6078bb738241a7dc49be67d61506d248ce4aafcf21",
+        )),
+    },
+    ArtifactIdentity {
+        name: "custom-main-handoff-probe",
+        code_sha256: parse_sha256(
+            "a99871f28c1ee714959376bb008447f874e0bcdaaed3c21d09931df78d98739a",
+        ),
+        container_sha256: Some(parse_sha256(
+            "401ab888a8512fa6ff74058fc78d329a3e4a34064614542ea3716d06be8dbf97",
+        )),
+    },
 ];
 
 pub const STOCK_STARTUP_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[0];
@@ -254,6 +272,8 @@ pub const EXPERIMENT_DISPATCH_GUARD_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIF
 pub const INPUT_DIAGNOSTICS_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[18];
 pub const PAGED_INPUT_DIAGNOSTICS_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[19];
 pub const SENSOR_SHADOW_DIAGNOSTICS_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[20];
+pub const UNSOLICITED_REPORT_PROBE_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[21];
+pub const CUSTOM_MAIN_HANDOFF_PROBE_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[22];
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct FirmwareIdentity {
@@ -491,8 +511,20 @@ pub const SENSOR_SHADOW_DIAGNOSTICS: FirmwareIdentity = firmware_identity(
     "b465bd7d0a0f0379a767a9bbf6ba7f81aab52c9a265b9bafc462d89e64441475",
     0x96bd_3f6d,
 );
+pub const UNSOLICITED_REPORT_PROBE: FirmwareIdentity = firmware_identity(
+    "unsolicited-report-probe-v4.71",
+    "342b8e7ed2891e9b495eaa6078bb738241a7dc49be67d61506d248ce4aafcf21",
+    "c7b6c7fedc423777f1f1ad46ae4c6b95e86ec38b4e72e4c06cf759345e7a0597",
+    0x4b61_d5a9,
+);
+pub const CUSTOM_MAIN_HANDOFF_PROBE: FirmwareIdentity = firmware_identity(
+    "custom-main-handoff-probe-v4.72",
+    "401ab888a8512fa6ff74058fc78d329a3e4a34064614542ea3716d06be8dbf97",
+    "3d5a0008095ca4ff3e486912842b619c8c9286b0e0702932345e644fb6ea0661",
+    0x73c3_cfbe,
+);
 
-pub const FLASHABLE_IMAGES: [FirmwareIdentity; 21] = [
+pub const FLASHABLE_IMAGES: [FirmwareIdentity; 23] = [
     OFFICIAL_V449,
     V449_DESCRIPTOR_PROBE,
     RECOVERY_CARRIER,
@@ -514,6 +546,8 @@ pub const FLASHABLE_IMAGES: [FirmwareIdentity; 21] = [
     INPUT_DIAGNOSTICS,
     PAGED_INPUT_DIAGNOSTICS,
     SENSOR_SHADOW_DIAGNOSTICS,
+    UNSOLICITED_REPORT_PROBE,
+    CUSTOM_MAIN_HANDOFF_PROBE,
 ];
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -1220,6 +1254,23 @@ mod tests {
     }
 
     #[test]
+    fn unsolicited_report_probe_payload_constants() {
+        assert_fixture(
+            UNSOLICITED_REPORT_PROBE,
+            "firmware/bk3635-stock-harness/target/unsolicited-report-probe/DO_NOT_FLASH-unsolicited-report-probe.container.bin",
+        );
+    }
+
+    #[test]
+    fn unsolicited_report_probe_rejects_one_byte_corruption() {
+        assert_corruption_rejected(
+            UNSOLICITED_REPORT_PROBE,
+            "firmware/bk3635-stock-harness/target/unsolicited-report-probe/DO_NOT_FLASH-unsolicited-report-probe.container.bin",
+            0x22c0,
+        );
+    }
+
+    #[test]
     fn input_diagnostics_payload_constants() {
         assert_fixture(
             INPUT_DIAGNOSTICS,
@@ -1271,14 +1322,31 @@ mod tests {
     }
 
     #[test]
+    fn custom_main_handoff_probe_payload_constants() {
+        assert_fixture(
+            CUSTOM_MAIN_HANDOFF_PROBE,
+            "firmware/bk3635-stock-harness/target/custom-main-handoff/DO_NOT_FLASH-custom-main-handoff-probe.container.bin",
+        );
+    }
+
+    #[test]
+    fn custom_main_handoff_probe_rejects_one_byte_corruption() {
+        assert_corruption_rejected(
+            CUSTOM_MAIN_HANDOFF_PROBE,
+            "firmware/bk3635-stock-harness/target/custom-main-handoff/DO_NOT_FLASH-custom-main-handoff-probe.container.bin",
+            0x19c08,
+        );
+    }
+
+    #[test]
     fn reference_artifact_manifest_is_unique_and_complete() {
-        assert_eq!(REFERENCE_ARTIFACTS.len(), 21);
+        assert_eq!(REFERENCE_ARTIFACTS.len(), 23);
         assert_eq!(
             REFERENCE_ARTIFACTS
                 .iter()
                 .filter(|artifact| artifact.container_sha256.is_some())
                 .count(),
-            19
+            21
         );
         for (index, artifact) in REFERENCE_ARTIFACTS.iter().enumerate() {
             assert_ne!(artifact.code_sha256, [0; 32]);
@@ -1416,6 +1484,41 @@ mod tests {
                 "firmware/bk3635-stock-harness/target/experiment-dispatch-guard/DO_NOT_FLASH-experiment-dispatch-guard.injection.bin",
                 Some(
                     "firmware/bk3635-stock-harness/target/experiment-dispatch-guard/DO_NOT_FLASH-experiment-dispatch-guard.container.bin",
+                ),
+            ),
+            (
+                18,
+                "firmware/bk3635-stock-harness/target/input-diagnostics/DO_NOT_FLASH-input-diagnostics.injection.bin",
+                Some(
+                    "firmware/bk3635-stock-harness/target/input-diagnostics/DO_NOT_FLASH-input-diagnostics.container.bin",
+                ),
+            ),
+            (
+                19,
+                "firmware/bk3635-stock-harness/target/paged-input-diagnostics/DO_NOT_FLASH-paged-input-diagnostics.injection.bin",
+                Some(
+                    "firmware/bk3635-stock-harness/target/paged-input-diagnostics/DO_NOT_FLASH-paged-input-diagnostics.container.bin",
+                ),
+            ),
+            (
+                20,
+                "firmware/bk3635-stock-harness/target/sensor-shadow-diagnostics/DO_NOT_FLASH-sensor-shadow-diagnostics.injection.bin",
+                Some(
+                    "firmware/bk3635-stock-harness/target/sensor-shadow-diagnostics/DO_NOT_FLASH-sensor-shadow-diagnostics.container.bin",
+                ),
+            ),
+            (
+                21,
+                "firmware/bk3635-stock-harness/target/unsolicited-report-probe/DO_NOT_FLASH-unsolicited-report-probe.injection.bin",
+                Some(
+                    "firmware/bk3635-stock-harness/target/unsolicited-report-probe/DO_NOT_FLASH-unsolicited-report-probe.container.bin",
+                ),
+            ),
+            (
+                22,
+                "firmware/bk3635-stock-harness/target/custom-main-handoff/DO_NOT_FLASH-custom-main-handoff-probe.injection.bin",
+                Some(
+                    "firmware/bk3635-stock-harness/target/custom-main-handoff/DO_NOT_FLASH-custom-main-handoff-probe.container.bin",
                 ),
             ),
         ];

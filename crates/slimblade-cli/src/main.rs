@@ -14,7 +14,7 @@ use slimblade_cli::{
     input_snapshot, input_state_page, late_marker_response_is_success,
     post_init_arm_response_is_success, post_init_hook_state, rust_response_is_success,
     sensor_shadow, sensor_shadow_arm_response_is_success, steady_loop_arm_response_is_success,
-    wired_loop_arm_response_is_success,
+    unsolicited_report_probe_response_is_success, wired_loop_arm_response_is_success,
 };
 use slimblade_linux::UsbDevice;
 use slimblade_linux::flash::{transfer_payload, wait_for_queried_loader};
@@ -44,6 +44,9 @@ enum Command {
         confirmed: bool,
     },
     RunPostInitHook {
+        confirmed: bool,
+    },
+    RunUnsolicitedReportProbe {
         confirmed: bool,
     },
     ReadInput {
@@ -81,7 +84,7 @@ struct Arguments {
 }
 
 const fn usage() -> &'static str {
-    "usage:\n  slimblade [--device PATH] identify\n  slimblade [--device PATH] [--timeout-seconds N] enter-loader --confirm\n  slimblade [--device PATH] [--timeout-seconds N] set-late-marker --confirm\n  slimblade [--device PATH] [--timeout-seconds N] start-experiment --confirm\n  slimblade [--device PATH] [--timeout-seconds N] run-rust-response --confirm\n  slimblade [--device PATH] [--timeout-seconds N] run-post-init-hook --confirm\n  slimblade [--device PATH] [--timeout-seconds N] read-input --confirm\n  slimblade [--device PATH] [--timeout-seconds N] capture-input --confirm\n  slimblade [--device PATH] [--timeout-seconds N] capture-state --confirm\n  slimblade [--device PATH] [--timeout-seconds N] capture-sensors --confirm\n  slimblade [--device PATH] [--timeout-seconds N] poll-sensors --confirm\n  slimblade [--device PATH] [--timeout-seconds N] [--duration-seconds N] stream-sensors --confirm\n  slimblade [--device PATH] [--timeout-seconds N] query-loader\n  slimblade [--device PATH] [--timeout-seconds N] FLASH_COMMAND --firmware PATH --confirm-sha256 HASH\n\nFLASH_COMMAND: restore-official-v449, flash-descriptor-probe, flash-recovery-carrier, flash-reset-trampoline, flash-recovery-stub, flash-startup-trampoline, flash-rust-guard, flash-usb-recovery-probe, flash-stock-harness, flash-late-marker-probe, flash-experiment-entry-probe, flash-rust-response-probe, flash-post-init-hook-probe, flash-wired-loop-hook-probe, flash-active-loop-hook-probe, flash-steady-loop-hook-probe, flash-dispatcher-return-hook-probe, flash-experiment-dispatch-guard, flash-input-diagnostics, flash-paged-input-diagnostics, or flash-sensor-shadow-diagnostics"
+    "usage:\n  slimblade [--device PATH] identify\n  slimblade [--device PATH] [--timeout-seconds N] enter-loader --confirm\n  slimblade [--device PATH] [--timeout-seconds N] set-late-marker --confirm\n  slimblade [--device PATH] [--timeout-seconds N] start-experiment --confirm\n  slimblade [--device PATH] [--timeout-seconds N] run-rust-response --confirm\n  slimblade [--device PATH] [--timeout-seconds N] run-post-init-hook --confirm\n  slimblade [--device PATH] [--timeout-seconds N] run-unsolicited-report-probe --confirm\n  slimblade [--device PATH] [--timeout-seconds N] read-input --confirm\n  slimblade [--device PATH] [--timeout-seconds N] capture-input --confirm\n  slimblade [--device PATH] [--timeout-seconds N] capture-state --confirm\n  slimblade [--device PATH] [--timeout-seconds N] capture-sensors --confirm\n  slimblade [--device PATH] [--timeout-seconds N] poll-sensors --confirm\n  slimblade [--device PATH] [--timeout-seconds N] [--duration-seconds N] stream-sensors --confirm\n  slimblade [--device PATH] [--timeout-seconds N] query-loader\n  slimblade [--device PATH] [--timeout-seconds N] FLASH_COMMAND --firmware PATH --confirm-sha256 HASH\n\nFLASH_COMMAND: restore-official-v449, flash-descriptor-probe, flash-recovery-carrier, flash-reset-trampoline, flash-recovery-stub, flash-startup-trampoline, flash-rust-guard, flash-usb-recovery-probe, flash-stock-harness, flash-late-marker-probe, flash-experiment-entry-probe, flash-rust-response-probe, flash-post-init-hook-probe, flash-wired-loop-hook-probe, flash-active-loop-hook-probe, flash-steady-loop-hook-probe, flash-dispatcher-return-hook-probe, flash-experiment-dispatch-guard, flash-unsolicited-report-probe, flash-custom-main-handoff-probe, flash-input-diagnostics, flash-paged-input-diagnostics, or flash-sensor-shadow-diagnostics"
 }
 
 fn flash_artifact_for_command(command: &str) -> Option<FlashArtifact> {
@@ -104,6 +107,8 @@ fn flash_artifact_for_command(command: &str) -> Option<FlashArtifact> {
         "flash-steady-loop-hook-probe" => Some(FlashArtifact::SteadyLoopHookProbe),
         "flash-dispatcher-return-hook-probe" => Some(FlashArtifact::DispatcherReturnHookProbe),
         "flash-experiment-dispatch-guard" => Some(FlashArtifact::ExperimentDispatchGuard),
+        "flash-unsolicited-report-probe" => Some(FlashArtifact::UnsolicitedReportProbe),
+        "flash-custom-main-handoff-probe" => Some(FlashArtifact::CustomMainHandoffProbe),
         "flash-input-diagnostics" => Some(FlashArtifact::InputDiagnostics),
         "flash-paged-input-diagnostics" => Some(FlashArtifact::PagedInputDiagnostics),
         "flash-sensor-shadow-diagnostics" => Some(FlashArtifact::SensorShadowDiagnostics),
@@ -183,6 +188,7 @@ fn parse_arguments() -> Result<Arguments, String> {
         "start-experiment" => Command::StartExperiment { confirmed },
         "run-rust-response" => Command::RunRustResponse { confirmed },
         "run-post-init-hook" => Command::RunPostInitHook { confirmed },
+        "run-unsolicited-report-probe" => Command::RunUnsolicitedReportProbe { confirmed },
         "read-input" => Command::ReadInput { confirmed },
         "capture-input" => Command::CaptureInput { confirmed },
         "capture-state" => Command::CaptureState { confirmed },
@@ -211,6 +217,8 @@ fn parse_arguments() -> Result<Arguments, String> {
         | "flash-steady-loop-hook-probe"
         | "flash-dispatcher-return-hook-probe"
         | "flash-experiment-dispatch-guard"
+        | "flash-unsolicited-report-probe"
+        | "flash-custom-main-handoff-probe"
         | "flash-input-diagnostics"
         | "flash-paged-input-diagnostics"
         | "flash-sensor-shadow-diagnostics" => Command::Flash {
@@ -516,6 +524,67 @@ fn run_post_init_hook(device: &Path, timeout: Duration, confirmed: bool) -> Resu
         }
     }
     Err("post-init hook remained armed after eight queries".to_owned())
+}
+
+fn run_unsolicited_report_probe(
+    device: &Path,
+    timeout: Duration,
+    confirmed: bool,
+) -> Result<(), String> {
+    if !confirmed {
+        return Err(
+            "refusing persistent-marker unsolicited-report probe without --confirm".to_owned(),
+        );
+    }
+    let parent = usb_parent_for_hidraw(device, Path::new(HIDRAW_SYSFS_ROOT))
+        .map_err(|error| format!("could not resolve USB parent: {error}"))?
+        .ok_or_else(|| "could not find USB parent".to_owned())?;
+    if parent.identity != KENSINGTON_WIRED_IDENTITY || parent.bcd_device.as_deref() != Some("0471")
+    {
+        return Err(format!(
+            "refusing unsolicited-report probe for identity {:04x}:{:04x} bcdDevice={:?}; expected 047d:80d7/0471",
+            parent.identity.vendor_id, parent.identity.product_id, parent.bcd_device
+        ));
+    }
+    let mut hidraw = Hidraw::open_read_write(device)
+        .map_err(|error| format!("could not open {}: {error}", device.display()))?;
+    let (_, identity) = hidraw
+        .identity()
+        .map_err(|error| format!("could not query HID identity: {error}"))?;
+    if identity != parent.identity {
+        return Err("HID identity and USB parent disagree".to_owned());
+    }
+
+    hidraw
+        .write_report(NormalReport::command(0x0e).as_bytes())
+        .map_err(|error| format!("unsolicited-report arm failed: {error}"))?;
+    let response_timeout = timeout.max(Duration::from_secs(3));
+    let acknowledged = hidraw
+        .read_normal_report(response_timeout)
+        .map_err(|error| format!("acknowledged response failed: {error}"))?
+        .ok_or_else(|| "marker command did not return its acknowledged response".to_owned())?;
+    if !unsolicited_report_probe_response_is_success(acknowledged) {
+        return Err("marker command did not return status 01 and signature ab".to_owned());
+    }
+    let unsolicited = hidraw
+        .read_normal_report(response_timeout)
+        .map_err(|error| format!("unsolicited response failed: {error}"))?
+        .ok_or_else(|| "endpoint 0x82 did not emit an unsolicited second report".to_owned())?;
+    if unsolicited != acknowledged {
+        return Err("unsolicited report did not reproduce the acknowledged response".to_owned());
+    }
+    if hidraw
+        .read_normal_report(Duration::from_millis(100))
+        .map_err(|error| format!("one-shot completion check failed: {error}"))?
+        .is_some()
+    {
+        return Err("one-shot probe emitted an unexpected third vendor report".to_owned());
+    }
+    println!(
+        "unsolicited_report=pass acknowledged=1 unsolicited=1 extra=0 signature=ab sysfs={}",
+        parent.sysfs
+    );
+    Ok(())
 }
 
 fn open_input_diagnostics(device: &Path) -> Result<(UsbDevice, Hidraw), String> {
@@ -1062,6 +1131,9 @@ fn run() -> Result<(), String> {
         },
         Command::RunPostInitHook { confirmed } => {
             run_post_init_hook(&arguments.device, arguments.timeout, confirmed)
+        },
+        Command::RunUnsolicitedReportProbe { confirmed } => {
+            run_unsolicited_report_probe(&arguments.device, arguments.timeout, confirmed)
         },
         Command::ReadInput { confirmed } => {
             read_input(&arguments.device, arguments.timeout, confirmed)
