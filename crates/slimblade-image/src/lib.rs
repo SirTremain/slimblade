@@ -45,7 +45,7 @@ impl ArtifactIdentity {
     }
 }
 
-pub const REFERENCE_ARTIFACTS: [ArtifactIdentity; 24] = [
+pub const REFERENCE_ARTIFACTS: [ArtifactIdentity; 29] = [
     ArtifactIdentity {
         name: "stock-startup-reference",
         code_sha256: parse_sha256(
@@ -258,6 +258,45 @@ pub const REFERENCE_ARTIFACTS: [ArtifactIdentity; 24] = [
             "7c044eb8381b87ea3e383a114c066c569040b16c1becdfe079d4940a4392d7fa",
         )),
     },
+    ArtifactIdentity {
+        name: "custom-main-stream-transport-probe",
+        code_sha256: parse_sha256(
+            "54b54999d5aab57900cb47f3521c92b1807dbdb2a988bf8afd805fd6f6d02124",
+        ),
+        container_sha256: Some(parse_sha256(
+            "31c14d3a51a94ccc8f2d5337bae15b3755ee7665804d56416ac518d44decb489",
+        )),
+    },
+    ArtifactIdentity {
+        name: "custom-main-stream-transport-runtime",
+        code_sha256: parse_sha256(
+            "9dba72994d1356fabe977f8c8d4a9af980302465839991322fade7e439e4b672",
+        ),
+        container_sha256: None,
+    },
+    ArtifactIdentity {
+        name: "custom-main-sensor-stream-probe",
+        code_sha256: parse_sha256(
+            "aa0991589fc2242a19fd824742b567344e33aa60270e4466ba65e01146980a79",
+        ),
+        container_sha256: Some(parse_sha256(
+            "65c7dfd35d4f97751db74899c076c27741dd290d045fbd130aa854443b60edf8",
+        )),
+    },
+    ArtifactIdentity {
+        name: "custom-main-sensor-stream-runtime",
+        code_sha256: parse_sha256(
+            "febc0f904f4cf3bd98caa4900862fc5573a43204a32e2e0fed32542e9bebe293",
+        ),
+        container_sha256: None,
+    },
+    ArtifactIdentity {
+        name: "custom-main-sensor-stream-support",
+        code_sha256: parse_sha256(
+            "c85b576bebf9044dc38848eb9e9d0260544b8b3c3793720ae296f8263ce4213b",
+        ),
+        container_sha256: None,
+    },
 ];
 
 pub const STOCK_STARTUP_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[0];
@@ -284,6 +323,11 @@ pub const SENSOR_SHADOW_DIAGNOSTICS_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIF
 pub const UNSOLICITED_REPORT_PROBE_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[21];
 pub const CUSTOM_MAIN_HANDOFF_PROBE_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[22];
 pub const CUSTOM_MAIN_USB_RECOVERY_PROBE_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[23];
+pub const CUSTOM_MAIN_STREAM_TRANSPORT_PROBE_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[24];
+pub const CUSTOM_MAIN_STREAM_TRANSPORT_RUNTIME_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[25];
+pub const CUSTOM_MAIN_SENSOR_STREAM_PROBE_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[26];
+pub const CUSTOM_MAIN_SENSOR_STREAM_RUNTIME_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[27];
+pub const CUSTOM_MAIN_SENSOR_STREAM_SUPPORT_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[28];
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct FirmwareIdentity {
@@ -539,8 +583,20 @@ pub const CUSTOM_MAIN_USB_RECOVERY_PROBE: FirmwareIdentity = firmware_identity(
     "10bd22194a19c0c27d5120b461a7ff7a2897871ad13a255225d6e9953fcb3b5d",
     0x7b3c_a402,
 );
+pub const CUSTOM_MAIN_STREAM_TRANSPORT_PROBE: FirmwareIdentity = firmware_identity(
+    "custom-main-stream-transport-probe-v4.74",
+    "31c14d3a51a94ccc8f2d5337bae15b3755ee7665804d56416ac518d44decb489",
+    "964e7fa847e308fa51d173e1cac1ae3b97d61c73b9f82c03268341871768c362",
+    0x105b_ca99,
+);
+pub const CUSTOM_MAIN_SENSOR_STREAM_PROBE: FirmwareIdentity = firmware_identity(
+    "custom-main-sensor-stream-probe-v4.75",
+    "65c7dfd35d4f97751db74899c076c27741dd290d045fbd130aa854443b60edf8",
+    "b00d22b8ab6ae686cc6a3230324c971a57bf29a43e5236bd94ee8c69d05e4ae9",
+    0xc430_b50f,
+);
 
-pub const FLASHABLE_IMAGES: [FirmwareIdentity; 24] = [
+pub const FLASHABLE_IMAGES: [FirmwareIdentity; 26] = [
     OFFICIAL_V449,
     V449_DESCRIPTOR_PROBE,
     RECOVERY_CARRIER,
@@ -565,6 +621,8 @@ pub const FLASHABLE_IMAGES: [FirmwareIdentity; 24] = [
     UNSOLICITED_REPORT_PROBE,
     CUSTOM_MAIN_HANDOFF_PROBE,
     CUSTOM_MAIN_USB_RECOVERY_PROBE,
+    CUSTOM_MAIN_STREAM_TRANSPORT_PROBE,
+    CUSTOM_MAIN_SENSOR_STREAM_PROBE,
 ];
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -1373,14 +1431,48 @@ mod tests {
     }
 
     #[test]
+    fn custom_main_stream_transport_probe_payload_constants() {
+        assert_fixture(
+            CUSTOM_MAIN_STREAM_TRANSPORT_PROBE,
+            "firmware/bk3635-stock-harness/target/custom-main-stream-transport/DO_NOT_FLASH-custom-main-stream-transport-probe.container.bin",
+        );
+    }
+
+    #[test]
+    fn custom_main_stream_transport_probe_rejects_one_byte_corruption() {
+        assert_corruption_rejected(
+            CUSTOM_MAIN_STREAM_TRANSPORT_PROBE,
+            "firmware/bk3635-stock-harness/target/custom-main-stream-transport/DO_NOT_FLASH-custom-main-stream-transport-probe.container.bin",
+            0x1c470,
+        );
+    }
+
+    #[test]
+    fn custom_main_sensor_stream_probe_payload_constants() {
+        assert_fixture(
+            CUSTOM_MAIN_SENSOR_STREAM_PROBE,
+            "firmware/bk3635-stock-harness/target/custom-main-sensor-stream/DO_NOT_FLASH-custom-main-sensor-stream-probe.container.bin",
+        );
+    }
+
+    #[test]
+    fn custom_main_sensor_stream_probe_rejects_one_byte_corruption() {
+        assert_corruption_rejected(
+            CUSTOM_MAIN_SENSOR_STREAM_PROBE,
+            "firmware/bk3635-stock-harness/target/custom-main-sensor-stream/DO_NOT_FLASH-custom-main-sensor-stream-probe.container.bin",
+            0x1a798,
+        );
+    }
+
+    #[test]
     fn reference_artifact_manifest_is_unique_and_complete() {
-        assert_eq!(REFERENCE_ARTIFACTS.len(), 24);
+        assert_eq!(REFERENCE_ARTIFACTS.len(), 29);
         assert_eq!(
             REFERENCE_ARTIFACTS
                 .iter()
                 .filter(|artifact| artifact.container_sha256.is_some())
                 .count(),
-            22
+            24
         );
         for (index, artifact) in REFERENCE_ARTIFACTS.iter().enumerate() {
             assert_ne!(artifact.code_sha256, [0; 32]);
@@ -1561,6 +1653,35 @@ mod tests {
                 Some(
                     "firmware/bk3635-stock-harness/target/custom-main-usb-recovery/DO_NOT_FLASH-custom-main-usb-recovery-probe.container.bin",
                 ),
+            ),
+            (
+                24,
+                "firmware/bk3635-stock-harness/target/custom-main-stream-transport/DO_NOT_FLASH-custom-main-stream-transport-probe.injection.bin",
+                Some(
+                    "firmware/bk3635-stock-harness/target/custom-main-stream-transport/DO_NOT_FLASH-custom-main-stream-transport-probe.container.bin",
+                ),
+            ),
+            (
+                25,
+                "firmware/bk3635-stock-harness/target/custom-main-stream-transport/DO_NOT_FLASH-custom-main-stream-transport-probe.runtime.bin",
+                None,
+            ),
+            (
+                26,
+                "firmware/bk3635-stock-harness/target/custom-main-sensor-stream/DO_NOT_FLASH-custom-main-sensor-stream-probe.injection.bin",
+                Some(
+                    "firmware/bk3635-stock-harness/target/custom-main-sensor-stream/DO_NOT_FLASH-custom-main-sensor-stream-probe.container.bin",
+                ),
+            ),
+            (
+                27,
+                "firmware/bk3635-stock-harness/target/custom-main-sensor-stream/DO_NOT_FLASH-custom-main-sensor-stream-probe.runtime.bin",
+                None,
+            ),
+            (
+                28,
+                "firmware/bk3635-stock-harness/target/custom-main-sensor-stream/DO_NOT_FLASH-custom-main-sensor-stream-probe.sensor.bin",
+                None,
             ),
         ];
         for (identity_index, code_path, container_path) in fixtures {

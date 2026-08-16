@@ -31,8 +31,18 @@ Kensington startup, USB, and interrupt handlers:
   post-init marker followed by a deliberate non-returning custom-main stand-in.
 - `slimblade-custom-main-usb-recovery-probe`: the build-tested `0473` automatic
   marker followed by a minimal custom loop that services stock USB recovery.
+- `slimblade-custom-main-stream-transport-probe`: the build-tested `0474`
+  stock wired initializer followed by a 148-byte Rust endpoint-2 transport
+  loop that prioritizes recovery responses.
+- `slimblade-custom-main-sensor-stream-probe`: the audited `0475` candidate
+  calls the proven stock sensor service, accumulates both pre-clear sensor
+  pairs, and retains endpoint-2 USB recovery.
 
-The linked injection occupies only the verified `0x21ac–0x22ff` stock gap.
+Recovery code occupies the verified `0x21ac–0x22ff` stock gap. The `0474`
+runtime additionally replaces `0x1c460..0x1c4f4` after the marker commits.
+The `0475` runtime ends at `0x1c588`, preserving the wired initializer's
+literal table at `0x1c58c..0x1c5bf`; its small hook and report encoder replace
+only the entry of an unused wireless-mode routine at `0x1c5c0`.
 No build command accesses hardware. Exact artifact identities and the proposed
 live sequence are recorded in `../../docs/stock-harness.md`.
 

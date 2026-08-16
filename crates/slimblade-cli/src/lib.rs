@@ -1,5 +1,6 @@
 use slimblade_image::{
-    ACTIVE_LOOP_HOOK_PROBE, CUSTOM_MAIN_HANDOFF_PROBE, CUSTOM_MAIN_USB_RECOVERY_PROBE,
+    ACTIVE_LOOP_HOOK_PROBE, CUSTOM_MAIN_HANDOFF_PROBE, CUSTOM_MAIN_SENSOR_STREAM_PROBE,
+    CUSTOM_MAIN_STREAM_TRANSPORT_PROBE, CUSTOM_MAIN_USB_RECOVERY_PROBE,
     DISPATCHER_RETURN_HOOK_PROBE, EXPERIMENT_DISPATCH_GUARD, EXPERIMENT_ENTRY_PROBE,
     FirmwareIdentity, INPUT_DIAGNOSTICS, LATE_MARKER_PROBE, OFFICIAL_V449, PAGED_INPUT_DIAGNOSTICS,
     POST_INIT_HOOK_PROBE, RECOVERY_CARRIER, RECOVERY_GUARD, RECOVERY_STUB, RESET_TRAMPOLINE,
@@ -360,6 +361,8 @@ pub enum FlashArtifact {
     UnsolicitedReportProbe,
     CustomMainHandoffProbe,
     CustomMainUsbRecoveryProbe,
+    CustomMainStreamTransportProbe,
+    CustomMainSensorStreamProbe,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -397,6 +400,8 @@ impl FlashArtifact {
             Self::UnsolicitedReportProbe => UNSOLICITED_REPORT_PROBE,
             Self::CustomMainHandoffProbe => CUSTOM_MAIN_HANDOFF_PROBE,
             Self::CustomMainUsbRecoveryProbe => CUSTOM_MAIN_USB_RECOVERY_PROBE,
+            Self::CustomMainStreamTransportProbe => CUSTOM_MAIN_STREAM_TRANSPORT_PROBE,
+            Self::CustomMainSensorStreamProbe => CUSTOM_MAIN_SENSOR_STREAM_PROBE,
         }
     }
 
@@ -448,6 +453,12 @@ impl FlashArtifact {
             },
             Self::CustomMainUsbRecoveryProbe => {
                 PostFlashExpectation::Application { bcd_device: "0473" }
+            },
+            Self::CustomMainStreamTransportProbe => {
+                PostFlashExpectation::Application { bcd_device: "0474" }
+            },
+            Self::CustomMainSensorStreamProbe => {
+                PostFlashExpectation::Application { bcd_device: "0475" }
             },
         }
     }
@@ -690,6 +701,34 @@ mod tests {
         assert_eq!(
             FlashArtifact::CustomMainUsbRecoveryProbe.post_flash_expectation(),
             PostFlashExpectation::Application { bcd_device: "0473" }
+        );
+    }
+
+    #[test]
+    fn custom_main_stream_transport_probe_needs_exact_hash_confirmation() {
+        assert!(!FlashArtifact::CustomMainStreamTransportProbe.confirmation_matches("wrong"));
+        assert!(
+            FlashArtifact::CustomMainStreamTransportProbe.confirmation_matches(
+                "31c14d3a51a94ccc8f2d5337bae15b3755ee7665804d56416ac518d44decb489"
+            )
+        );
+        assert_eq!(
+            FlashArtifact::CustomMainStreamTransportProbe.post_flash_expectation(),
+            PostFlashExpectation::Application { bcd_device: "0474" }
+        );
+    }
+
+    #[test]
+    fn custom_main_sensor_stream_probe_needs_exact_hash_confirmation() {
+        assert!(!FlashArtifact::CustomMainSensorStreamProbe.confirmation_matches("wrong"));
+        assert!(
+            FlashArtifact::CustomMainSensorStreamProbe.confirmation_matches(
+                "65c7dfd35d4f97751db74899c076c27741dd290d045fbd130aa854443b60edf8"
+            )
+        );
+        assert_eq!(
+            FlashArtifact::CustomMainSensorStreamProbe.post_flash_expectation(),
+            PostFlashExpectation::Application { bcd_device: "0475" }
         );
     }
 

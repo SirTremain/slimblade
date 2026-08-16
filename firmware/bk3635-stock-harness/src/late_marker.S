@@ -8,9 +8,12 @@
     .equ MARKER_ADDRESS,           0x0000807c
     .equ STOCK_RECOVERY_COMMAND,   0x0001895d
     .equ STOCK_DELAY,              0x000178eb
-    .ifdef CUSTOM_MAIN_STREAM_TRANSPORT_PROBE
+    .ifdef CUSTOM_MAIN_STREAM_RUNTIME
     .equ STOCK_WIRED_RUNTIME,      0x0001c410
     .equ STOCK_VENDOR_TRANSMIT,    0x0001b4d1
+    .ifdef CUSTOM_MAIN_SENSOR_STREAM_PROBE
+    .equ STOCK_SENSOR_SERVICE,     0x0001a74d
+    .endif
     .endif
     .ifdef SENSOR_SHADOW_DIAGNOSTICS
     .equ STOCK_MODE_ADDRESS,       0x00400264
@@ -369,6 +372,45 @@ storage_operation:
 
     .ltorg
 
+    .ifdef CUSTOM_MAIN_STREAM_RUNTIME
+/* Section-defined veneers preserve Thumb interworking for Rust FFI calls. */
+    .thumb_func
+    .global stock_vendor_dispatch
+    .type stock_vendor_dispatch, %function
+stock_vendor_dispatch:
+    ldr r3, =STOCK_VENDOR_DISPATCH
+    bx r3
+    .size stock_vendor_dispatch, . - stock_vendor_dispatch
+
+    .thumb_func
+    .global stock_vendor_transmit
+    .type stock_vendor_transmit, %function
+stock_vendor_transmit:
+    ldr r3, =STOCK_VENDOR_TRANSMIT
+    bx r3
+    .size stock_vendor_transmit, . - stock_vendor_transmit
+
+    .thumb_func
+    .global stock_wired_runtime
+    .type stock_wired_runtime, %function
+stock_wired_runtime:
+    ldr r3, =STOCK_WIRED_RUNTIME + 1
+    bx r3
+    .size stock_wired_runtime, . - stock_wired_runtime
+    .ltorg
+
+    .ifdef CUSTOM_MAIN_SENSOR_STREAM_PROBE
+    .thumb_func
+    .global stock_sensor_service
+    .type stock_sensor_service, %function
+stock_sensor_service:
+    ldr r3, =STOCK_SENSOR_SERVICE
+    bx r3
+    .size stock_sensor_service, . - stock_sensor_service
+    .ltorg
+    .endif
+    .endif
+
     .ifdef POST_INIT_ACTIVE_LOOP_HOOK_PROBE
 /* Replays the two displaced stock instructions, then consumes armed state 5. */
     .thumb_func
@@ -424,6 +466,7 @@ custom_main:
     .size custom_main, . - custom_main
     .ltorg
     .else
+    .ifndef CUSTOM_MAIN_STREAM_RUNTIME
 /* Keeps AAPCS stack alignment and clears the arm before entering Rust. */
     .thumb_func
     .global experiment_dispatch_guard_impl
@@ -440,14 +483,6 @@ experiment_dispatch_guard_impl:
     strb r2, [r1]
     .ifndef INPUT_DIAGNOSTICS
     bl experiment_entry
-    .endif
-
-    .ifdef CUSTOM_MAIN_STREAM_TRANSPORT_PROBE
-/* Absolute Thumb aliases used by the typed Rust steady loop. */
-    .global stock_vendor_dispatch
-    .thumb_set stock_vendor_dispatch, STOCK_VENDOR_DISPATCH
-    .global stock_vendor_transmit
-    .thumb_set stock_vendor_transmit, STOCK_VENDOR_TRANSMIT
     .endif
 
 .Lexperiment_dispatch_return:
@@ -473,6 +508,8 @@ input_snapshot:
     .endif
     .ltorg
     .endif
+    .endif
+
     .endif
 
     .ifdef SENSOR_SHADOW_DIAGNOSTICS
@@ -589,7 +626,7 @@ custom_main_handoff:
     .size custom_main_handoff, . - custom_main_handoff
     .endif
 
-    .ifdef CUSTOM_MAIN_STREAM_TRANSPORT_PROBE
+    .ifdef CUSTOM_MAIN_STREAM_RUNTIME
 /* Commit recovery, then run stock wired initialization into the replaced loop. */
     .section .text.rust_probe, "ax", %progbits
     .thumb
@@ -599,10 +636,30 @@ custom_main_handoff:
 custom_main_handoff:
     push {r4, lr}
     bl marker_set
-    bl STOCK_WIRED_RUNTIME
+    bl stock_wired_runtime
 .Lcustom_runtime_unexpected_return:
     b .Lcustom_runtime_unexpected_return
     .size custom_main_handoff, . - custom_main_handoff
+    .endif
+
+    .ifdef CUSTOM_MAIN_SENSOR_STREAM_PROBE
+/* Entered at 0x1a798 with sensor A at r7, sensor B at r6, and zero in r4. */
+    .section .text.sensor_hook, "ax", %progbits
+    .thumb
+    .thumb_func
+    .global custom_main_sensor_hook
+    .type custom_main_sensor_hook, %function
+custom_main_sensor_hook:
+    ldr r0, =SENSOR_SHADOW_ADDRESS
+    ldr r1, [r7]
+    str r1, [r0]
+    ldr r1, [r6]
+    str r1, [r0, #4]
+    strh r4, [r6]
+    adds r0, r6, #2
+    bx lr
+    .size custom_main_sensor_hook, . - custom_main_sensor_hook
+    .ltorg
     .endif
 
     .ifdef POST_INIT_HOOK_PROBE

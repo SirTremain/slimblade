@@ -62,6 +62,10 @@ name = "slimblade-custom-main-stream-transport-probe"
 path = "src/custom_main_stream_transport_probe.rs"
 
 [[bin]]
+name = "slimblade-custom-main-sensor-stream-probe"
+path = "src/custom_main_sensor_stream_probe.rs"
+
+[[bin]]
 name = "slimblade-input-diagnostics"
 path = "src/input_diagnostics.rs"
 

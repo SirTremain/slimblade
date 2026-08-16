@@ -85,6 +85,60 @@ fallback if later experimental USB code fails.
 
 ## Next implementation
 
-Add continuous versioned sensor reports on endpoint `0x82`, giving recovery
-responses priority. Experimental code must not write marker storage,
-application flash, or protected startup.
+The build-only `0474` transport gate runs the stock wired/sensor initializer,
+then falls into a 148-byte Rust runtime at reclaimed stock-loop range
+`0x1c460..0x1c4f4`. It emits version-1 zero-motion reports on endpoint `0x82`.
+The stock dispatcher runs first on every pass, and all six stock transmitter
+readiness predicates must pass before a stream report is submitted.
+
+| Artifact | Identity |
+| --- | --- |
+| Injection, 340 bytes | `54b54999d5aab57900cb47f3521c92b1807dbdb2a988bf8afd805fd6f6d02124` |
+| Rust runtime, 148 bytes | `9dba72994d1356fabe977f8c8d4a9af980302465839991322fade7e439e4b672` |
+| Container, 128,112 bytes | `31c14d3a51a94ccc8f2d5337bae15b3755ee7665804d56416ac518d44decb489` |
+| Payload | `964e7fa847e308fa51d173e1cac1ae3b97d61c73b9f82c03268341871768c362` |
+| Payload CRC | `105bca99` |
+
+The live gates are eight valid sequence-changing reports, followed by command
+`0x0d` returning the same path to loader. After that, replace the zero fields
+with accumulated sensor and button state. Experimental code must not write
+marker storage, application flash, or protected startup.
+
+## `0474` hardware result
+
+The exact container was flashed on 2026-08-16. All 3,748 blocks echoed and the
+application enumerated at the same physical path as `047d:80d7`,
+`bcdDevice 0474`. Eight unsolicited checksum-valid reports arrived with
+consecutive sequences `4977..4984`. Command `0x0d` then returned the same path
+to resident loader `25a7:fabe`, whose query returned `d2`, while the stream was
+active. The identical `0474` image was reflashed as the development baseline.
+
+This proves the reclaimed runtime region, Rust report construction, stock
+endpoint-2 transmitter, and fast recovery coexist without stock mouse-loop
+execution.
+
+## `0475` sensor-stream candidate
+
+The next audited image retains the `0474` marker, handoff, wired initializer,
+USB dispatcher, and transmitter. It adds one veneer for stock sensor service
+`0x1a74c` and patches the live-proven pre-clear boundary at `0x1a798`. The hook
+copies sensor A (`0x00400174/176`) and B (`0x004001da/1dc`) into the proven
+inactive shadow at `0x00401360` and replays the displaced clear.
+
+The Rust loop clears the shadow before each synchronous sensor call, saturates
+four signed accumulators and the sample count, and clears them only after the
+stock endpoint-2 transmitter accepts a report. Recovery dispatch remains the
+first call in every loop. Buttons remain zero in this candidate.
+
+| Artifact | Identity |
+| --- | --- |
+| Injection, 340 bytes | `aa0991589fc2242a19fd824742b567344e33aa60270e4466ba65e01146980a79` |
+| Rust runtime, 296 bytes | `febc0f904f4cf3bd98caa4900862fc5573a43204a32e2e0fed32542e9bebe293` |
+| Sensor support, 108 bytes | `c85b576bebf9044dc38848eb9e9d0260544b8b3c3793720ae296f8263ce4213b` |
+| Container, 128,112 bytes | `65c7dfd35d4f97751db74899c076c27741dd290d045fbd130aa854443b60edf8` |
+| Payload | `b00d22b8ab6ae686cc6a3230324c971a57bf29a43e5236bd94ee8c69d05e4ae9` |
+| Payload CRC | `c430b50f` |
+
+The runtime ends at `0x1c588`, leaving the wired initializer's literal island
+`0x1c58c..0x1c5bf` byte-identical. Sensor support at `0x1c5c0..0x1c62b`
+replaces only wireless-mode code, which is outside the wired-only target.

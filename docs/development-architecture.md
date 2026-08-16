@@ -1,6 +1,6 @@
 # Custom firmware architecture
 
-Last checked: 2026-08-15
+Last checked: 2026-08-16
 
 ## Direction
 
@@ -97,3 +97,11 @@ per-sensor RAM windows behind the same marker-first command boundary.
 
 After labeling those fields, trace the two per-sensor state paths and expand
 the diagnostic ABI behind the same storage-isolation and post-link audits.
+
+The `0472` cold-boot gate proved that the automatic post-init marker survives
+a completely hung custom main. The `0473` custom main then live-proved direct
+USB command `0x0d` recovery without stock mouse processing. The build-only
+`0474` gate now relocates a typed Rust transport loop into the reclaimed stock
+wired-loop body; see [`custom-main-handoff.md`](custom-main-handoff.md).
+The audited `0475` successor adds synchronous pre-clear dual-sensor capture and
+per-report accumulation behind the same recovery-first loop.

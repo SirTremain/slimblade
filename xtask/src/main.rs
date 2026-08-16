@@ -6,10 +6,13 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use slimblade_image::{
     ACTIVE_LOOP_HOOK_PROBE_ARTIFACT, APPLICATION_PREFIX_OFFSET, ArtifactIdentity,
-    CUSTOM_MAIN_HANDOFF_PROBE_ARTIFACT, CUSTOM_MAIN_USB_RECOVERY_PROBE_ARTIFACT,
-    DISPATCHER_RETURN_HOOK_PROBE_ARTIFACT, EXPERIMENT_DISPATCH_GUARD_ARTIFACT,
-    EXPERIMENT_ENTRY_PROBE_ARTIFACT, INPUT_DIAGNOSTICS_ARTIFACT, LATE_MARKER_PROBE_ARTIFACT,
-    OFFICIAL_V449, PAGED_INPUT_DIAGNOSTICS_ARTIFACT, POST_INIT_HOOK_PROBE_ARTIFACT, RECOVERY_GUARD,
+    CUSTOM_MAIN_HANDOFF_PROBE_ARTIFACT, CUSTOM_MAIN_SENSOR_STREAM_PROBE_ARTIFACT,
+    CUSTOM_MAIN_SENSOR_STREAM_RUNTIME_ARTIFACT, CUSTOM_MAIN_SENSOR_STREAM_SUPPORT_ARTIFACT,
+    CUSTOM_MAIN_STREAM_TRANSPORT_PROBE_ARTIFACT, CUSTOM_MAIN_STREAM_TRANSPORT_RUNTIME_ARTIFACT,
+    CUSTOM_MAIN_USB_RECOVERY_PROBE_ARTIFACT, DISPATCHER_RETURN_HOOK_PROBE_ARTIFACT,
+    EXPERIMENT_DISPATCH_GUARD_ARTIFACT, EXPERIMENT_ENTRY_PROBE_ARTIFACT,
+    INPUT_DIAGNOSTICS_ARTIFACT, LATE_MARKER_PROBE_ARTIFACT, OFFICIAL_V449,
+    PAGED_INPUT_DIAGNOSTICS_ARTIFACT, POST_INIT_HOOK_PROBE_ARTIFACT, RECOVERY_GUARD,
     RECOVERY_GUARD_ARTIFACT, RUST_RESPONSE_PROBE_ARTIFACT, SENSOR_SHADOW_DIAGNOSTICS_ARTIFACT,
     STEADY_LOOP_HOOK_PROBE_ARTIFACT, STOCK_HARNESS_ARTIFACT, UNSOLICITED_REPORT_PROBE_ARTIFACT,
     USB_RECOVERY_PROBE, USB_RECOVERY_PROBE_ARTIFACT, WIRED_LOOP_HOOK_PROBE_ARTIFACT, sha256,
@@ -40,6 +43,9 @@ const EXPERIMENT_DISPATCH_GUARD_BINARY: &str = "slimblade-experiment-dispatch-gu
 const UNSOLICITED_REPORT_PROBE_BINARY: &str = "slimblade-unsolicited-report-probe";
 const CUSTOM_MAIN_HANDOFF_PROBE_BINARY: &str = "slimblade-custom-main-handoff-probe";
 const CUSTOM_MAIN_USB_RECOVERY_PROBE_BINARY: &str = "slimblade-custom-main-usb-recovery-probe";
+const CUSTOM_MAIN_STREAM_TRANSPORT_PROBE_BINARY: &str =
+    "slimblade-custom-main-stream-transport-probe";
+const CUSTOM_MAIN_SENSOR_STREAM_PROBE_BINARY: &str = "slimblade-custom-main-sensor-stream-probe";
 const INPUT_DIAGNOSTICS_BINARY: &str = "slimblade-input-diagnostics";
 const PAGED_INPUT_DIAGNOSTICS_BINARY: &str = "slimblade-paged-input-diagnostics";
 const SENSOR_SHADOW_DIAGNOSTICS_BINARY: &str = "slimblade-sensor-shadow-diagnostics";
@@ -69,6 +75,24 @@ type StockMarkerVerify =
     ) -> Result<late_marker_probe::LateMarkerReport, late_marker_probe::VerificationError>;
 type HookBuild = fn(&[u8], &[u8]) -> Result<Vec<u8>, post_init_hook_probe::Error>;
 type HookVerify = fn(
+    &[u8],
+    &[u8],
+    &[u8],
+    &[u8],
+) -> Result<post_init_hook_probe::Report, post_init_hook_probe::Error>;
+type RuntimeHookBuild = fn(&[u8], &[u8], &[u8]) -> Result<Vec<u8>, post_init_hook_probe::Error>;
+type RuntimeHookVerify = fn(
+    &[u8],
+    &[u8],
+    &[u8],
+    &[u8],
+    &[u8],
+) -> Result<post_init_hook_probe::Report, post_init_hook_probe::Error>;
+type SensorRuntimeBuild =
+    fn(&[u8], &[u8], &[u8], &[u8]) -> Result<Vec<u8>, post_init_hook_probe::Error>;
+type SensorRuntimeVerify = fn(
+    &[u8],
+    &[u8],
     &[u8],
     &[u8],
     &[u8],
@@ -156,6 +180,8 @@ fn host_checks(root: &Path) -> Result<(), String> {
     build_unsolicited_report_probe(root)?;
     build_custom_main_handoff_probe(root)?;
     build_custom_main_usb_recovery_probe(root)?;
+    build_custom_main_stream_transport_probe(root)?;
+    build_custom_main_sensor_stream_probe(root)?;
     build_input_diagnostics(root)?;
     build_paged_input_diagnostics(root)?;
     build_sensor_shadow_diagnostics(root)
@@ -852,6 +878,165 @@ fn build_custom_main_usb_recovery_probe(root: &Path) -> Result<(), String> {
     )
 }
 
+fn build_custom_main_stream_transport_probe(root: &Path) -> Result<(), String> {
+    build_runtime_hook_probe(
+        root,
+        CUSTOM_MAIN_STREAM_TRANSPORT_PROBE_BINARY,
+        "custom-main-stream-transport",
+        "custom-main-stream-transport-probe",
+        "custom main stream transport",
+        CUSTOM_MAIN_STREAM_TRANSPORT_PROBE_ARTIFACT,
+        CUSTOM_MAIN_STREAM_TRANSPORT_RUNTIME_ARTIFACT,
+        post_init_hook_probe::build_custom_main_stream_transport_probe,
+        post_init_hook_probe::verify_custom_main_stream_transport_probe,
+    )
+}
+
+fn build_custom_main_sensor_stream_probe(root: &Path) -> Result<(), String> {
+    build_sensor_runtime_probe(
+        root,
+        CUSTOM_MAIN_SENSOR_STREAM_PROBE_BINARY,
+        "custom-main-sensor-stream",
+        "custom-main-sensor-stream-probe",
+        "custom main sensor stream",
+        CUSTOM_MAIN_SENSOR_STREAM_PROBE_ARTIFACT,
+        CUSTOM_MAIN_SENSOR_STREAM_RUNTIME_ARTIFACT,
+        CUSTOM_MAIN_SENSOR_STREAM_SUPPORT_ARTIFACT,
+        post_init_hook_probe::build_custom_main_sensor_stream_probe,
+        post_init_hook_probe::verify_custom_main_sensor_stream_probe,
+    )
+}
+
+#[allow(
+    clippy::too_many_arguments,
+    clippy::too_many_lines,
+    reason = "the three independently locked firmware regions remain explicit"
+)]
+fn build_sensor_runtime_probe(
+    root: &Path,
+    binary: &str,
+    artifact_directory: &str,
+    artifact_stem: &str,
+    label: &str,
+    injection_artifact: ArtifactIdentity,
+    runtime_artifact: ArtifactIdentity,
+    support_artifact: ArtifactIdentity,
+    build: SensorRuntimeBuild,
+    verify: SensorRuntimeVerify,
+) -> Result<(), String> {
+    let firmware = root.join("firmware/bk3635-stock-harness");
+    run(&firmware, "cargo", &[FIRMWARE_TOOLCHAIN, "fmt", "--check"])?;
+    run(
+        &firmware,
+        "cargo",
+        &[
+            FIRMWARE_TOOLCHAIN,
+            "clippy",
+            "--bin",
+            binary,
+            "--",
+            "-D",
+            "warnings",
+        ],
+    )?;
+    run(
+        &firmware,
+        "cargo",
+        &[FIRMWARE_TOOLCHAIN, "build", "--release", "--bin", binary],
+    )?;
+
+    let elf = firmware
+        .join("target/thumbv5te-none-eabi/release")
+        .join(binary);
+    let artifact_dir = firmware.join("target").join(artifact_directory);
+    fs::create_dir_all(&artifact_dir)
+        .map_err(|error| format!("could not create {}: {error}", artifact_dir.display()))?;
+    let injection_path = artifact_dir.join(format!("DO_NOT_FLASH-{artifact_stem}.injection.bin"));
+    let runtime_path = artifact_dir.join(format!("DO_NOT_FLASH-{artifact_stem}.runtime.bin"));
+    let support_path = artifact_dir.join(format!("DO_NOT_FLASH-{artifact_stem}.sensor.bin"));
+    let container_path = artifact_dir.join(format!("DO_NOT_FLASH-{artifact_stem}.container.bin"));
+
+    for (path, sections) in [
+        (&injection_path, &[".carrier", ".probe", ".trampoline"][..]),
+        (&runtime_path, &[".custom_runtime"][..]),
+        (&support_path, &[".sensor_hook", ".sensor_support"][..]),
+    ] {
+        let mut command = Command::new("llvm-objcopy");
+        command.args(["-O", "binary"]);
+        for section in sections {
+            command.arg(format!("--only-section={section}"));
+        }
+        let status = command
+            .arg(&elf)
+            .arg(path)
+            .current_dir(root)
+            .status()
+            .map_err(|error| format!("could not extract {}: {error}", path.display()))?;
+        if !status.success() {
+            return Err(format!("llvm-objcopy exited with {status}"));
+        }
+    }
+
+    let injection = fs::read(&injection_path)
+        .map_err(|error| format!("could not read {}: {error}", injection_path.display()))?;
+    let runtime = fs::read(&runtime_path)
+        .map_err(|error| format!("could not read {}: {error}", runtime_path.display()))?;
+    let support = fs::read(&support_path)
+        .map_err(|error| format!("could not read {}: {error}", support_path.display()))?;
+    for (name, artifact, code) in [
+        ("injection", injection_artifact, injection.as_slice()),
+        ("runtime", runtime_artifact, runtime.as_slice()),
+        ("sensor support", support_artifact, support.as_slice()),
+    ] {
+        if !artifact.code_matches(code) {
+            return Err(format!("{label} {name} identity changed"));
+        }
+    }
+
+    let elf_text = elf.to_string_lossy().into_owned();
+    let defined = llvm_nm(root, &elf_text, "--defined-only")?;
+    let undefined = llvm_nm(root, &elf_text, "--undefined-only")?;
+    let symbols = audit_nm_outputs(&defined, &undefined)
+        .map_err(|error| format!("{label} symbol audit failed: {error}"))?;
+    let base_path = root.join(
+        "firmware/startup_trampoline/build/DO_NOT_FLASH-stock-startup-trampoline.container.bin",
+    );
+    let base = fs::read(&base_path)
+        .map_err(|error| format!("could not read {}: {error}", base_path.display()))?;
+    let container = build(&base, &injection, &runtime, &support)
+        .map_err(|error| format!("could not pack {label} probe: {error}"))?;
+    let payload = container
+        .get(APPLICATION_PREFIX_OFFSET..)
+        .ok_or_else(|| format!("{label} container has no updater payload"))?;
+    eprintln!(
+        "{label} candidate: {} bytes, injection SHA-256 {}, runtime SHA-256 {}, support SHA-256 {}, container SHA-256 {}, payload SHA-256 {}, payload CRC {:08x}",
+        container.len(),
+        format_sha256(sha256(&injection))?,
+        format_sha256(sha256(&runtime))?,
+        format_sha256(sha256(&support))?,
+        format_sha256(sha256(&container))?,
+        format_sha256(sha256(payload))?,
+        updater_crc32(payload)
+    );
+
+    let elf_bytes =
+        fs::read(&elf).map_err(|error| format!("could not read {}: {error}", elf.display()))?;
+    let report = verify(
+        &base, &container, &injection, &runtime, &support, &elf_bytes,
+    )
+    .map_err(|error| format!("{label} audit failed: {error}"))?;
+    fs::write(&container_path, &container)
+        .map_err(|error| format!("could not write {}: {error}", container_path.display()))?;
+    eprintln!(
+        "{label} PASS: {} defined symbols, container SHA-256 {}, payload SHA-256 {}, payload CRC {:08x}",
+        symbols.defined_symbols,
+        format_sha256(report.container_sha256)?,
+        format_sha256(report.payload_sha256)?,
+        report.payload_crc
+    );
+    Ok(())
+}
+
 fn build_input_diagnostics(root: &Path) -> Result<(), String> {
     build_hook_probe(
         root,
@@ -889,6 +1074,134 @@ fn build_sensor_shadow_diagnostics(root: &Path) -> Result<(), String> {
         post_init_hook_probe::build_sensor_shadow_diagnostics,
         post_init_hook_probe::verify_sensor_shadow_diagnostics,
     )
+}
+
+#[allow(
+    clippy::too_many_arguments,
+    clippy::too_many_lines,
+    reason = "the runtime probe builder keeps both independently locked code regions explicit"
+)]
+fn build_runtime_hook_probe(
+    root: &Path,
+    binary: &str,
+    artifact_directory: &str,
+    artifact_stem: &str,
+    label: &str,
+    injection_artifact: ArtifactIdentity,
+    runtime_artifact: ArtifactIdentity,
+    build: RuntimeHookBuild,
+    verify: RuntimeHookVerify,
+) -> Result<(), String> {
+    let firmware = root.join("firmware/bk3635-stock-harness");
+    run(&firmware, "cargo", &[FIRMWARE_TOOLCHAIN, "fmt", "--check"])?;
+    run(
+        &firmware,
+        "cargo",
+        &[
+            FIRMWARE_TOOLCHAIN,
+            "clippy",
+            "--bin",
+            binary,
+            "--",
+            "-D",
+            "warnings",
+        ],
+    )?;
+    run(
+        &firmware,
+        "cargo",
+        &[FIRMWARE_TOOLCHAIN, "build", "--release", "--bin", binary],
+    )?;
+
+    let elf = firmware
+        .join("target/thumbv5te-none-eabi/release")
+        .join(binary);
+    let artifact_dir = firmware.join("target").join(artifact_directory);
+    fs::create_dir_all(&artifact_dir)
+        .map_err(|error| format!("could not create {}: {error}", artifact_dir.display()))?;
+    let injection_path = artifact_dir.join(format!("DO_NOT_FLASH-{artifact_stem}.injection.bin"));
+    let runtime_path = artifact_dir.join(format!("DO_NOT_FLASH-{artifact_stem}.runtime.bin"));
+    let container_path = artifact_dir.join(format!("DO_NOT_FLASH-{artifact_stem}.container.bin"));
+
+    let injection_status = Command::new("llvm-objcopy")
+        .args([
+            "-O",
+            "binary",
+            "--only-section=.carrier",
+            "--only-section=.probe",
+            "--only-section=.trampoline",
+        ])
+        .arg(&elf)
+        .arg(&injection_path)
+        .current_dir(root)
+        .status()
+        .map_err(|error| format!("could not extract {}: {error}", injection_path.display()))?;
+    if !injection_status.success() {
+        return Err(format!("llvm-objcopy exited with {injection_status}"));
+    }
+    let runtime_status = Command::new("llvm-objcopy")
+        .args(["-O", "binary", "--only-section=.custom_runtime"])
+        .arg(&elf)
+        .arg(&runtime_path)
+        .current_dir(root)
+        .status()
+        .map_err(|error| format!("could not extract {}: {error}", runtime_path.display()))?;
+    if !runtime_status.success() {
+        return Err(format!("llvm-objcopy exited with {runtime_status}"));
+    }
+
+    let injection = fs::read(&injection_path)
+        .map_err(|error| format!("could not read {}: {error}", injection_path.display()))?;
+    if !injection_artifact.code_matches(&injection) {
+        return Err(format!("{label} injection identity changed"));
+    }
+    let runtime = fs::read(&runtime_path)
+        .map_err(|error| format!("could not read {}: {error}", runtime_path.display()))?;
+    if !runtime_artifact.code_matches(&runtime) {
+        return Err(format!("{label} runtime identity changed"));
+    }
+
+    let elf_text = elf.to_string_lossy().into_owned();
+    let defined = llvm_nm(root, &elf_text, "--defined-only")?;
+    let undefined = llvm_nm(root, &elf_text, "--undefined-only")?;
+    let symbols = audit_nm_outputs(&defined, &undefined)
+        .map_err(|error| format!("{label} symbol audit failed: {error}"))?;
+    let base_path = root.join(
+        "firmware/startup_trampoline/build/DO_NOT_FLASH-stock-startup-trampoline.container.bin",
+    );
+    let base = fs::read(&base_path)
+        .map_err(|error| format!("could not read {}: {error}", base_path.display()))?;
+    let container = build(&base, &injection, &runtime)
+        .map_err(|error| format!("could not pack {label} probe: {error}"))?;
+    let payload = container
+        .get(APPLICATION_PREFIX_OFFSET..)
+        .ok_or_else(|| format!("{label} container has no updater payload"))?;
+    eprintln!(
+        "{label} candidate: {} bytes, injection SHA-256 {}, runtime SHA-256 {}, container SHA-256 {}, payload SHA-256 {}, payload CRC {:08x}",
+        container.len(),
+        format_sha256(sha256(&injection))?,
+        format_sha256(sha256(&runtime))?,
+        format_sha256(sha256(&container))?,
+        format_sha256(sha256(payload))?,
+        updater_crc32(payload)
+    );
+
+    let elf_bytes =
+        fs::read(&elf).map_err(|error| format!("could not read {}: {error}", elf.display()))?;
+    let report = verify(&base, &container, &injection, &runtime, &elf_bytes)
+        .map_err(|error| format!("{label} audit failed: {error}"))?;
+    fs::write(&container_path, &container)
+        .map_err(|error| format!("could not write {}: {error}", container_path.display()))?;
+    eprintln!(
+        "{label} PASS: {} defined symbols, injection SHA-256 {}, runtime SHA-256 {}, container SHA-256 {}, payload SHA-256 {}, payload CRC {:08x}",
+        symbols.defined_symbols,
+        format_sha256(report.injection_sha256)?,
+        format_sha256(sha256(&runtime))?,
+        format_sha256(report.container_sha256)?,
+        format_sha256(report.payload_sha256)?,
+        report.payload_crc
+    );
+    Ok(())
 }
 
 #[allow(
@@ -1177,7 +1490,7 @@ fn disassemble_stock(
 
 fn usage() {
     eprintln!(
-        "usage:\n  cargo xtask <check|rust-guard|usb-probe|stock-harness|late-marker-probe|experiment-entry-probe|rust-response-probe|post-init-hook-probe|wired-loop-hook-probe|active-loop-hook-probe|steady-loop-hook-probe|dispatcher-return-hook-probe|experiment-dispatch-guard|unsolicited-report-probe|custom-main-handoff-probe|custom-main-usb-recovery-probe|input-diagnostics|paged-input-diagnostics|sensor-shadow-diagnostics|postlink|all>\n  cargo xtask disassemble-stock FIRMWARE START STOP <arm|thumb>"
+        "usage:\n  cargo xtask <check|rust-guard|usb-probe|stock-harness|late-marker-probe|experiment-entry-probe|rust-response-probe|post-init-hook-probe|wired-loop-hook-probe|active-loop-hook-probe|steady-loop-hook-probe|dispatcher-return-hook-probe|experiment-dispatch-guard|unsolicited-report-probe|custom-main-handoff-probe|custom-main-usb-recovery-probe|custom-main-stream-transport-probe|custom-main-sensor-stream-probe|input-diagnostics|paged-input-diagnostics|sensor-shadow-diagnostics|postlink|all>\n  cargo xtask disassemble-stock FIRMWARE START STOP <arm|thumb>"
     );
 }
 
@@ -1210,6 +1523,12 @@ fn main() -> ExitCode {
         },
         [command] if command == "custom-main-usb-recovery-probe" => {
             build_custom_main_usb_recovery_probe(&root)
+        },
+        [command] if command == "custom-main-stream-transport-probe" => {
+            build_custom_main_stream_transport_probe(&root)
+        },
+        [command] if command == "custom-main-sensor-stream-probe" => {
+            build_custom_main_sensor_stream_probe(&root)
         },
         [command] if command == "input-diagnostics" => build_input_diagnostics(&root),
         [command] if command == "paged-input-diagnostics" => build_paged_input_diagnostics(&root),

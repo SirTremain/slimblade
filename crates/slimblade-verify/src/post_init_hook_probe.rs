@@ -1,10 +1,13 @@
-use core::fmt;
+use core::{fmt, mem::size_of};
 
 use slimblade_image::{
     ACTIVE_LOOP_HOOK_PROBE, ACTIVE_LOOP_HOOK_PROBE_ARTIFACT, APPLICATION_HEADER_OFFSET,
-    CUSTOM_MAIN_HANDOFF_PROBE, CUSTOM_MAIN_HANDOFF_PROBE_ARTIFACT, CUSTOM_MAIN_USB_RECOVERY_PROBE,
-    CUSTOM_MAIN_USB_RECOVERY_PROBE_ARTIFACT, DISPATCHER_RETURN_HOOK_PROBE,
-    DISPATCHER_RETURN_HOOK_PROBE_ARTIFACT, EXPERIMENT_DISPATCH_GUARD,
+    CUSTOM_MAIN_HANDOFF_PROBE, CUSTOM_MAIN_HANDOFF_PROBE_ARTIFACT, CUSTOM_MAIN_SENSOR_STREAM_PROBE,
+    CUSTOM_MAIN_SENSOR_STREAM_PROBE_ARTIFACT, CUSTOM_MAIN_SENSOR_STREAM_RUNTIME_ARTIFACT,
+    CUSTOM_MAIN_SENSOR_STREAM_SUPPORT_ARTIFACT, CUSTOM_MAIN_STREAM_TRANSPORT_PROBE,
+    CUSTOM_MAIN_STREAM_TRANSPORT_PROBE_ARTIFACT, CUSTOM_MAIN_STREAM_TRANSPORT_RUNTIME_ARTIFACT,
+    CUSTOM_MAIN_USB_RECOVERY_PROBE, CUSTOM_MAIN_USB_RECOVERY_PROBE_ARTIFACT,
+    DISPATCHER_RETURN_HOOK_PROBE, DISPATCHER_RETURN_HOOK_PROBE_ARTIFACT, EXPERIMENT_DISPATCH_GUARD,
     EXPERIMENT_DISPATCH_GUARD_ARTIFACT, INPUT_DIAGNOSTICS, INPUT_DIAGNOSTICS_ARTIFACT,
     PAGED_INPUT_DIAGNOSTICS, PAGED_INPUT_DIAGNOSTICS_ARTIFACT, POST_INIT_HOOK_PROBE,
     POST_INIT_HOOK_PROBE_ARTIFACT, SENSOR_SHADOW_DIAGNOSTICS, SENSOR_SHADOW_DIAGNOSTICS_ARTIFACT,
@@ -35,6 +38,11 @@ const ACTIVE_LOOP_PATCH: usize = 0x1cfcc;
 const STEADY_LOOP_PATCH: usize = 0x1d3c2;
 const DISPATCHER_RETURN_PATCH: usize = 0x1c55a;
 const CUSTOM_MAIN_HANDOFF_PATCH: usize = 0x19c08;
+const CUSTOM_RUNTIME_START: usize = 0x1c460;
+const CUSTOM_RUNTIME_LIMIT: usize = 0x1c5c0;
+const CUSTOM_RUNTIME_LITERAL_START: usize = 0x1c58c;
+const SENSOR_STREAM_SUPPORT_START: usize = 0x1c5c0;
+const SENSOR_STREAM_SUPPORT_LIMIT: usize = 0x1c62c;
 const EXPERIMENT_DISPATCH: u32 = 0x22a0;
 const EXPERIMENT_CALL: usize = 0x22b2;
 const SENSOR_SHADOW_PATCH: usize = 0x1a798;
@@ -154,6 +162,15 @@ const CUSTOM_MAIN_USB_LOOP: [u8; 12] = [
     0x01, 0x4b, 0x98, 0x47, 0xfd, 0xe7, 0x00, 0x00, 0x4d, 0x8f, 0x01, 0x00,
 ];
 const CUSTOM_MAIN_USB_HANDOFF: [u8; 8] = [0x10, 0xb5, 0xff, 0xf7, 0x89, 0xff, 0xeb, 0xe7];
+const CUSTOM_MAIN_STREAM_VENEERS: [u8; 24] = [
+    0x02, 0x4b, 0x18, 0x47, 0x02, 0x4b, 0x18, 0x47, 0x02, 0x4b, 0x18, 0x47, 0x4d, 0x8f, 0x01, 0x00,
+    0xd1, 0xb4, 0x01, 0x00, 0x11, 0xc4, 0x01, 0x00,
+];
+const CUSTOM_MAIN_STREAM_HANDOFF: [u8; 12] = [
+    0x10, 0xb5, 0xff, 0xf7, 0x89, 0xff, 0xff, 0xf7, 0xef, 0xff, 0xfe, 0xe7,
+];
+const CUSTOM_MAIN_SENSOR_VENEER: [u8; 8] = [0x00, 0x4b, 0x18, 0x47, 0x4d, 0xa7, 0x01, 0x00];
+const PROTECTED_RUNTIME_WORDS: [u32; 4] = [0x0000_807c, 0x0080_3000, 0x0080_00c0, 0x0080_6000];
 const CRITICAL_WORDS: [(usize, u32); 13] = [
     (0x0c0, 0x0001_895d),
     (0x0c4, 0x0040_0282),
@@ -190,6 +207,9 @@ pub enum Error {
     BaseIdentity,
     InjectionSize { actual: usize },
     InjectionIdentity,
+    RuntimeSize { actual: usize },
+    RuntimeIdentity,
+    ProtectedRuntimeWord { value: u32 },
     Layout,
     Branch(BranchError),
     DerivedImage,
@@ -206,6 +226,14 @@ impl fmt::Display for Error {
             Self::BaseIdentity => formatter.write_str("base is not exact v4.53"),
             Self::InjectionSize { actual } => write!(formatter, "injection is {actual} bytes"),
             Self::InjectionIdentity => formatter.write_str("injection identity changed"),
+            Self::RuntimeSize { actual } => write!(formatter, "custom runtime is {actual} bytes"),
+            Self::RuntimeIdentity => formatter.write_str("custom runtime identity changed"),
+            Self::ProtectedRuntimeWord { value } => {
+                write!(
+                    formatter,
+                    "custom runtime contains protected word {value:#010x}"
+                )
+            },
             Self::Layout => formatter.write_str("image layout is truncated"),
             Self::Branch(error) => write!(formatter, "branch: {error}"),
             Self::DerivedImage => formatter.write_str("image is not the exact derived candidate"),
@@ -1007,6 +1035,171 @@ pub fn build_custom_main_usb_recovery_probe(
     Ok(image)
 }
 
+/// Builds the marker-first custom main with a continuous endpoint-2 transport loop.
+///
+/// # Errors
+///
+/// Returns an error unless the exact v4.53 base and both reviewed code regions are supplied.
+pub fn build_custom_main_stream_transport_probe(
+    base: &[u8],
+    injection: &[u8],
+    runtime: &[u8],
+) -> Result<Vec<u8>, Error> {
+    STARTUP_TRAMPOLINE
+        .validate(base)
+        .map_err(|_| Error::BaseIdentity)?;
+    if injection.len() != INJECTION_END - INJECTION_START {
+        return Err(Error::InjectionSize {
+            actual: injection.len(),
+        });
+    }
+    if !CUSTOM_MAIN_STREAM_TRANSPORT_PROBE_ARTIFACT.code_matches(injection) {
+        return Err(Error::InjectionIdentity);
+    }
+    if runtime.len() > CUSTOM_RUNTIME_LIMIT - CUSTOM_RUNTIME_START {
+        return Err(Error::RuntimeSize {
+            actual: runtime.len(),
+        });
+    }
+    if !CUSTOM_MAIN_STREAM_TRANSPORT_RUNTIME_ARTIFACT.code_matches(runtime) {
+        return Err(Error::RuntimeIdentity);
+    }
+    for value in PROTECTED_RUNTIME_WORDS {
+        if runtime
+            .windows(size_of::<u32>())
+            .any(|window| window == value.to_le_bytes())
+        {
+            return Err(Error::ProtectedRuntimeWord { value });
+        }
+    }
+    require_base(base, CUSTOM_MAIN_HANDOFF_PATCH, &[0x02, 0xf0, 0x02, 0xfc])?;
+    require_base(base, CUSTOM_RUNTIME_START, &[0x12, 0x20, 0xfb, 0xf7])?;
+
+    let mut image = base.to_vec();
+    replace(&mut image, INJECTION_START, injection)?;
+    replace(&mut image, CUSTOM_RUNTIME_START, runtime)?;
+    replace(
+        &mut image,
+        RESET_BRANCH,
+        &encode_arm_b(
+            ArmAddress::new(u32::try_from(RESET_BRANCH).map_err(|_| Error::Layout)?)
+                .map_err(Error::Branch)?,
+            ArmAddress::new(TRAMPOLINE).map_err(Error::Branch)?,
+        )
+        .map_err(Error::Branch)?,
+    )?;
+    replace(
+        &mut image,
+        CUSTOM_MAIN_HANDOFF_PATCH,
+        &encode_thumb_bl(
+            ThumbAddress::new(u32::try_from(CUSTOM_MAIN_HANDOFF_PATCH).map_err(|_| Error::Layout)?)
+                .map_err(Error::Branch)?,
+            ThumbAddress::new(HOOK).map_err(Error::Branch)?,
+        )
+        .map_err(Error::Branch)?,
+    )?;
+    *image.get_mut(V449_BCD_DEVICE_OFFSET).ok_or(Error::Layout)? = 0x74;
+    refresh_header_crc(&mut image, APPLICATION_HEADER_OFFSET).map_err(|_| Error::Header)?;
+    refresh_header_crc(&mut image, STACK_HEADER_OFFSET).map_err(|_| Error::Header)?;
+    Ok(image)
+}
+
+/// Builds the marker-first custom main with accumulated dual-sensor reports.
+///
+/// # Errors
+///
+/// Returns an error unless the exact v4.53 base and three reviewed code regions are supplied.
+pub fn build_custom_main_sensor_stream_probe(
+    base: &[u8],
+    injection: &[u8],
+    runtime: &[u8],
+    support: &[u8],
+) -> Result<Vec<u8>, Error> {
+    STARTUP_TRAMPOLINE
+        .validate(base)
+        .map_err(|_| Error::BaseIdentity)?;
+    if injection.len() != INJECTION_END - INJECTION_START {
+        return Err(Error::InjectionSize {
+            actual: injection.len(),
+        });
+    }
+    if !CUSTOM_MAIN_SENSOR_STREAM_PROBE_ARTIFACT.code_matches(injection) {
+        return Err(Error::InjectionIdentity);
+    }
+    if runtime.len() > CUSTOM_RUNTIME_LITERAL_START - CUSTOM_RUNTIME_START {
+        return Err(Error::RuntimeSize {
+            actual: runtime.len(),
+        });
+    }
+    if !CUSTOM_MAIN_SENSOR_STREAM_RUNTIME_ARTIFACT.code_matches(runtime) {
+        return Err(Error::RuntimeIdentity);
+    }
+    if support.len() != SENSOR_STREAM_SUPPORT_LIMIT - SENSOR_STREAM_SUPPORT_START {
+        return Err(Error::RuntimeSize {
+            actual: support.len(),
+        });
+    }
+    if !CUSTOM_MAIN_SENSOR_STREAM_SUPPORT_ARTIFACT.code_matches(support) {
+        return Err(Error::RuntimeIdentity);
+    }
+    for code in [runtime, support] {
+        for value in PROTECTED_RUNTIME_WORDS {
+            if code
+                .windows(size_of::<u32>())
+                .any(|window| window == value.to_le_bytes())
+            {
+                return Err(Error::ProtectedRuntimeWord { value });
+            }
+        }
+    }
+    require_base(base, CUSTOM_MAIN_HANDOFF_PATCH, &[0x02, 0xf0, 0x02, 0xfc])?;
+    require_base(base, CUSTOM_RUNTIME_START, &[0x12, 0x20, 0xfb, 0xf7])?;
+    require_base(base, SENSOR_SHADOW_PATCH, &[0x34, 0x80, 0x09, 0x48])?;
+    require_base(base, SENSOR_STREAM_SUPPORT_START, &[0xf0, 0xb5, 0x00, 0x24])?;
+
+    let mut image = base.to_vec();
+    replace(&mut image, INJECTION_START, injection)?;
+    replace(&mut image, CUSTOM_RUNTIME_START, runtime)?;
+    replace(&mut image, SENSOR_STREAM_SUPPORT_START, support)?;
+    replace(
+        &mut image,
+        RESET_BRANCH,
+        &encode_arm_b(
+            ArmAddress::new(u32::try_from(RESET_BRANCH).map_err(|_| Error::Layout)?)
+                .map_err(Error::Branch)?,
+            ArmAddress::new(TRAMPOLINE).map_err(Error::Branch)?,
+        )
+        .map_err(Error::Branch)?,
+    )?;
+    replace(
+        &mut image,
+        CUSTOM_MAIN_HANDOFF_PATCH,
+        &encode_thumb_bl(
+            ThumbAddress::new(u32::try_from(CUSTOM_MAIN_HANDOFF_PATCH).map_err(|_| Error::Layout)?)
+                .map_err(Error::Branch)?,
+            ThumbAddress::new(HOOK).map_err(Error::Branch)?,
+        )
+        .map_err(Error::Branch)?,
+    )?;
+    replace(
+        &mut image,
+        SENSOR_SHADOW_PATCH,
+        &encode_thumb_bl(
+            ThumbAddress::new(u32::try_from(SENSOR_SHADOW_PATCH).map_err(|_| Error::Layout)?)
+                .map_err(Error::Branch)?,
+            ThumbAddress::new(
+                u32::try_from(SENSOR_STREAM_SUPPORT_START).map_err(|_| Error::Layout)?,
+            )
+            .map_err(Error::Branch)?,
+        )
+        .map_err(Error::Branch)?,
+    )?;
+    *image.get_mut(V449_BCD_DEVICE_OFFSET).ok_or(Error::Layout)? = 0x75;
+    refresh_header_crc(&mut image, APPLICATION_HEADER_OFFSET).map_err(|_| Error::Header)?;
+    refresh_header_crc(&mut image, STACK_HEADER_OFFSET).map_err(|_| Error::Header)?;
+    Ok(image)
+}
+
 /// Builds the marker-first, read-only stock input snapshot candidate.
 ///
 /// # Errors
@@ -1478,6 +1671,247 @@ pub fn verify_custom_main_usb_recovery_probe(
     })
 }
 
+/// Audits the marker-first stock initializer and continuous Rust endpoint-2 loop.
+///
+/// # Errors
+///
+/// Returns the first failed identity, instruction, branch, stock-path, or ELF invariant.
+pub fn verify_custom_main_stream_transport_probe(
+    base: &[u8],
+    image: &[u8],
+    injection: &[u8],
+    runtime: &[u8],
+    elf_bytes: &[u8],
+) -> Result<Report, Error> {
+    if image != build_custom_main_stream_transport_probe(base, injection, runtime)? {
+        return Err(Error::DerivedImage);
+    }
+    require(injection, 0, &DISPATCH)?;
+    require(injection, 0x12, &EXPERIMENT_DISPATCH_ARM_AND_QUERY)?;
+    require(injection, 0x0f4, &CUSTOM_MAIN_STREAM_VENEERS)?;
+    require(injection, 0x114, &CUSTOM_MAIN_STREAM_HANDOFF)?;
+    for (offset, expected) in WIRED_CRITICAL_WORDS {
+        let actual = read_u32(injection, offset)?;
+        if actual != expected {
+            return Err(Error::Word { offset, actual });
+        }
+    }
+
+    let marker_target = decode_thumb_bl(
+        read_array(injection, 0x116)?,
+        ThumbAddress::new(HOOK + 2).map_err(Error::Branch)?,
+    )
+    .map_err(Error::Branch)?;
+    if marker_target.get() != 0x21d8 {
+        return Err(Error::Bytes { offset: 0x116 });
+    }
+    let wired_initializer_target = decode_thumb_bl(
+        read_array(injection, 0x11a)?,
+        ThumbAddress::new(HOOK + 6).map_err(Error::Branch)?,
+    )
+    .map_err(Error::Branch)?;
+    if wired_initializer_target.get() != 0x22a8 {
+        return Err(Error::Bytes { offset: 0x11a });
+    }
+    let dispatcher_veneer = decode_thumb_bl(
+        read_array(runtime, 0x10)?,
+        ThumbAddress::new(0x1c470).map_err(Error::Branch)?,
+    )
+    .map_err(Error::Branch)?;
+    if dispatcher_veneer.get() != 0x22a0 {
+        return Err(Error::Bytes {
+            offset: CUSTOM_RUNTIME_START + 0x10,
+        });
+    }
+    let transmitter_veneer = decode_thumb_bl(
+        read_array(runtime, 0x76)?,
+        ThumbAddress::new(0x1c4d6).map_err(Error::Branch)?,
+    )
+    .map_err(Error::Branch)?;
+    if transmitter_veneer.get() != 0x22a4 {
+        return Err(Error::Bytes {
+            offset: CUSTOM_RUNTIME_START + 0x76,
+        });
+    }
+
+    let handoff_target = decode_thumb_bl(
+        read_array(image, CUSTOM_MAIN_HANDOFF_PATCH)?,
+        ThumbAddress::new(u32::try_from(CUSTOM_MAIN_HANDOFF_PATCH).map_err(|_| Error::Layout)?)
+            .map_err(Error::Branch)?,
+    )
+    .map_err(Error::Branch)?;
+    if handoff_target.get() != HOOK {
+        return Err(Error::Bytes {
+            offset: CUSTOM_MAIN_HANDOFF_PATCH,
+        });
+    }
+    let runtime_end = CUSTOM_RUNTIME_START
+        .checked_add(runtime.len())
+        .ok_or(Error::Layout)?;
+    if image.get(0x19878..CUSTOM_MAIN_HANDOFF_PATCH) != base.get(0x19878..CUSTOM_MAIN_HANDOFF_PATCH)
+        || image.get(0x19c0c..CUSTOM_RUNTIME_START) != base.get(0x19c0c..CUSTOM_RUNTIME_START)
+        || image.get(runtime_end..CUSTOM_RUNTIME_LIMIT)
+            != base.get(runtime_end..CUSTOM_RUNTIME_LIMIT)
+        || image.get(0x18f4c..0x19004) != base.get(0x18f4c..0x19004)
+        || image.get(0x11ef4..0x11f28) != base.get(0x11ef4..0x11f28)
+        || image.get(0x1b4d0..0x1b534) != base.get(0x1b4d0..0x1b534)
+        || image.get(0x2300..0x2330) != base.get(0x2300..0x2330)
+    {
+        return Err(Error::Bytes {
+            offset: CUSTOM_MAIN_HANDOFF_PATCH,
+        });
+    }
+    for offset in [STACK_HEADER_OFFSET, APPLICATION_HEADER_OFFSET] {
+        let header = parse_header(image, offset).map_err(|_| Error::Header)?;
+        if !header.crc_is_valid(image).map_err(|_| Error::Header)? {
+            return Err(Error::Header);
+        }
+    }
+    verify_elf(
+        elf_bytes,
+        &[
+            (".carrier", 0x21ac, 0x10c),
+            (".probe", 0x22c0, 0x00c),
+            (".trampoline", 0x22cc, 0x034),
+            (".custom_runtime", 0x1c460, 0x094),
+        ],
+    )?;
+    let payload = CUSTOM_MAIN_STREAM_TRANSPORT_PROBE
+        .validate(image)
+        .map_err(|_| Error::ContainerIdentity)?;
+    Ok(Report {
+        injection_sha256: sha256(injection),
+        container_sha256: sha256(image),
+        payload_sha256: sha256(payload),
+        payload_crc: slimblade_protocol::updater_crc32(payload),
+    })
+}
+
+/// Audits the marker-first dual-sensor stream and its retained USB recovery path.
+///
+/// # Errors
+///
+/// Returns the first failed identity, instruction, branch, stock-path, or ELF invariant.
+#[allow(
+    clippy::too_many_arguments,
+    clippy::too_many_lines,
+    reason = "the independent injection, runtime, and support regions remain explicit"
+)]
+pub fn verify_custom_main_sensor_stream_probe(
+    base: &[u8],
+    image: &[u8],
+    injection: &[u8],
+    runtime: &[u8],
+    support: &[u8],
+    elf_bytes: &[u8],
+) -> Result<Report, Error> {
+    if image != build_custom_main_sensor_stream_probe(base, injection, runtime, support)? {
+        return Err(Error::DerivedImage);
+    }
+    require(injection, 0, &DISPATCH)?;
+    require(injection, 0x12, &EXPERIMENT_DISPATCH_ARM_AND_QUERY)?;
+    require(injection, 0x0f4, &CUSTOM_MAIN_STREAM_VENEERS)?;
+    require(injection, 0x10c, &CUSTOM_MAIN_SENSOR_VENEER)?;
+    require(injection, 0x114, &CUSTOM_MAIN_STREAM_HANDOFF)?;
+    for (offset, expected) in WIRED_CRITICAL_WORDS {
+        let actual = read_u32(injection, offset)?;
+        if actual != expected {
+            return Err(Error::Word { offset, actual });
+        }
+    }
+
+    let calls = [
+        (0x10, 0x1c470, 0x22a0),
+        (0x1c, 0x1c47c, 0x22b8),
+        (0xf4, 0x1c554, 0x1c5e0),
+        (0xfa, 0x1c55a, 0x22a4),
+    ];
+    for (offset, call_address, target) in calls {
+        let actual = decode_thumb_bl(
+            read_array(runtime, offset)?,
+            ThumbAddress::new(call_address).map_err(Error::Branch)?,
+        )
+        .map_err(Error::Branch)?;
+        if actual.get() != target {
+            return Err(Error::Bytes {
+                offset: CUSTOM_RUNTIME_START + offset,
+            });
+        }
+    }
+    let sensor_hook_target = decode_thumb_bl(
+        read_array(image, SENSOR_SHADOW_PATCH)?,
+        ThumbAddress::new(u32::try_from(SENSOR_SHADOW_PATCH).map_err(|_| Error::Layout)?)
+            .map_err(Error::Branch)?,
+    )
+    .map_err(Error::Branch)?;
+    if sensor_hook_target.get()
+        != u32::try_from(SENSOR_STREAM_SUPPORT_START).map_err(|_| Error::Layout)?
+    {
+        return Err(Error::Bytes {
+            offset: SENSOR_SHADOW_PATCH,
+        });
+    }
+    let handoff_target = decode_thumb_bl(
+        read_array(image, CUSTOM_MAIN_HANDOFF_PATCH)?,
+        ThumbAddress::new(u32::try_from(CUSTOM_MAIN_HANDOFF_PATCH).map_err(|_| Error::Layout)?)
+            .map_err(Error::Branch)?,
+    )
+    .map_err(Error::Branch)?;
+    if handoff_target.get() != HOOK {
+        return Err(Error::Bytes {
+            offset: CUSTOM_MAIN_HANDOFF_PATCH,
+        });
+    }
+
+    let runtime_end = CUSTOM_RUNTIME_START
+        .checked_add(runtime.len())
+        .ok_or(Error::Layout)?;
+    for (start, end) in [
+        (0x19878, CUSTOM_MAIN_HANDOFF_PATCH),
+        (0x19c0c, 0x1a74c),
+        (0x1a74c, SENSOR_SHADOW_PATCH),
+        (SENSOR_SHADOW_PATCH + 4, 0x1a7c8),
+        (0x1a7c8, CUSTOM_RUNTIME_START),
+        (runtime_end, CUSTOM_RUNTIME_LITERAL_START),
+        (CUSTOM_RUNTIME_LITERAL_START, SENSOR_STREAM_SUPPORT_START),
+        (SENSOR_STREAM_SUPPORT_LIMIT, 0x1c834),
+        (0x18f4c, 0x19004),
+        (0x11ef4, 0x11f28),
+        (0x1b4d0, 0x1b534),
+        (0x2300, 0x2330),
+    ] {
+        if image.get(start..end) != base.get(start..end) {
+            return Err(Error::Bytes { offset: start });
+        }
+    }
+    for offset in [STACK_HEADER_OFFSET, APPLICATION_HEADER_OFFSET] {
+        let header = parse_header(image, offset).map_err(|_| Error::Header)?;
+        if !header.crc_is_valid(image).map_err(|_| Error::Header)? {
+            return Err(Error::Header);
+        }
+    }
+    verify_elf(
+        elf_bytes,
+        &[
+            (".carrier", 0x21ac, 0x114),
+            (".probe", 0x22c0, 0x00c),
+            (".trampoline", 0x22cc, 0x034),
+            (".custom_runtime", 0x1c460, 0x128),
+            (".sensor_hook", 0x1c5c0, 0x014),
+            (".sensor_support", 0x1c5e0, 0x04c),
+        ],
+    )?;
+    let payload = CUSTOM_MAIN_SENSOR_STREAM_PROBE
+        .validate(image)
+        .map_err(|_| Error::ContainerIdentity)?;
+    Ok(Report {
+        injection_sha256: sha256(injection),
+        container_sha256: sha256(image),
+        payload_sha256: sha256(payload),
+        payload_crc: slimblade_protocol::updater_crc32(payload),
+    })
+}
+
 /// Audits the marker-first input snapshot, proven recovery bytes, and stock return path.
 ///
 /// # Errors
@@ -1820,6 +2254,23 @@ mod tests {
         elf: Vec<u8>,
     }
 
+    struct RuntimeFixtures {
+        base: Vec<u8>,
+        injection: Vec<u8>,
+        runtime: Vec<u8>,
+        container: Vec<u8>,
+        elf: Vec<u8>,
+    }
+
+    struct SensorRuntimeFixtures {
+        base: Vec<u8>,
+        injection: Vec<u8>,
+        runtime: Vec<u8>,
+        support: Vec<u8>,
+        container: Vec<u8>,
+        elf: Vec<u8>,
+    }
+
     fn read_if_present(path: PathBuf) -> Option<Vec<u8>> {
         path.exists()
             .then(|| std::fs::read(path).expect("read post-init hook fixture"))
@@ -1992,6 +2443,55 @@ mod tests {
             ))?,
             elf: read_if_present(target.join(
                 "thumbv5te-none-eabi/release/slimblade-custom-main-usb-recovery-probe",
+            ))?,
+        })
+    }
+
+    fn custom_main_stream_transport_fixtures() -> Option<RuntimeFixtures> {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let target = root.join("firmware/bk3635-stock-harness/target");
+        let artifact = target.join("custom-main-stream-transport");
+        Some(RuntimeFixtures {
+            base: read_if_present(root.join(
+                "firmware/startup_trampoline/build/DO_NOT_FLASH-stock-startup-trampoline.container.bin",
+            ))?,
+            injection: read_if_present(
+                artifact.join("DO_NOT_FLASH-custom-main-stream-transport-probe.injection.bin"),
+            )?,
+            runtime: read_if_present(
+                artifact.join("DO_NOT_FLASH-custom-main-stream-transport-probe.runtime.bin"),
+            )?,
+            container: read_if_present(
+                artifact.join("DO_NOT_FLASH-custom-main-stream-transport-probe.container.bin"),
+            )?,
+            elf: read_if_present(target.join(
+                "thumbv5te-none-eabi/release/slimblade-custom-main-stream-transport-probe",
+            ))?,
+        })
+    }
+
+    fn custom_main_sensor_stream_fixtures() -> Option<SensorRuntimeFixtures> {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let target = root.join("firmware/bk3635-stock-harness/target");
+        let artifact = target.join("custom-main-sensor-stream");
+        Some(SensorRuntimeFixtures {
+            base: read_if_present(root.join(
+                "firmware/startup_trampoline/build/DO_NOT_FLASH-stock-startup-trampoline.container.bin",
+            ))?,
+            injection: read_if_present(
+                artifact.join("DO_NOT_FLASH-custom-main-sensor-stream-probe.injection.bin"),
+            )?,
+            runtime: read_if_present(
+                artifact.join("DO_NOT_FLASH-custom-main-sensor-stream-probe.runtime.bin"),
+            )?,
+            support: read_if_present(
+                artifact.join("DO_NOT_FLASH-custom-main-sensor-stream-probe.sensor.bin"),
+            )?,
+            container: read_if_present(
+                artifact.join("DO_NOT_FLASH-custom-main-sensor-stream-probe.container.bin"),
+            )?,
+            elf: read_if_present(target.join(
+                "thumbv5te-none-eabi/release/slimblade-custom-main-sensor-stream-probe",
             ))?,
         })
     }
@@ -2579,6 +3079,156 @@ mod tests {
                 &data.elf,
             ),
             Err(Error::DerivedImage)
+        );
+    }
+
+    #[test]
+    fn custom_main_stream_transport_candidate_rebuilds_and_passes() {
+        let Some(data) = custom_main_stream_transport_fixtures() else {
+            return;
+        };
+        assert_eq!(
+            build_custom_main_stream_transport_probe(&data.base, &data.injection, &data.runtime,),
+            Ok(data.container.clone())
+        );
+        let report = verify_custom_main_stream_transport_probe(
+            &data.base,
+            &data.container,
+            &data.injection,
+            &data.runtime,
+            &data.elf,
+        )
+        .expect("audit exact custom-main stream transport probe");
+        assert_eq!(report.payload_crc, 0x105b_ca99);
+    }
+
+    #[test]
+    fn custom_main_stream_transport_preserves_marker_and_trampoline() {
+        let Some(data) = custom_main_stream_transport_fixtures() else {
+            return;
+        };
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let proven = std::fs::read(root.join(
+            "firmware/bk3635-stock-harness/target/custom-main-usb-recovery/DO_NOT_FLASH-custom-main-usb-recovery-probe.injection.bin",
+        ))
+        .expect("read live-tested custom-main USB recovery injection");
+        assert_eq!(&data.injection[..0x0f4], &proven[..0x0f4]);
+        assert_eq!(&data.injection[0x120..], &proven[0x120..]);
+    }
+
+    #[test]
+    fn custom_main_stream_transport_rejects_runtime_and_handoff_corruption() {
+        let Some(mut data) = custom_main_stream_transport_fixtures() else {
+            return;
+        };
+        data.runtime[0x10] ^= 1;
+        assert_eq!(
+            build_custom_main_stream_transport_probe(&data.base, &data.injection, &data.runtime,),
+            Err(Error::RuntimeIdentity)
+        );
+
+        let Some(mut data) = custom_main_stream_transport_fixtures() else {
+            return;
+        };
+        data.container[CUSTOM_MAIN_HANDOFF_PATCH] ^= 1;
+        assert_eq!(
+            verify_custom_main_stream_transport_probe(
+                &data.base,
+                &data.container,
+                &data.injection,
+                &data.runtime,
+                &data.elf,
+            ),
+            Err(Error::DerivedImage)
+        );
+    }
+
+    #[test]
+    fn custom_main_sensor_stream_candidate_rebuilds_and_passes() {
+        let Some(data) = custom_main_sensor_stream_fixtures() else {
+            return;
+        };
+        assert_eq!(
+            build_custom_main_sensor_stream_probe(
+                &data.base,
+                &data.injection,
+                &data.runtime,
+                &data.support,
+            ),
+            Ok(data.container.clone())
+        );
+        let report = verify_custom_main_sensor_stream_probe(
+            &data.base,
+            &data.container,
+            &data.injection,
+            &data.runtime,
+            &data.support,
+            &data.elf,
+        )
+        .expect("audit exact custom-main sensor stream probe");
+        assert_eq!(report.payload_crc, 0xc430_b50f);
+    }
+
+    #[test]
+    fn custom_main_sensor_stream_preserves_guard_and_wired_initializer_literals() {
+        let Some(data) = custom_main_sensor_stream_fixtures() else {
+            return;
+        };
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let proven = std::fs::read(root.join(
+            "firmware/bk3635-stock-harness/target/custom-main-stream-transport/DO_NOT_FLASH-custom-main-stream-transport-probe.injection.bin",
+        ))
+        .expect("read live-tested transport injection");
+        assert_eq!(&data.injection[..0x10c], &proven[..0x10c]);
+        assert_eq!(&data.injection[0x114..], &proven[0x114..]);
+        assert_eq!(
+            &data.container[CUSTOM_RUNTIME_LITERAL_START..SENSOR_STREAM_SUPPORT_START],
+            &data.base[CUSTOM_RUNTIME_LITERAL_START..SENSOR_STREAM_SUPPORT_START]
+        );
+    }
+
+    #[test]
+    fn custom_main_sensor_stream_rejects_each_code_region_corruption() {
+        let Some(mut data) = custom_main_sensor_stream_fixtures() else {
+            return;
+        };
+        data.injection[0x10c] ^= 1;
+        assert_eq!(
+            build_custom_main_sensor_stream_probe(
+                &data.base,
+                &data.injection,
+                &data.runtime,
+                &data.support,
+            ),
+            Err(Error::InjectionIdentity)
+        );
+
+        let Some(mut data) = custom_main_sensor_stream_fixtures() else {
+            return;
+        };
+        data.runtime[0x1c] ^= 1;
+        assert_eq!(
+            build_custom_main_sensor_stream_probe(
+                &data.base,
+                &data.injection,
+                &data.runtime,
+                &data.support,
+            ),
+            Err(Error::RuntimeIdentity)
+        );
+
+        let Some(mut data) = custom_main_sensor_stream_fixtures() else {
+            return;
+        };
+        data.support[0] ^= 1;
+        assert_eq!(
+            build_custom_main_sensor_stream_probe(
+                &data.base,
+                &data.injection,
+                &data.runtime,
+                &data.support,
+            ),
+            Err(Error::RuntimeIdentity)
         );
     }
 }

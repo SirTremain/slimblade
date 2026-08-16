@@ -3,5 +3,12 @@
 version = 4
 
 [[package]]
+name = "slimblade-protocol"
+version = "0.1.0"
+
+[[package]]
 name = "slimblade-stock-harness"
 version = "0.1.0"
+dependencies = [
+ "slimblade-protocol",
+]

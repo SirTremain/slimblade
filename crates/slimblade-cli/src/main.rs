@@ -23,7 +23,9 @@ use slimblade_linux::sysfs::{
     HIDRAW_SYSFS_ROOT, observe_usb_silence, usb_parent_for_hidraw, wait_for_identity_at_path,
     wait_for_reenumeration,
 };
-use slimblade_protocol::{BOOT_IDENTITIES, KENSINGTON_WIRED_IDENTITY, NormalReport};
+use slimblade_protocol::{
+    BOOT_IDENTITIES, KENSINGTON_WIRED_IDENTITY, NormalReport, SensorStreamReport,
+};
 
 const DEFAULT_APPLICATION_DEVICE: &str = "/dev/slimblade-vendor";
 const DEFAULT_LOADER_DEVICE: &str = "/dev/slimblade-loader";
@@ -68,6 +70,10 @@ enum Command {
         confirmed: bool,
         duration: Option<Duration>,
     },
+    ProbeStreamTransport,
+    StreamSensorReports {
+        duration: Option<Duration>,
+    },
     QueryLoader,
     Flash {
         artifact: FlashArtifact,
@@ -84,7 +90,7 @@ struct Arguments {
 }
 
 const fn usage() -> &'static str {
-    "usage:\n  slimblade [--device PATH] identify\n  slimblade [--device PATH] [--timeout-seconds N] enter-loader --confirm\n  slimblade [--device PATH] [--timeout-seconds N] set-late-marker --confirm\n  slimblade [--device PATH] [--timeout-seconds N] start-experiment --confirm\n  slimblade [--device PATH] [--timeout-seconds N] run-rust-response --confirm\n  slimblade [--device PATH] [--timeout-seconds N] run-post-init-hook --confirm\n  slimblade [--device PATH] [--timeout-seconds N] run-unsolicited-report-probe --confirm\n  slimblade [--device PATH] [--timeout-seconds N] read-input --confirm\n  slimblade [--device PATH] [--timeout-seconds N] capture-input --confirm\n  slimblade [--device PATH] [--timeout-seconds N] capture-state --confirm\n  slimblade [--device PATH] [--timeout-seconds N] capture-sensors --confirm\n  slimblade [--device PATH] [--timeout-seconds N] poll-sensors --confirm\n  slimblade [--device PATH] [--timeout-seconds N] [--duration-seconds N] stream-sensors --confirm\n  slimblade [--device PATH] [--timeout-seconds N] query-loader\n  slimblade [--device PATH] [--timeout-seconds N] FLASH_COMMAND --firmware PATH --confirm-sha256 HASH\n\nFLASH_COMMAND: restore-official-v449, flash-descriptor-probe, flash-recovery-carrier, flash-reset-trampoline, flash-recovery-stub, flash-startup-trampoline, flash-rust-guard, flash-usb-recovery-probe, flash-stock-harness, flash-late-marker-probe, flash-experiment-entry-probe, flash-rust-response-probe, flash-post-init-hook-probe, flash-wired-loop-hook-probe, flash-active-loop-hook-probe, flash-steady-loop-hook-probe, flash-dispatcher-return-hook-probe, flash-experiment-dispatch-guard, flash-unsolicited-report-probe, flash-custom-main-handoff-probe, flash-custom-main-usb-recovery-probe, flash-input-diagnostics, flash-paged-input-diagnostics, or flash-sensor-shadow-diagnostics"
+    "usage:\n  slimblade [--device PATH] identify\n  slimblade [--device PATH] [--timeout-seconds N] enter-loader --confirm\n  slimblade [--device PATH] [--timeout-seconds N] set-late-marker --confirm\n  slimblade [--device PATH] [--timeout-seconds N] start-experiment --confirm\n  slimblade [--device PATH] [--timeout-seconds N] run-rust-response --confirm\n  slimblade [--device PATH] [--timeout-seconds N] run-post-init-hook --confirm\n  slimblade [--device PATH] [--timeout-seconds N] run-unsolicited-report-probe --confirm\n  slimblade [--device PATH] [--timeout-seconds N] read-input --confirm\n  slimblade [--device PATH] [--timeout-seconds N] capture-input --confirm\n  slimblade [--device PATH] [--timeout-seconds N] capture-state --confirm\n  slimblade [--device PATH] [--timeout-seconds N] capture-sensors --confirm\n  slimblade [--device PATH] [--timeout-seconds N] poll-sensors --confirm\n  slimblade [--device PATH] [--timeout-seconds N] [--duration-seconds N] stream-sensors --confirm\n  slimblade [--device PATH] [--timeout-seconds N] probe-stream-transport\n  slimblade [--device PATH] [--timeout-seconds N] [--duration-seconds N] stream-sensor-reports\n  slimblade [--device PATH] [--timeout-seconds N] query-loader\n  slimblade [--device PATH] [--timeout-seconds N] FLASH_COMMAND --firmware PATH --confirm-sha256 HASH\n\nFLASH_COMMAND: restore-official-v449, flash-descriptor-probe, flash-recovery-carrier, flash-reset-trampoline, flash-recovery-stub, flash-startup-trampoline, flash-rust-guard, flash-usb-recovery-probe, flash-stock-harness, flash-late-marker-probe, flash-experiment-entry-probe, flash-rust-response-probe, flash-post-init-hook-probe, flash-wired-loop-hook-probe, flash-active-loop-hook-probe, flash-steady-loop-hook-probe, flash-dispatcher-return-hook-probe, flash-experiment-dispatch-guard, flash-unsolicited-report-probe, flash-custom-main-handoff-probe, flash-custom-main-usb-recovery-probe, flash-custom-main-stream-transport-probe, flash-custom-main-sensor-stream-probe, flash-input-diagnostics, flash-paged-input-diagnostics, or flash-sensor-shadow-diagnostics"
 }
 
 fn flash_artifact_for_command(command: &str) -> Option<FlashArtifact> {
@@ -110,6 +116,10 @@ fn flash_artifact_for_command(command: &str) -> Option<FlashArtifact> {
         "flash-unsolicited-report-probe" => Some(FlashArtifact::UnsolicitedReportProbe),
         "flash-custom-main-handoff-probe" => Some(FlashArtifact::CustomMainHandoffProbe),
         "flash-custom-main-usb-recovery-probe" => Some(FlashArtifact::CustomMainUsbRecoveryProbe),
+        "flash-custom-main-stream-transport-probe" => {
+            Some(FlashArtifact::CustomMainStreamTransportProbe)
+        },
+        "flash-custom-main-sensor-stream-probe" => Some(FlashArtifact::CustomMainSensorStreamProbe),
         "flash-input-diagnostics" => Some(FlashArtifact::InputDiagnostics),
         "flash-paged-input-diagnostics" => Some(FlashArtifact::PagedInputDiagnostics),
         "flash-sensor-shadow-diagnostics" => Some(FlashArtifact::SensorShadowDiagnostics),
@@ -146,6 +156,10 @@ const fn default_device(command: &Command) -> &'static str {
     }
 }
 
+#[allow(
+    clippy::too_many_lines,
+    reason = "the flat command mapping keeps every safety-sensitive flash spelling reviewable"
+)]
 fn parse_arguments() -> Result<Arguments, String> {
     let raw: Vec<String> = env::args().skip(1).collect();
     let mut device = None;
@@ -199,6 +213,10 @@ fn parse_arguments() -> Result<Arguments, String> {
             confirmed,
             duration: stream_duration,
         },
+        "probe-stream-transport" => Command::ProbeStreamTransport,
+        "stream-sensor-reports" => Command::StreamSensorReports {
+            duration: stream_duration,
+        },
         "query-loader" => Command::QueryLoader,
         "restore-official-v449"
         | "flash-descriptor-probe"
@@ -221,6 +239,8 @@ fn parse_arguments() -> Result<Arguments, String> {
         | "flash-unsolicited-report-probe"
         | "flash-custom-main-handoff-probe"
         | "flash-custom-main-usb-recovery-probe"
+        | "flash-custom-main-stream-transport-probe"
+        | "flash-custom-main-sensor-stream-probe"
         | "flash-input-diagnostics"
         | "flash-paged-input-diagnostics"
         | "flash-sensor-shadow-diagnostics" => Command::Flash {
@@ -232,8 +252,16 @@ fn parse_arguments() -> Result<Arguments, String> {
         },
         value => return Err(format!("unknown command {value:?}")),
     };
-    if stream_duration.is_some() && !matches!(&command, Command::StreamSensors { .. }) {
-        return Err("--duration-seconds is only valid with stream-sensors".to_owned());
+    if stream_duration.is_some()
+        && !matches!(
+            &command,
+            Command::StreamSensors { .. } | Command::StreamSensorReports { .. }
+        )
+    {
+        return Err(
+            "--duration-seconds is only valid with stream-sensors or stream-sensor-reports"
+                .to_owned(),
+        );
     }
     let default_device = default_device(&command);
     Ok(Arguments {
@@ -1011,6 +1039,156 @@ fn stream_sensors(
     Ok(())
 }
 
+fn probe_stream_transport(device: &Path, timeout: Duration) -> Result<(), String> {
+    let parent = usb_parent_for_hidraw(device, Path::new(HIDRAW_SYSFS_ROOT))
+        .map_err(|error| format!("could not resolve USB parent: {error}"))?
+        .ok_or_else(|| "could not find USB parent".to_owned())?;
+    if parent.identity != KENSINGTON_WIRED_IDENTITY || parent.bcd_device.as_deref() != Some("0474")
+    {
+        return Err(format!(
+            "refusing stream probe for identity {:04x}:{:04x} bcdDevice={:?}; expected 047d:80d7/0474",
+            parent.identity.vendor_id, parent.identity.product_id, parent.bcd_device
+        ));
+    }
+    let mut hidraw = Hidraw::open_read_only(device)
+        .map_err(|error| format!("could not open {}: {error}", device.display()))?;
+    let deadline = Instant::now()
+        .checked_add(timeout)
+        .ok_or_else(|| "stream timeout overflow".to_owned())?;
+    let mut first_sequence = None;
+    let mut previous_sequence = None;
+    let mut reports = 0_u8;
+    while reports < 8 {
+        let remaining = deadline.saturating_duration_since(Instant::now());
+        if remaining.is_zero() {
+            return Err(format!("stream stopped after {reports} valid reports"));
+        }
+        let envelope = hidraw
+            .read_normal_report(remaining)
+            .map_err(|error| format!("stream read failed: {error}"))?
+            .ok_or_else(|| format!("stream stopped after {reports} valid reports"))?;
+        let report = SensorStreamReport::decode(envelope)
+            .map_err(|error| format!("invalid sensor stream report: {error}"))?;
+        if report.flags != 0
+            || report.sensor_a_x != 0
+            || report.sensor_a_y != 0
+            || report.sensor_b_x != 0
+            || report.sensor_b_y != 0
+            || report.buttons != 0
+            || report.sample_count != 0
+        {
+            return Err("transport probe emitted nonzero diagnostic fields".to_owned());
+        }
+        if previous_sequence.is_some_and(|previous: u16| previous == report.sequence) {
+            return Err(format!(
+                "transport probe repeated sequence {}",
+                report.sequence
+            ));
+        }
+        first_sequence.get_or_insert(report.sequence);
+        previous_sequence = Some(report.sequence);
+        reports = reports
+            .checked_add(1)
+            .ok_or_else(|| "stream report counter overflow".to_owned())?;
+    }
+    println!(
+        "stream_transport=pass reports={reports} first_sequence={} last_sequence={} sysfs={}",
+        first_sequence.ok_or_else(|| "stream had no first sequence".to_owned())?,
+        previous_sequence.ok_or_else(|| "stream had no final sequence".to_owned())?,
+        parent.sysfs
+    );
+    Ok(())
+}
+
+fn stream_sensor_reports(
+    device: &Path,
+    timeout: Duration,
+    duration: Option<Duration>,
+) -> Result<(), String> {
+    let parent = usb_parent_for_hidraw(device, Path::new(HIDRAW_SYSFS_ROOT))
+        .map_err(|error| format!("could not resolve USB parent: {error}"))?
+        .ok_or_else(|| "could not find USB parent".to_owned())?;
+    if parent.identity != KENSINGTON_WIRED_IDENTITY || parent.bcd_device.as_deref() != Some("0475")
+    {
+        return Err(format!(
+            "refusing sensor stream for identity {:04x}:{:04x} bcdDevice={:?}; expected 047d:80d7/0475",
+            parent.identity.vendor_id, parent.identity.product_id, parent.bcd_device
+        ));
+    }
+    let mut hidraw = Hidraw::open_read_only(device)
+        .map_err(|error| format!("could not open {}: {error}", device.display()))?;
+    let started = Instant::now();
+    let limit = duration.unwrap_or(Duration::from_secs(1));
+    let mut reports = 0_u64;
+    let mut moving_reports = 0_u64;
+    let mut samples = 0_u64;
+    let mut saturated_reports = 0_u64;
+    let mut previous_sequence = None;
+    let mut sequence_gaps = 0_u64;
+    let mut totals = [0_i64; 4];
+    let stdout = io::stdout();
+    let mut output = stdout.lock();
+    while started.elapsed() < limit {
+        let report = hidraw
+            .read_normal_report(timeout)
+            .map_err(|error| format!("sensor stream read failed: {error}"))?
+            .ok_or_else(|| "sensor stream timed out".to_owned())?;
+        let report = SensorStreamReport::decode(report)
+            .map_err(|error| format!("invalid sensor stream report: {error}"))?;
+        if let Some(previous) = previous_sequence {
+            sequence_gaps = sequence_gaps.saturating_add(u64::from(
+                report.sequence.wrapping_sub(previous).saturating_sub(1),
+            ));
+        }
+        previous_sequence = Some(report.sequence);
+        reports = reports.saturating_add(1);
+        samples = samples.saturating_add(u64::from(report.sample_count));
+        if report.flags != 0 {
+            saturated_reports = saturated_reports.saturating_add(1);
+        }
+        let axes = [
+            report.sensor_a_x,
+            report.sensor_a_y,
+            report.sensor_b_x,
+            report.sensor_b_y,
+        ];
+        for (total, axis) in totals.iter_mut().zip(axes) {
+            *total = total.saturating_add(i64::from(axis));
+        }
+        if axes != [0; 4] {
+            moving_reports = moving_reports.saturating_add(1);
+            writeln!(
+                output,
+                "{{\"sequence\":{},\"flags\":{},\"samples\":{},\"a_x\":{},\"a_y\":{},\"b_x\":{},\"b_y\":{}}}",
+                report.sequence,
+                report.flags,
+                report.sample_count,
+                report.sensor_a_x,
+                report.sensor_a_y,
+                report.sensor_b_x,
+                report.sensor_b_y,
+            )
+            .map_err(|error| format!("could not write sensor report: {error}"))?;
+        }
+    }
+    writeln!(
+        output,
+        "{{\"type\":\"summary\",\"elapsed_us\":{},\"reports\":{},\"moving_reports\":{},\"samples\":{},\"sequence_gaps\":{},\"saturated_reports\":{},\"a_x_total\":{},\"a_y_total\":{},\"b_x_total\":{},\"b_y_total\":{}}}",
+        started.elapsed().as_micros(),
+        reports,
+        moving_reports,
+        samples,
+        sequence_gaps,
+        saturated_reports,
+        totals[0],
+        totals[1],
+        totals[2],
+        totals[3],
+    )
+    .map_err(|error| format!("could not write sensor summary: {error}"))?;
+    Ok(())
+}
+
 fn query_loader(device: &Path, timeout: Duration) -> Result<(), String> {
     let loader = wait_for_queried_loader(device, timeout.max(Duration::from_secs(8)))
         .map_err(|error| error.to_string())?;
@@ -1156,6 +1334,12 @@ fn run() -> Result<(), String> {
             confirmed,
             duration,
         } => stream_sensors(&arguments.device, arguments.timeout, duration, confirmed),
+        Command::ProbeStreamTransport => {
+            probe_stream_transport(&arguments.device, arguments.timeout)
+        },
+        Command::StreamSensorReports { duration } => {
+            stream_sensor_reports(&arguments.device, arguments.timeout, duration)
+        },
         Command::QueryLoader => query_loader(&arguments.device, arguments.timeout),
         Command::Flash {
             artifact,
