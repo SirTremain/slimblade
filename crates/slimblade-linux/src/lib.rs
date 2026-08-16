@@ -8,6 +8,7 @@ use slimblade_protocol::{BOOT_IDENTITIES, BootReport, KENSINGTON_WIRED_IDENTITY,
 pub mod flash;
 pub mod hidraw;
 pub mod sysfs;
+pub mod usbfs;
 
 pub const RECOVERY_CARRIER_BCD_DEVICE: &str = "0451";
 

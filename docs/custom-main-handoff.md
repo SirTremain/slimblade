@@ -142,3 +142,36 @@ first call in every loop. Buttons remain zero in this candidate.
 The runtime ends at `0x1c588`, leaving the wired initializer's literal island
 `0x1c58c..0x1c5bf` byte-identical. Sensor support at `0x1c5c0..0x1c62b`
 replaces only wireless-mode code, which is outside the wired-only target.
+
+## `0475` live failure
+
+The exact locked image enumerated as `047d:80d7`, `bcdDevice 0475`, but did not
+provide usable HID input. Repeated direct USB endpoint-zero transfers of the
+exact command `0x0d` were accepted by Linux usbfs, including 963 transfers in
+one 60-second run, without reaching the resident loader. A complete USB power
+removal with the battery disconnected also returned to `0475`, not the loader.
+
+This falsifies two safety assumptions: the code at `0x1c5c0..0x1c62b` was not
+proved unreachable before the post-init marker handoff, and successful USB
+control-transfer completion does not imply that the main-loop vendor dispatcher
+ran. The image is retained for analysis but the CLI refuses to flash it again.
+Recovery of the live board now requires a separately verified hardware path;
+`RSTN`, `P04` through `P07`, `VCC`, and `GND` remain the likely factory SPI/JTAG
+pad cluster, but their BK3635-specific programming contract is not yet proven.
+
+Static reinspection identifies the direct failure path. Stock USB setup occurs
+before the top-level mode loop, explaining why `0475` can enumerate. That loop
+then calls stock handler `0x1c5c0`, which must write mode `0` before the later
+`0x19c08 -> 0x22c0` marker handoff becomes reachable. `0475` replaced the
+handler entry with a sensor hook that assumes an entirely different register
+contract and does not perform the mode write. The device therefore remains in
+the pre-handoff loop until its watchdog resets. The persistent `marker_set`
+routine is never called; this explains why cold power repeatedly launches the
+application instead of the resident loader.
+
+A coordinated battery-disconnected power cycle was captured with the kernel
+USB-event monitor on 2026-08-16. Every device-add event was
+`PRODUCT=47d/80d7/475`; none used any known loader identity. The application
+remained enumerated for roughly 1.3 seconds, disappeared for roughly 2.1
+seconds, and repeated with a new USB device number. This is consistent with a
+watchdog-reset loop and rules out an observable split-second loader interval.

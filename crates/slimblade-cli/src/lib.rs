@@ -373,6 +373,17 @@ pub enum PostFlashExpectation {
 }
 
 impl FlashArtifact {
+    /// Returns why an artifact must be retained for analysis but never flashed again.
+    #[must_use]
+    pub const fn flash_refusal_reason(self) -> Option<&'static str> {
+        match self {
+            Self::CustomMainSensorStreamProbe => Some(
+                "the 0475 sensor-stream image failed live recovery and is retained only for analysis",
+            ),
+            _ => None,
+        }
+    }
+
     #[must_use]
     pub const fn identity(self) -> FirmwareIdentity {
         match self {
@@ -729,6 +740,16 @@ mod tests {
         assert_eq!(
             FlashArtifact::CustomMainSensorStreamProbe.post_flash_expectation(),
             PostFlashExpectation::Application { bcd_device: "0475" }
+        );
+        assert!(
+            FlashArtifact::CustomMainSensorStreamProbe
+                .flash_refusal_reason()
+                .is_some()
+        );
+        assert!(
+            FlashArtifact::CustomMainStreamTransportProbe
+                .flash_refusal_reason()
+                .is_none()
         );
     }
 

@@ -24,6 +24,11 @@ The development invariant is:
 
 `protected initialization -> committed recovery marker -> experimental code`
 
+Every custom firmware version must satisfy the separate
+[`marker-reachability gate`](marker-reachability-gate.md). Checking that the
+marker writer's bytes survive is not sufficient; its complete reset-to-marker
+control flow is protected and must be proved before flashing.
+
 Stock USB command `0x0d` is the fast loader path while its dispatcher remains
 alive. A USB power cycle is the independent fallback after the marker commits.
 No experimental sensor, button, report, or USB code may access marker storage,
@@ -103,5 +108,7 @@ a completely hung custom main. The `0473` custom main then live-proved direct
 USB command `0x0d` recovery without stock mouse processing. The build-only
 `0474` gate now relocates a typed Rust transport loop into the reclaimed stock
 wired-loop body; see [`custom-main-handoff.md`](custom-main-handoff.md).
-The audited `0475` successor adds synchronous pre-clear dual-sensor capture and
-per-report accumulation behind the same recovery-first loop.
+The `0475` successor is retired and blocked from flashing: it overwrote a
+pre-marker mode-transition handler, never reached `marker_set`, and entered a
+watchdog-reset loop. No further custom version may be flashed until the
+per-version marker-reachability gate is implemented and passes.

@@ -20,15 +20,17 @@ use slimblade_linux::UsbDevice;
 use slimblade_linux::flash::{transfer_payload, wait_for_queried_loader};
 use slimblade_linux::hidraw::Hidraw;
 use slimblade_linux::sysfs::{
-    HIDRAW_SYSFS_ROOT, observe_usb_silence, usb_parent_for_hidraw, wait_for_identity_at_path,
-    wait_for_reenumeration,
+    HIDRAW_SYSFS_ROOT, observe_usb_silence, usb_device_from_directory, usb_parent_for_hidraw,
+    wait_for_identity_at_path, wait_for_reenumeration,
 };
+use slimblade_linux::usbfs;
 use slimblade_protocol::{
     BOOT_IDENTITIES, KENSINGTON_WIRED_IDENTITY, NormalReport, SensorStreamReport,
 };
 
 const DEFAULT_APPLICATION_DEVICE: &str = "/dev/slimblade-vendor";
 const DEFAULT_LOADER_DEVICE: &str = "/dev/slimblade-loader";
+const DEFAULT_RESCUE_DEVICE: &str = "/sys/bus/usb/devices/1-4";
 
 #[derive(Debug)]
 enum Command {
@@ -71,6 +73,9 @@ enum Command {
         duration: Option<Duration>,
     },
     ProbeStreamTransport,
+    UsbfsEnterLoader {
+        confirmed: bool,
+    },
     StreamSensorReports {
         duration: Option<Duration>,
     },
@@ -90,7 +95,7 @@ struct Arguments {
 }
 
 const fn usage() -> &'static str {
-    "usage:\n  slimblade [--device PATH] identify\n  slimblade [--device PATH] [--timeout-seconds N] enter-loader --confirm\n  slimblade [--device PATH] [--timeout-seconds N] set-late-marker --confirm\n  slimblade [--device PATH] [--timeout-seconds N] start-experiment --confirm\n  slimblade [--device PATH] [--timeout-seconds N] run-rust-response --confirm\n  slimblade [--device PATH] [--timeout-seconds N] run-post-init-hook --confirm\n  slimblade [--device PATH] [--timeout-seconds N] run-unsolicited-report-probe --confirm\n  slimblade [--device PATH] [--timeout-seconds N] read-input --confirm\n  slimblade [--device PATH] [--timeout-seconds N] capture-input --confirm\n  slimblade [--device PATH] [--timeout-seconds N] capture-state --confirm\n  slimblade [--device PATH] [--timeout-seconds N] capture-sensors --confirm\n  slimblade [--device PATH] [--timeout-seconds N] poll-sensors --confirm\n  slimblade [--device PATH] [--timeout-seconds N] [--duration-seconds N] stream-sensors --confirm\n  slimblade [--device PATH] [--timeout-seconds N] probe-stream-transport\n  slimblade [--device PATH] [--timeout-seconds N] [--duration-seconds N] stream-sensor-reports\n  slimblade [--device PATH] [--timeout-seconds N] query-loader\n  slimblade [--device PATH] [--timeout-seconds N] FLASH_COMMAND --firmware PATH --confirm-sha256 HASH\n\nFLASH_COMMAND: restore-official-v449, flash-descriptor-probe, flash-recovery-carrier, flash-reset-trampoline, flash-recovery-stub, flash-startup-trampoline, flash-rust-guard, flash-usb-recovery-probe, flash-stock-harness, flash-late-marker-probe, flash-experiment-entry-probe, flash-rust-response-probe, flash-post-init-hook-probe, flash-wired-loop-hook-probe, flash-active-loop-hook-probe, flash-steady-loop-hook-probe, flash-dispatcher-return-hook-probe, flash-experiment-dispatch-guard, flash-unsolicited-report-probe, flash-custom-main-handoff-probe, flash-custom-main-usb-recovery-probe, flash-custom-main-stream-transport-probe, flash-custom-main-sensor-stream-probe, flash-input-diagnostics, flash-paged-input-diagnostics, or flash-sensor-shadow-diagnostics"
+    "usage:\n  slimblade [--device PATH] identify\n  slimblade [--device PATH] [--timeout-seconds N] enter-loader --confirm\n  slimblade [--device USB_SYSFS_PATH] [--timeout-seconds N] usbfs-enter-loader --confirm\n  slimblade [--device PATH] [--timeout-seconds N] set-late-marker --confirm\n  slimblade [--device PATH] [--timeout-seconds N] start-experiment --confirm\n  slimblade [--device PATH] [--timeout-seconds N] run-rust-response --confirm\n  slimblade [--device PATH] [--timeout-seconds N] run-post-init-hook --confirm\n  slimblade [--device PATH] [--timeout-seconds N] run-unsolicited-report-probe --confirm\n  slimblade [--device PATH] [--timeout-seconds N] read-input --confirm\n  slimblade [--device PATH] [--timeout-seconds N] capture-input --confirm\n  slimblade [--device PATH] [--timeout-seconds N] capture-state --confirm\n  slimblade [--device PATH] [--timeout-seconds N] capture-sensors --confirm\n  slimblade [--device PATH] [--timeout-seconds N] poll-sensors --confirm\n  slimblade [--device PATH] [--timeout-seconds N] [--duration-seconds N] stream-sensors --confirm\n  slimblade [--device PATH] [--timeout-seconds N] probe-stream-transport\n  slimblade [--device PATH] [--timeout-seconds N] [--duration-seconds N] stream-sensor-reports\n  slimblade [--device PATH] [--timeout-seconds N] query-loader\n  slimblade [--device PATH] [--timeout-seconds N] FLASH_COMMAND --firmware PATH --confirm-sha256 HASH\n\nFLASH_COMMAND: restore-official-v449, flash-descriptor-probe, flash-recovery-carrier, flash-reset-trampoline, flash-recovery-stub, flash-startup-trampoline, flash-rust-guard, flash-usb-recovery-probe, flash-stock-harness, flash-late-marker-probe, flash-experiment-entry-probe, flash-rust-response-probe, flash-post-init-hook-probe, flash-wired-loop-hook-probe, flash-active-loop-hook-probe, flash-steady-loop-hook-probe, flash-dispatcher-return-hook-probe, flash-experiment-dispatch-guard, flash-unsolicited-report-probe, flash-custom-main-handoff-probe, flash-custom-main-usb-recovery-probe, flash-custom-main-stream-transport-probe, flash-custom-main-sensor-stream-probe, flash-input-diagnostics, flash-paged-input-diagnostics, or flash-sensor-shadow-diagnostics"
 }
 
 fn flash_artifact_for_command(command: &str) -> Option<FlashArtifact> {
@@ -152,6 +157,7 @@ fn take_duration(
 const fn default_device(command: &Command) -> &'static str {
     match command {
         Command::QueryLoader | Command::Flash { .. } => DEFAULT_LOADER_DEVICE,
+        Command::UsbfsEnterLoader { .. } => DEFAULT_RESCUE_DEVICE,
         _ => DEFAULT_APPLICATION_DEVICE,
     }
 }
@@ -199,6 +205,7 @@ fn parse_arguments() -> Result<Arguments, String> {
     let command = match command_name.as_str() {
         "identify" => Command::Identify,
         "enter-loader" => Command::EnterLoader { confirmed },
+        "usbfs-enter-loader" => Command::UsbfsEnterLoader { confirmed },
         "set-late-marker" => Command::SetLateMarker { confirmed },
         "start-experiment" => Command::StartExperiment { confirmed },
         "run-rust-response" => Command::RunRustResponse { confirmed },
@@ -331,6 +338,61 @@ fn enter_loader(device: &Path, timeout: Duration, confirmed: bool) -> Result<(),
         loader.devnum.as_deref().unwrap_or("")
     );
     Ok(())
+}
+
+fn usbfs_enter_loader(device: &Path, timeout: Duration, confirmed: bool) -> Result<(), String> {
+    if !confirmed {
+        return Err("refusing usbfs loader reset without --confirm".to_owned());
+    }
+    let deadline = Instant::now()
+        .checked_add(timeout)
+        .ok_or_else(|| "rescue timeout overflow".to_owned())?;
+    let mut attempts = 0_u64;
+    let mut last_error = None;
+    let mut physical_path = None;
+    while Instant::now() < deadline {
+        match usb_device_from_directory(device) {
+            Ok(Some(current)) if BOOT_IDENTITIES.contains(&current.identity) => {
+                println!(
+                    "loader={:04x}:{:04x} sysfs={} attempts={attempts}",
+                    current.identity.vendor_id, current.identity.product_id, current.sysfs
+                );
+                return Ok(());
+            },
+            Ok(Some(current))
+                if current.identity == KENSINGTON_WIRED_IDENTITY
+                    && current.bcd_device.as_deref() == Some("0475") =>
+            {
+                physical_path.get_or_insert(current.sysfs);
+                match usbfs::send_normal_report(device, NormalReport::reset_to_loader()) {
+                    Ok(()) => {
+                        attempts = attempts.saturating_add(1);
+                        last_error = None;
+                    },
+                    Err(error) => last_error = Some(error.to_string()),
+                }
+            },
+            Ok(Some(current)) => {
+                return Err(format!(
+                    "refusing usbfs reset for {:04x}:{:04x} bcdDevice={:?}",
+                    current.identity.vendor_id, current.identity.product_id, current.bcd_device
+                ));
+            },
+            Ok(None) => {},
+            Err(error)
+                if matches!(
+                    error.kind(),
+                    io::ErrorKind::NotFound | io::ErrorKind::Interrupted
+                ) => {},
+            Err(error) => last_error = Some(error.to_string()),
+        }
+        thread::sleep(Duration::from_millis(20));
+    }
+    Err(format!(
+        "usbfs recovery timed out after {attempts} accepted transfers at {:?}; last error: {}",
+        physical_path,
+        last_error.as_deref().unwrap_or("device did not enumerate")
+    ))
 }
 
 fn set_late_marker(device: &Path, timeout: Duration, confirmed: bool) -> Result<(), String> {
@@ -1209,6 +1271,9 @@ fn flash_artifact(
     firmware: &Path,
     confirmation: &str,
 ) -> Result<(), String> {
+    if let Some(reason) = artifact.flash_refusal_reason() {
+        return Err(format!("refusing flash: {reason}"));
+    }
     if !artifact.confirmation_matches(confirmation) {
         return Err(format!(
             "refusing flash: --confirm-sha256 must equal {}",
@@ -1299,6 +1364,9 @@ fn run() -> Result<(), String> {
         Command::Identify => identify(&arguments.device),
         Command::EnterLoader { confirmed } => {
             enter_loader(&arguments.device, arguments.timeout, confirmed)
+        },
+        Command::UsbfsEnterLoader { confirmed } => {
+            usbfs_enter_loader(&arguments.device, arguments.timeout, confirmed)
         },
         Command::SetLateMarker { confirmed } => {
             set_late_marker(&arguments.device, arguments.timeout, confirmed)

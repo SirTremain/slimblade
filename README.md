@@ -15,6 +15,7 @@ Compact notes on the Kensington SlimBlade Pro sensor and firmware interface.
 - [Development tooling](docs/development-tooling.md)
 - [Custom firmware architecture](docs/development-architecture.md)
 - [Post-initialization recovery marker](docs/post-init-marker.md)
+- [Release-blocking marker reachability gate](docs/marker-reachability-gate.md)
 - [Rust migration plan](docs/rust-migration-plan.md)
 - [Board observations](docs/board-observations.md)
 

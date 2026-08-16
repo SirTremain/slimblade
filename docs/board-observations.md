@@ -1,6 +1,6 @@
 # Board observations
 
-Last checked: 2026-08-14
+Last checked: 2026-08-16
 
 User-supplied board photographs are stored in [`images/`](../images/). They show the component side in four overlapping regions.
 
@@ -16,6 +16,19 @@ User-supplied board photographs are stored in [`images/`](../images/). They show
 
 None of the component-side controls is marked boot or reset. [`back.jpg`](../images/back.jpg) directly confirms a reverse-side factory pad cluster labeled `RSTN`, `P04`, `P05`, `P06`, `P07`, `VCC`, and `GND`. The four GPIO traces run together toward the controller, consistent with the BK3635 programming/debug interface. Exact signal assignments remain unverified.
 
+A Tuya production-programming document for the closely related BK3632 maps the
+same four labels as `P07=SPI_CS`, `P05=SPI_MISO`, `P04=SPI_MOSI`, and
+`P06=SPI_SCK`, alongside `RSTN`, supply, and ground. The physical match is
+strong evidence for the purpose of this board's cluster, but it is not a
+BK3635 pinout or proof that a generic SPI adapter implements the required flash
+protocol. Do not connect a programmer until signal voltage and BK3635 tool
+compatibility are established.
+
 ## Boot-mode indicator
 
 The official updater recognizes generic boot-device VID/PIDs `25A7:FABE`, `3554:F600`, and `3554:F800`, distinct from the normal Kensington application VID/PID `047D:80D7`. USB enumeration under one of those generic IDs would confirm bootloader mode without writing flash.
+
+## Sources
+
+- [Beken BK3635 product page](https://www.bekencorp.com/en/goods/detail/cid/46.html), retrieved 2026-08-16: JTAG debugging, SPI flash download, `1.8–3.6 V` battery supply, and `4.75–5.25 V` USB supply.
+- [Tuya production-programming document](https://images.tuyacn.com/goat/pdf/01JJ5YK07MZ71F4M4JEV737R4H/%E8%8A%AF%E7%89%87%E7%83%A7%E5%BD%95_%E6%B6%82%E9%B8%A6%E5%BC%80%E5%8F%91%E8%80%85%E5%B9%B3%E5%8F%B0_%E6%B6%82%E9%B8%A6%E5%BC%80%E5%8F%91%E8%80%85%E5%B9%B3%E5%8F%B0.pdf), version 2025-01-22, retrieved 2026-08-16: closely related BK3632 factory SPI-pad mapping.
