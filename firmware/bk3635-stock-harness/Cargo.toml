@@ -45,6 +45,14 @@ path = "src/dispatcher_return_hook.rs"
 name = "slimblade-experiment-dispatch-guard"
 path = "src/experiment_dispatch_guard.rs"
 
+[[bin]]
+name = "slimblade-input-diagnostics"
+path = "src/input_diagnostics.rs"
+
+[[bin]]
+name = "slimblade-paged-input-diagnostics"
+path = "src/paged_input_diagnostics.rs"
+
 [profile.dev]
 panic = "abort"
 

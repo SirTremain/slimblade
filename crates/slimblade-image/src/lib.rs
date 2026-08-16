@@ -45,7 +45,7 @@ impl ArtifactIdentity {
     }
 }
 
-pub const REFERENCE_ARTIFACTS: [ArtifactIdentity; 18] = [
+pub const REFERENCE_ARTIFACTS: [ArtifactIdentity; 20] = [
     ArtifactIdentity {
         name: "stock-startup-reference",
         code_sha256: parse_sha256(
@@ -204,6 +204,24 @@ pub const REFERENCE_ARTIFACTS: [ArtifactIdentity; 18] = [
             "dd720ba30fc05b9c401eb1f182f62bb217a57a03a3788ccc421806e06f30ac48",
         )),
     },
+    ArtifactIdentity {
+        name: "input-diagnostics",
+        code_sha256: parse_sha256(
+            "b4bef493b1b5f2e49c5e880f307dad8c633e8d5b3e78849deb32ba7f26fc1928",
+        ),
+        container_sha256: Some(parse_sha256(
+            "4a90ccf453b80cbbf4018dfec87d14051dfff3ea076445822c28dfbc3e4f55a3",
+        )),
+    },
+    ArtifactIdentity {
+        name: "paged-input-diagnostics",
+        code_sha256: parse_sha256(
+            "3e17a0b58cef059ace43d43bf4d957f65cf2ef29f14711ca0205e4a8e9e34a65",
+        ),
+        container_sha256: Some(parse_sha256(
+            "c5fb2b865c6ba1993c673f989e5c811bfa661b31f8c6261d2ab04e95eab5692f",
+        )),
+    },
 ];
 
 pub const STOCK_STARTUP_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[0];
@@ -224,6 +242,8 @@ pub const ACTIVE_LOOP_HOOK_PROBE_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACT
 pub const STEADY_LOOP_HOOK_PROBE_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[15];
 pub const DISPATCHER_RETURN_HOOK_PROBE_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[16];
 pub const EXPERIMENT_DISPATCH_GUARD_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[17];
+pub const INPUT_DIAGNOSTICS_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[18];
+pub const PAGED_INPUT_DIAGNOSTICS_ARTIFACT: ArtifactIdentity = REFERENCE_ARTIFACTS[19];
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct FirmwareIdentity {
@@ -443,8 +463,20 @@ pub const EXPERIMENT_DISPATCH_GUARD: FirmwareIdentity = firmware_identity(
     "91069f91ac42e4621022514e04af0571ad5c9f52bbebcf192a8bdd9466a26e22",
     0x7057_4845,
 );
+pub const INPUT_DIAGNOSTICS: FirmwareIdentity = firmware_identity(
+    "input-diagnostics-v4.65",
+    "4a90ccf453b80cbbf4018dfec87d14051dfff3ea076445822c28dfbc3e4f55a3",
+    "1c5854dc8b2e66a814a0dc5ebf41768a3ebcc58da83addbcb6b512b3090e6f59",
+    0xef6a_b24a,
+);
+pub const PAGED_INPUT_DIAGNOSTICS: FirmwareIdentity = firmware_identity(
+    "paged-input-diagnostics-v4.66",
+    "c5fb2b865c6ba1993c673f989e5c811bfa661b31f8c6261d2ab04e95eab5692f",
+    "6006faab993f9ba83b30a365376ad889dfcbf20af22de057e98d2c680516723d",
+    0x7ed6_3bf1,
+);
 
-pub const FLASHABLE_IMAGES: [FirmwareIdentity; 18] = [
+pub const FLASHABLE_IMAGES: [FirmwareIdentity; 20] = [
     OFFICIAL_V449,
     V449_DESCRIPTOR_PROBE,
     RECOVERY_CARRIER,
@@ -463,6 +495,8 @@ pub const FLASHABLE_IMAGES: [FirmwareIdentity; 18] = [
     STEADY_LOOP_HOOK_PROBE,
     DISPATCHER_RETURN_HOOK_PROBE,
     EXPERIMENT_DISPATCH_GUARD,
+    INPUT_DIAGNOSTICS,
+    PAGED_INPUT_DIAGNOSTICS,
 ];
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -1169,14 +1203,48 @@ mod tests {
     }
 
     #[test]
+    fn input_diagnostics_payload_constants() {
+        assert_fixture(
+            INPUT_DIAGNOSTICS,
+            "firmware/bk3635-stock-harness/target/input-diagnostics/DO_NOT_FLASH-input-diagnostics.container.bin",
+        );
+    }
+
+    #[test]
+    fn input_diagnostics_rejects_one_byte_corruption() {
+        assert_corruption_rejected(
+            INPUT_DIAGNOSTICS,
+            "firmware/bk3635-stock-harness/target/input-diagnostics/DO_NOT_FLASH-input-diagnostics.container.bin",
+            0x22b4,
+        );
+    }
+
+    #[test]
+    fn paged_input_diagnostics_payload_constants() {
+        assert_fixture(
+            PAGED_INPUT_DIAGNOSTICS,
+            "firmware/bk3635-stock-harness/target/paged-input-diagnostics/DO_NOT_FLASH-paged-input-diagnostics.container.bin",
+        );
+    }
+
+    #[test]
+    fn paged_input_diagnostics_rejects_one_byte_corruption() {
+        assert_corruption_rejected(
+            PAGED_INPUT_DIAGNOSTICS,
+            "firmware/bk3635-stock-harness/target/paged-input-diagnostics/DO_NOT_FLASH-paged-input-diagnostics.container.bin",
+            0x22b4,
+        );
+    }
+
+    #[test]
     fn reference_artifact_manifest_is_unique_and_complete() {
-        assert_eq!(REFERENCE_ARTIFACTS.len(), 18);
+        assert_eq!(REFERENCE_ARTIFACTS.len(), 20);
         assert_eq!(
             REFERENCE_ARTIFACTS
                 .iter()
                 .filter(|artifact| artifact.container_sha256.is_some())
                 .count(),
-            16
+            18
         );
         for (index, artifact) in REFERENCE_ARTIFACTS.iter().enumerate() {
             assert_ne!(artifact.code_sha256, [0; 32]);

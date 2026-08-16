@@ -16,9 +16,13 @@ Kensington startup, USB, and interrupt handlers:
 - `slimblade-dispatcher-return-hook-probe`: the `0463` marker-first candidate,
   which wraps the proven live stock vendor-dispatch call and consumes armed
   state `5` only after that call returns.
-- `slimblade-experiment-dispatch-guard`: the build-only `0464` reusable entry,
+- `slimblade-experiment-dispatch-guard`: the live-tested `0464` reusable entry,
   which clears armed state `5` before calling a returning Rust experiment and
   keeps the nested call boundaries 8-byte stack aligned.
+- `slimblade-input-diagnostics`: the live-tested `0465` read-only snapshot;
+  its chosen stock report buffer remained zero during wired input.
+- `slimblade-paged-input-diagnostics`: the build-only `0466` selector-based
+  snapshot of proven button, combined-motion, and per-sensor RAM windows.
 
 The linked injection occupies only the verified `0x21ac–0x22ff` stock gap.
 No build command accesses hardware. Exact artifact identities and the proposed

@@ -94,6 +94,17 @@ impl NormalReport {
         Self(bytes)
     }
 
+    /// Constructs a normal-mode command with its one-byte parameter in byte 3.
+    #[must_use]
+    pub const fn command_with_parameter(command: u8, parameter: u8) -> Self {
+        let mut bytes = [0; NORMAL_REPORT_LENGTH];
+        bytes[0] = NORMAL_REPORT_ID;
+        bytes[1] = command;
+        bytes[3] = parameter;
+        bytes[NORMAL_REPORT_LENGTH - 1] = checksum(&bytes);
+        Self(bytes)
+    }
+
     #[must_use]
     pub const fn reset_to_loader() -> Self {
         Self::command(0x0d)
@@ -482,6 +493,18 @@ mod tests {
             assert_eq!(report.as_bytes()[16], final_checksum);
             assert!(checksum_is_valid(report.as_bytes()));
         }
+    }
+
+    #[test]
+    fn parameterized_command_places_parameter_and_refreshes_checksum() {
+        let report = NormalReport::command_with_parameter(0x0f, 0x06);
+        assert_eq!(
+            report.as_bytes(),
+            &[
+                0x08, 0x0f, 0, 0x06, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x38
+            ]
+        );
+        assert!(checksum_is_valid(report.as_bytes()));
     }
 
     #[test]

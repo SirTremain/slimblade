@@ -35,6 +35,9 @@ application flash, or the protected pre-marker control flow.
 4. Replace the low-level USB stack only if the stock transport cannot meet the
    required bandwidth or semantics.
 
+The first read-only snapshot ABI and its safety checks are recorded in
+[`input-diagnostics.md`](input-diagnostics.md).
+
 Known anchors already include the vendor dispatcher at `0x18f50–0x18fee`, its
 carrier call at `0x18fba`, stock loader entry near `0x1895d`, response handling
 at `0x18f6e–0x18fd4`, USB interfaces `00` and `01`, and descriptors near
@@ -73,13 +76,12 @@ cold-power recovery returned the resident loader. Audited `0453` was then
 restored. This establishes the dispatcher-return boundary as the safe entry
 point for subsequent experimental code.
 
-The build-only `0464` candidate now uses that boundary as a permanent one-shot
-dispatcher. Its command path commits the marker, arms state `5`, clears the arm
-before entering a returning Rust function, and preserves 8-byte stack alignment.
-The first Rust entry is intentionally a no-op. It must pass the same unarmed,
-armed, input, and cold-power gates before experimental sensor or USB logic is
-added.
+The `0464` reusable dispatcher passed unarmed input, armed input, host reboot,
+and marker-first cold-power recovery gates. The live-tested `0465` candidate
+kept its marker writer and reset trampoline byte-for-byte, but its selected
+stock report buffer remained zero during wired input. The build-only `0466`
+candidate instead pages through proven live button, combined-motion, and
+per-sensor RAM windows behind the same marker-first command boundary.
 
-After that gate, expand the Rust entry behind storage-isolation and post-link
-audits, map the protected wired-USB call graph, and reclaim only code whose
-wired-mode unreachability is demonstrated by static references and live tests.
+After labeling those fields, trace the two per-sensor state paths and expand
+the diagnostic ABI behind the same storage-isolation and post-link audits.

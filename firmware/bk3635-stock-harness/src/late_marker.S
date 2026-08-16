@@ -11,6 +11,13 @@
     .ifdef POST_INIT_EXPERIMENT_DISPATCH_GUARD
     .equ STOCK_MODE_ADDRESS,       0x00400264
     .equ STOCK_VENDOR_DISPATCH,    0x00018f4d
+    .ifdef INPUT_DIAGNOSTICS
+    .ifdef PAGED_INPUT_DIAGNOSTICS
+    .equ STOCK_INPUT_REPORT,       0x00400160
+    .else
+    .equ STOCK_INPUT_REPORT,       0x00401360
+    .endif
+    .endif
     .else
     .ifdef POST_INIT_DISPATCH_RETURN_HOOK_PROBE
     .equ STOCK_MODE_ADDRESS,       0x00400264
@@ -154,10 +161,25 @@ carrier_late_marker:
     .global carrier_hook_state
     .type carrier_hook_state, %function
 carrier_hook_state:
+    .ifdef INPUT_DIAGNOSTICS
+    /* Keep marker_set and every following proven carrier byte in place. */
+    .ifdef PAGED_INPUT_DIAGNOSTICS
+    ldrb r0, [r5, #3]
+    strb r0, [r4, #3]
+    lsls r0, #3
+    b input_snapshot
+    .else
+    b input_snapshot
+    nop
+    nop
+    nop
+    .endif
+    .else
     ldr r0, =STOCK_MODE_ADDRESS
     ldrb r0, [r0]
     strb r0, [r4, #3]
     bx lr
+    .endif
     .size carrier_hook_state, . - carrier_hook_state
     .else
     .ifdef RUST_RESPONSE_PROBE
@@ -364,10 +386,30 @@ experiment_dispatch_guard_impl:
     bne .Lexperiment_dispatch_return
     movs r2, #0
     strb r2, [r1]
+    .ifndef INPUT_DIAGNOSTICS
     bl experiment_entry
+    .endif
 .Lexperiment_dispatch_return:
     pop {r4, pc}
     .size experiment_dispatch_guard_impl, . - experiment_dispatch_guard_impl
+    .ifdef INPUT_DIAGNOSTICS
+/* Copy aligned RAM 0x00401360..0x0040136b into response bytes 4..15. */
+    .thumb_func
+    .global input_snapshot
+    .type input_snapshot, %function
+input_snapshot:
+    .ifdef PAGED_INPUT_DIAGNOSTICS
+    ldr r1, =STOCK_INPUT_REPORT
+    adds r0, r1, r0
+    .else
+    ldr r0, =STOCK_INPUT_REPORT
+    .endif
+    ldmia r0!, {r1-r3}
+    adds r0, r4, #4
+    stmia r0!, {r1-r3}
+    bx lr
+    .size input_snapshot, . - input_snapshot
+    .endif
     .ltorg
     .endif
 

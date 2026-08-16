@@ -3,14 +3,18 @@ use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
+use std::thread;
+use std::time::Instant;
 
 use slimblade_cli::{
-    FlashArtifact, PostFlashExpectation, active_loop_arm_response_is_success,
-    dispatcher_return_arm_response_is_success, experiment_dispatch_arm_response_is_success,
+    FlashArtifact, InputSnapshot, InputStatePage, PostFlashExpectation,
+    active_loop_arm_response_is_success, dispatcher_return_arm_response_is_success,
+    experiment_dispatch_arm_response_is_success, input_snapshot, input_state_page,
     late_marker_response_is_success, post_init_arm_response_is_success, post_init_hook_state,
     rust_response_is_success, steady_loop_arm_response_is_success,
     wired_loop_arm_response_is_success,
 };
+use slimblade_linux::UsbDevice;
 use slimblade_linux::flash::{transfer_payload, wait_for_queried_loader};
 use slimblade_linux::hidraw::Hidraw;
 use slimblade_linux::sysfs::{
@@ -40,6 +44,15 @@ enum Command {
     RunPostInitHook {
         confirmed: bool,
     },
+    ReadInput {
+        confirmed: bool,
+    },
+    CaptureInput {
+        confirmed: bool,
+    },
+    CaptureState {
+        confirmed: bool,
+    },
     QueryLoader,
     Flash {
         artifact: FlashArtifact,
@@ -56,7 +69,7 @@ struct Arguments {
 }
 
 const fn usage() -> &'static str {
-    "usage:\n  slimblade [--device PATH] identify\n  slimblade [--device PATH] [--timeout-seconds N] enter-loader --confirm\n  slimblade [--device PATH] [--timeout-seconds N] set-late-marker --confirm\n  slimblade [--device PATH] [--timeout-seconds N] start-experiment --confirm\n  slimblade [--device PATH] [--timeout-seconds N] run-rust-response --confirm\n  slimblade [--device PATH] [--timeout-seconds N] run-post-init-hook --confirm\n  slimblade [--device PATH] [--timeout-seconds N] query-loader\n  slimblade [--device PATH] [--timeout-seconds N] FLASH_COMMAND --firmware PATH --confirm-sha256 HASH\n\nFLASH_COMMAND: restore-official-v449, flash-descriptor-probe, flash-recovery-carrier, flash-reset-trampoline, flash-recovery-stub, flash-startup-trampoline, flash-rust-guard, flash-usb-recovery-probe, flash-stock-harness, flash-late-marker-probe, flash-experiment-entry-probe, flash-rust-response-probe, flash-post-init-hook-probe, flash-wired-loop-hook-probe, flash-active-loop-hook-probe, flash-steady-loop-hook-probe, flash-dispatcher-return-hook-probe, or flash-experiment-dispatch-guard"
+    "usage:\n  slimblade [--device PATH] identify\n  slimblade [--device PATH] [--timeout-seconds N] enter-loader --confirm\n  slimblade [--device PATH] [--timeout-seconds N] set-late-marker --confirm\n  slimblade [--device PATH] [--timeout-seconds N] start-experiment --confirm\n  slimblade [--device PATH] [--timeout-seconds N] run-rust-response --confirm\n  slimblade [--device PATH] [--timeout-seconds N] run-post-init-hook --confirm\n  slimblade [--device PATH] [--timeout-seconds N] read-input --confirm\n  slimblade [--device PATH] [--timeout-seconds N] capture-input --confirm\n  slimblade [--device PATH] [--timeout-seconds N] capture-state --confirm\n  slimblade [--device PATH] [--timeout-seconds N] query-loader\n  slimblade [--device PATH] [--timeout-seconds N] FLASH_COMMAND --firmware PATH --confirm-sha256 HASH\n\nFLASH_COMMAND: restore-official-v449, flash-descriptor-probe, flash-recovery-carrier, flash-reset-trampoline, flash-recovery-stub, flash-startup-trampoline, flash-rust-guard, flash-usb-recovery-probe, flash-stock-harness, flash-late-marker-probe, flash-experiment-entry-probe, flash-rust-response-probe, flash-post-init-hook-probe, flash-wired-loop-hook-probe, flash-active-loop-hook-probe, flash-steady-loop-hook-probe, flash-dispatcher-return-hook-probe, flash-experiment-dispatch-guard, flash-input-diagnostics, or flash-paged-input-diagnostics"
 }
 
 fn flash_artifact_for_command(command: &str) -> Option<FlashArtifact> {
@@ -79,6 +92,8 @@ fn flash_artifact_for_command(command: &str) -> Option<FlashArtifact> {
         "flash-steady-loop-hook-probe" => Some(FlashArtifact::SteadyLoopHookProbe),
         "flash-dispatcher-return-hook-probe" => Some(FlashArtifact::DispatcherReturnHookProbe),
         "flash-experiment-dispatch-guard" => Some(FlashArtifact::ExperimentDispatchGuard),
+        "flash-input-diagnostics" => Some(FlashArtifact::InputDiagnostics),
+        "flash-paged-input-diagnostics" => Some(FlashArtifact::PagedInputDiagnostics),
         _ => None,
     }
 }
@@ -138,6 +153,9 @@ fn parse_arguments() -> Result<Arguments, String> {
         "start-experiment" => Command::StartExperiment { confirmed },
         "run-rust-response" => Command::RunRustResponse { confirmed },
         "run-post-init-hook" => Command::RunPostInitHook { confirmed },
+        "read-input" => Command::ReadInput { confirmed },
+        "capture-input" => Command::CaptureInput { confirmed },
+        "capture-state" => Command::CaptureState { confirmed },
         "query-loader" => Command::QueryLoader,
         "restore-official-v449"
         | "flash-descriptor-probe"
@@ -156,7 +174,9 @@ fn parse_arguments() -> Result<Arguments, String> {
         | "flash-active-loop-hook-probe"
         | "flash-steady-loop-hook-probe"
         | "flash-dispatcher-return-hook-probe"
-        | "flash-experiment-dispatch-guard" => Command::Flash {
+        | "flash-experiment-dispatch-guard"
+        | "flash-input-diagnostics"
+        | "flash-paged-input-diagnostics" => Command::Flash {
             artifact: flash_artifact_for_command(command_name.as_str())
                 .ok_or_else(|| "unreachable flash command mapping".to_owned())?,
             firmware: firmware.ok_or_else(|| "flash command requires --firmware".to_owned())?,
@@ -171,7 +191,10 @@ fn parse_arguments() -> Result<Arguments, String> {
         | Command::SetLateMarker { .. }
         | Command::StartExperiment { .. }
         | Command::RunRustResponse { .. }
-        | Command::RunPostInitHook { .. } => DEFAULT_APPLICATION_DEVICE,
+        | Command::RunPostInitHook { .. }
+        | Command::ReadInput { .. }
+        | Command::CaptureInput { .. }
+        | Command::CaptureState { .. } => DEFAULT_APPLICATION_DEVICE,
         Command::QueryLoader | Command::Flash { .. } => DEFAULT_LOADER_DEVICE,
     };
     Ok(Arguments {
@@ -367,8 +390,17 @@ fn exchange_vendor_command(
     command: u8,
     timeout: Duration,
 ) -> Result<NormalReport, String> {
+    exchange_vendor_report(hidraw, NormalReport::command(command), timeout)
+}
+
+fn exchange_vendor_report(
+    hidraw: &mut Hidraw,
+    report: NormalReport,
+    timeout: Duration,
+) -> Result<NormalReport, String> {
+    let command = report.command_byte();
     hidraw
-        .write_report(NormalReport::command(command).as_bytes())
+        .write_report(report.as_bytes())
         .map_err(|error| format!("vendor command {command:#04x} failed: {error}"))?;
     hidraw
         .read_normal_report(timeout.max(Duration::from_secs(3)))
@@ -455,6 +487,199 @@ fn run_post_init_hook(device: &Path, timeout: Duration, confirmed: bool) -> Resu
         }
     }
     Err("post-init hook remained armed after eight queries".to_owned())
+}
+
+fn open_input_diagnostics(device: &Path) -> Result<(UsbDevice, Hidraw), String> {
+    let parent = usb_parent_for_hidraw(device, Path::new(HIDRAW_SYSFS_ROOT))
+        .map_err(|error| format!("could not resolve USB parent: {error}"))?
+        .ok_or_else(|| "could not find USB parent".to_owned())?;
+    if parent.identity != KENSINGTON_WIRED_IDENTITY || parent.bcd_device.as_deref() != Some("0465")
+    {
+        return Err(format!(
+            "refusing input diagnostic for identity {:04x}:{:04x} bcdDevice={:?}; expected 047d:80d7/0465",
+            parent.identity.vendor_id, parent.identity.product_id, parent.bcd_device
+        ));
+    }
+    let hidraw = Hidraw::open_read_write(device)
+        .map_err(|error| format!("could not open {}: {error}", device.display()))?;
+    let (_, identity) = hidraw
+        .identity()
+        .map_err(|error| format!("could not query HID identity: {error}"))?;
+    if identity != parent.identity {
+        return Err("HID identity and USB parent disagree".to_owned());
+    }
+    Ok((parent, hidraw))
+}
+
+fn arm_input_diagnostics(hidraw: &mut Hidraw, timeout: Duration) -> Result<(), String> {
+    let armed = exchange_vendor_command(hidraw, 0x0e, timeout)?;
+    if experiment_dispatch_arm_response_is_success(armed) {
+        Ok(())
+    } else {
+        Err("marker command did not return status 01 and signature a9".to_owned())
+    }
+}
+
+fn query_input_snapshot(hidraw: &mut Hidraw, timeout: Duration) -> Result<InputSnapshot, String> {
+    let response = exchange_vendor_command(hidraw, 0x0f, timeout)?;
+    input_snapshot(response)
+        .ok_or_else(|| "input diagnostic returned a malformed snapshot".to_owned())
+}
+
+fn print_input_snapshot(snapshot: InputSnapshot, elapsed_ms: u128, sysfs: &str) {
+    println!(
+        "input elapsed_ms={elapsed_ms} prefix={:02x}{:02x} sequence={} buttons={:#04x} motion_x={} motion_y={} report_6={:#04x} report_7={:#04x} report_8={:#04x} report_9={:#04x} sysfs={sysfs}",
+        snapshot.prefix[0],
+        snapshot.prefix[1],
+        snapshot.sequence,
+        snapshot.buttons,
+        snapshot.motion_x,
+        snapshot.motion_y,
+        snapshot.report_6,
+        snapshot.report_7,
+        snapshot.report_8,
+        snapshot.report_9,
+    );
+}
+
+fn read_input(device: &Path, timeout: Duration, confirmed: bool) -> Result<(), String> {
+    if !confirmed {
+        return Err("refusing marker-first input diagnostic without --confirm".to_owned());
+    }
+    let (parent, mut hidraw) = open_input_diagnostics(device)?;
+    arm_input_diagnostics(&mut hidraw, timeout)?;
+    let snapshot = query_input_snapshot(&mut hidraw, timeout)?;
+    print_input_snapshot(snapshot, 0, &parent.sysfs);
+    Ok(())
+}
+
+fn capture_input(device: &Path, timeout: Duration, confirmed: bool) -> Result<(), String> {
+    if !confirmed {
+        return Err("refusing marker-first input capture without --confirm".to_owned());
+    }
+    let (parent, mut hidraw) = open_input_diagnostics(device)?;
+    arm_input_diagnostics(&mut hidraw, timeout)?;
+    let started = Instant::now();
+    let duration = Duration::from_secs(15);
+    let mut previous = None;
+    while started.elapsed() < duration {
+        let snapshot = query_input_snapshot(&mut hidraw, timeout)?;
+        if previous != Some(snapshot) {
+            print_input_snapshot(snapshot, started.elapsed().as_millis(), &parent.sysfs);
+            previous = Some(snapshot);
+        }
+        thread::sleep(Duration::from_millis(20));
+    }
+    println!(
+        "input_capture=complete duration_ms=15000 sysfs={}",
+        parent.sysfs
+    );
+    Ok(())
+}
+
+const INPUT_STATE_SELECTORS: [u8; 5] = [0, 2, 6, 15, 20];
+
+fn open_paged_input_diagnostics(device: &Path) -> Result<(UsbDevice, Hidraw), String> {
+    let parent = usb_parent_for_hidraw(device, Path::new(HIDRAW_SYSFS_ROOT))
+        .map_err(|error| format!("could not resolve USB parent: {error}"))?
+        .ok_or_else(|| "could not find USB parent".to_owned())?;
+    if parent.identity != KENSINGTON_WIRED_IDENTITY || parent.bcd_device.as_deref() != Some("0466")
+    {
+        return Err(format!(
+            "refusing paged input diagnostic for identity {:04x}:{:04x} bcdDevice={:?}; expected 047d:80d7/0466",
+            parent.identity.vendor_id, parent.identity.product_id, parent.bcd_device
+        ));
+    }
+    let hidraw = Hidraw::open_read_write(device)
+        .map_err(|error| format!("could not open {}: {error}", device.display()))?;
+    let (_, identity) = hidraw
+        .identity()
+        .map_err(|error| format!("could not query HID identity: {error}"))?;
+    if identity != parent.identity {
+        return Err("HID identity and USB parent disagree".to_owned());
+    }
+    Ok((parent, hidraw))
+}
+
+fn query_input_state_page(
+    hidraw: &mut Hidraw,
+    selector: u8,
+    timeout: Duration,
+) -> Result<InputStatePage, String> {
+    let request = NormalReport::command_with_parameter(0x0f, selector);
+    let response = exchange_vendor_report(hidraw, request, timeout)?;
+    input_state_page(response, selector).ok_or_else(|| {
+        format!("paged input diagnostic returned a malformed selector {selector} response")
+    })
+}
+
+const fn tracked_input_bytes(page: InputStatePage) -> Option<[u8; 4]> {
+    let [_, _, b2, b3, b4, b5, b6, b7, _, _, _, _] = page.bytes;
+    match page.selector {
+        0 | 2 | 20 => Some([b4, b5, b6, b7]),
+        6 | 15 => Some([b2, b3, b4, b5]),
+        _ => None,
+    }
+}
+
+fn print_tracked_input(page: InputStatePage, tracked: [u8; 4], elapsed_ms: u128, sysfs: &str) {
+    let [t0, t1, t2, t3] = tracked;
+    let first = u16::from_le_bytes([t0, t1]);
+    let second = u16::from_le_bytes([t2, t3]);
+    let first_signed = i16::from_le_bytes(first.to_le_bytes());
+    let second_signed = i16::from_le_bytes(second.to_le_bytes());
+    let label = match page.selector {
+        0 => "buttons-debounced",
+        2 => "sensor-a-accumulator",
+        6 => "combined-motion",
+        15 => "sensor-b-accumulator",
+        20 => "buttons-processed",
+        _ => "unknown",
+    };
+    println!(
+        "state elapsed_ms={elapsed_ms} source={label} address={:#010x} raw={:02x}{:02x}{:02x}{:02x} words={first:04x},{second:04x} signed={first_signed},{second_signed} sysfs={sysfs}",
+        page.address()
+            + if matches!(page.selector, 6 | 15) {
+                2
+            } else {
+                4
+            },
+        t0,
+        t1,
+        t2,
+        t3,
+    );
+}
+
+fn capture_state(device: &Path, timeout: Duration, confirmed: bool) -> Result<(), String> {
+    if !confirmed {
+        return Err("refusing marker-first paged input capture without --confirm".to_owned());
+    }
+    let (parent, mut hidraw) = open_paged_input_diagnostics(device)?;
+    arm_input_diagnostics(&mut hidraw, timeout)?;
+    let started = Instant::now();
+    let duration = Duration::from_secs(15);
+    let mut previous: [Option<[u8; 4]>; INPUT_STATE_SELECTORS.len()] =
+        [None; INPUT_STATE_SELECTORS.len()];
+    while started.elapsed() < duration {
+        for (index, selector) in INPUT_STATE_SELECTORS.into_iter().enumerate() {
+            let page = query_input_state_page(&mut hidraw, selector, timeout)?;
+            let tracked = tracked_input_bytes(page)
+                .ok_or_else(|| format!("no tracked field mapping for selector {selector}"))?;
+            if previous.get(index).copied().flatten() != Some(tracked) {
+                print_tracked_input(page, tracked, started.elapsed().as_millis(), &parent.sysfs);
+                let slot = previous
+                    .get_mut(index)
+                    .ok_or_else(|| "input selector index escaped fixed page array".to_owned())?;
+                *slot = Some(tracked);
+            }
+        }
+    }
+    println!(
+        "state_capture=complete duration_ms=15000 sysfs={}",
+        parent.sysfs
+    );
+    Ok(())
 }
 
 fn query_loader(device: &Path, timeout: Duration) -> Result<(), String> {
@@ -579,6 +804,15 @@ fn run() -> Result<(), String> {
         },
         Command::RunPostInitHook { confirmed } => {
             run_post_init_hook(&arguments.device, arguments.timeout, confirmed)
+        },
+        Command::ReadInput { confirmed } => {
+            read_input(&arguments.device, arguments.timeout, confirmed)
+        },
+        Command::CaptureInput { confirmed } => {
+            capture_input(&arguments.device, arguments.timeout, confirmed)
+        },
+        Command::CaptureState { confirmed } => {
+            capture_state(&arguments.device, arguments.timeout, confirmed)
         },
         Command::QueryLoader => query_loader(&arguments.device, arguments.timeout),
         Command::Flash {

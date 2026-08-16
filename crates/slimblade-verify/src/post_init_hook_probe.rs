@@ -3,8 +3,9 @@ use core::fmt;
 use slimblade_image::{
     ACTIVE_LOOP_HOOK_PROBE, ACTIVE_LOOP_HOOK_PROBE_ARTIFACT, APPLICATION_HEADER_OFFSET,
     DISPATCHER_RETURN_HOOK_PROBE, DISPATCHER_RETURN_HOOK_PROBE_ARTIFACT, EXPERIMENT_DISPATCH_GUARD,
-    EXPERIMENT_DISPATCH_GUARD_ARTIFACT, POST_INIT_HOOK_PROBE, POST_INIT_HOOK_PROBE_ARTIFACT,
-    STACK_HEADER_OFFSET, STARTUP_TRAMPOLINE, STEADY_LOOP_HOOK_PROBE,
+    EXPERIMENT_DISPATCH_GUARD_ARTIFACT, INPUT_DIAGNOSTICS, INPUT_DIAGNOSTICS_ARTIFACT,
+    PAGED_INPUT_DIAGNOSTICS, PAGED_INPUT_DIAGNOSTICS_ARTIFACT, POST_INIT_HOOK_PROBE,
+    POST_INIT_HOOK_PROBE_ARTIFACT, STACK_HEADER_OFFSET, STARTUP_TRAMPOLINE, STEADY_LOOP_HOOK_PROBE,
     STEADY_LOOP_HOOK_PROBE_ARTIFACT, V449_BCD_DEVICE_OFFSET, WIRED_LOOP_HOOK_PROBE,
     WIRED_LOOP_HOOK_PROBE_ARTIFACT, parse_header, refresh_header_crc, sha256,
 };
@@ -81,6 +82,24 @@ const EXPERIMENT_DISPATCH_ARM_AND_QUERY: [u8; 26] = [
 const EXPERIMENT_DISPATCH_HELPER: [u8; 32] = [
     0x10, 0xb5, 0x05, 0x4b, 0x98, 0x47, 0x05, 0x49, 0x0a, 0x78, 0x05, 0x2a, 0x03, 0xd1, 0x00, 0x22,
     0x0a, 0x70, 0x00, 0xf0, 0x05, 0xf8, 0x10, 0xbd, 0x4d, 0x8f, 0x01, 0x00, 0x64, 0x02, 0x40, 0x00,
+];
+const INPUT_DIAGNOSTICS_ARM_AND_QUERY: [u8; 26] = [
+    0x10, 0xb5, 0x00, 0xf0, 0x0a, 0xf8, 0x2a, 0x48, 0x05, 0x21, 0x01, 0x70, 0xa9, 0x20, 0xe0, 0x70,
+    0x10, 0xbd, 0x70, 0xe0, 0xc0, 0x46, 0xc0, 0x46, 0xc0, 0x46,
+];
+const INPUT_DIAGNOSTICS_HELPER: [u8; 44] = [
+    0x10, 0xb5, 0x07, 0x4b, 0x98, 0x47, 0x07, 0x49, 0x0a, 0x78, 0x05, 0x2a, 0x01, 0xd1, 0x00, 0x22,
+    0x0a, 0x70, 0x10, 0xbd, 0x04, 0x48, 0x0e, 0xc8, 0x20, 0x1d, 0x0e, 0xc0, 0x70, 0x47, 0x00, 0x00,
+    0x4d, 0x8f, 0x01, 0x00, 0x64, 0x02, 0x40, 0x00, 0x60, 0x13, 0x40, 0x00,
+];
+const PAGED_INPUT_DIAGNOSTICS_ARM_AND_QUERY: [u8; 26] = [
+    0x10, 0xb5, 0x00, 0xf0, 0x0a, 0xf8, 0x2a, 0x48, 0x05, 0x21, 0x01, 0x70, 0xa9, 0x20, 0xe0, 0x70,
+    0x10, 0xbd, 0xe8, 0x78, 0xe0, 0x70, 0xc0, 0x00, 0x6d, 0xe0,
+];
+const PAGED_INPUT_DIAGNOSTICS_HELPER: [u8; 44] = [
+    0x10, 0xb5, 0x07, 0x4b, 0x98, 0x47, 0x07, 0x49, 0x0a, 0x78, 0x05, 0x2a, 0x01, 0xd1, 0x00, 0x22,
+    0x0a, 0x70, 0x10, 0xbd, 0x04, 0x49, 0x08, 0x18, 0x0e, 0xc8, 0x20, 0x1d, 0x0e, 0xc0, 0x70, 0x47,
+    0x4d, 0x8f, 0x01, 0x00, 0x64, 0x02, 0x40, 0x00, 0x60, 0x01, 0x40, 0x00,
 ];
 const RUST_EXPERIMENT_ENTRY: [u8; 6] = [0x80, 0xb5, 0x00, 0xaf, 0x80, 0xbd];
 const CRITICAL_WORDS: [(usize, u32); 13] = [
@@ -792,6 +811,100 @@ pub fn build_experiment_dispatch(base: &[u8], injection: &[u8]) -> Result<Vec<u8
     Ok(image)
 }
 
+/// Builds the marker-first, read-only stock input snapshot candidate.
+///
+/// # Errors
+///
+/// Returns an error unless the exact v4.53 base and reviewed diagnostic injection are supplied.
+pub fn build_input_diagnostics(base: &[u8], injection: &[u8]) -> Result<Vec<u8>, Error> {
+    STARTUP_TRAMPOLINE
+        .validate(base)
+        .map_err(|_| Error::BaseIdentity)?;
+    if injection.len() != INJECTION_END - INJECTION_START {
+        return Err(Error::InjectionSize {
+            actual: injection.len(),
+        });
+    }
+    if !INPUT_DIAGNOSTICS_ARTIFACT.code_matches(injection) {
+        return Err(Error::InjectionIdentity);
+    }
+    require_base(base, DISPATCHER_RETURN_PATCH, &[0xfc, 0xf7, 0xf7, 0xfc])?;
+
+    let mut image = base.to_vec();
+    replace(&mut image, INJECTION_START, injection)?;
+    replace(
+        &mut image,
+        RESET_BRANCH,
+        &encode_arm_b(
+            ArmAddress::new(u32::try_from(RESET_BRANCH).map_err(|_| Error::Layout)?)
+                .map_err(Error::Branch)?,
+            ArmAddress::new(TRAMPOLINE).map_err(Error::Branch)?,
+        )
+        .map_err(Error::Branch)?,
+    )?;
+    replace(
+        &mut image,
+        DISPATCHER_RETURN_PATCH,
+        &encode_thumb_bl(
+            ThumbAddress::new(u32::try_from(DISPATCHER_RETURN_PATCH).map_err(|_| Error::Layout)?)
+                .map_err(Error::Branch)?,
+            ThumbAddress::new(EXPERIMENT_DISPATCH).map_err(Error::Branch)?,
+        )
+        .map_err(Error::Branch)?,
+    )?;
+    *image.get_mut(V449_BCD_DEVICE_OFFSET).ok_or(Error::Layout)? = 0x65;
+    refresh_header_crc(&mut image, APPLICATION_HEADER_OFFSET).map_err(|_| Error::Header)?;
+    refresh_header_crc(&mut image, STACK_HEADER_OFFSET).map_err(|_| Error::Header)?;
+    Ok(image)
+}
+
+/// Builds the marker-first, selector-based live-state diagnostic candidate.
+///
+/// # Errors
+///
+/// Returns an error unless the exact v4.53 base and reviewed paged injection are supplied.
+pub fn build_paged_input_diagnostics(base: &[u8], injection: &[u8]) -> Result<Vec<u8>, Error> {
+    STARTUP_TRAMPOLINE
+        .validate(base)
+        .map_err(|_| Error::BaseIdentity)?;
+    if injection.len() != INJECTION_END - INJECTION_START {
+        return Err(Error::InjectionSize {
+            actual: injection.len(),
+        });
+    }
+    if !PAGED_INPUT_DIAGNOSTICS_ARTIFACT.code_matches(injection) {
+        return Err(Error::InjectionIdentity);
+    }
+    require_base(base, DISPATCHER_RETURN_PATCH, &[0xfc, 0xf7, 0xf7, 0xfc])?;
+
+    let mut image = base.to_vec();
+    replace(&mut image, INJECTION_START, injection)?;
+    replace(
+        &mut image,
+        RESET_BRANCH,
+        &encode_arm_b(
+            ArmAddress::new(u32::try_from(RESET_BRANCH).map_err(|_| Error::Layout)?)
+                .map_err(Error::Branch)?,
+            ArmAddress::new(TRAMPOLINE).map_err(Error::Branch)?,
+        )
+        .map_err(Error::Branch)?,
+    )?;
+    replace(
+        &mut image,
+        DISPATCHER_RETURN_PATCH,
+        &encode_thumb_bl(
+            ThumbAddress::new(u32::try_from(DISPATCHER_RETURN_PATCH).map_err(|_| Error::Layout)?)
+                .map_err(Error::Branch)?,
+            ThumbAddress::new(EXPERIMENT_DISPATCH).map_err(Error::Branch)?,
+        )
+        .map_err(Error::Branch)?,
+    )?;
+    *image.get_mut(V449_BCD_DEVICE_OFFSET).ok_or(Error::Layout)? = 0x66;
+    refresh_header_crc(&mut image, APPLICATION_HEADER_OFFSET).map_err(|_| Error::Header)?;
+    refresh_header_crc(&mut image, STACK_HEADER_OFFSET).map_err(|_| Error::Header)?;
+    Ok(image)
+}
+
 /// Audits the guard, clear-before-call order, Rust entry, stock dispatcher, and return path.
 ///
 /// # Errors
@@ -865,6 +978,164 @@ pub fn verify_experiment_dispatch(
         ],
     )?;
     let payload = EXPERIMENT_DISPATCH_GUARD
+        .validate(image)
+        .map_err(|_| Error::ContainerIdentity)?;
+    Ok(Report {
+        injection_sha256: sha256(injection),
+        container_sha256: sha256(image),
+        payload_sha256: sha256(payload),
+        payload_crc: slimblade_protocol::updater_crc32(payload),
+    })
+}
+
+/// Audits the marker-first input snapshot, proven recovery bytes, and stock return path.
+///
+/// # Errors
+///
+/// Returns the first failed identity, instruction, address, branch, header, or ELF invariant.
+pub fn verify_input_diagnostics(
+    base: &[u8],
+    image: &[u8],
+    injection: &[u8],
+    elf_bytes: &[u8],
+) -> Result<Report, Error> {
+    if image != build_input_diagnostics(base, injection)? {
+        return Err(Error::DerivedImage);
+    }
+    require(injection, 0, &DISPATCH)?;
+    require(injection, 0x12, &INPUT_DIAGNOSTICS_ARM_AND_QUERY)?;
+    require(injection, 0x0f4, &INPUT_DIAGNOSTICS_HELPER)?;
+    for (offset, expected) in WIRED_CRITICAL_WORDS {
+        let actual = read_u32(injection, offset)?;
+        if actual != expected {
+            return Err(Error::Word { offset, actual });
+        }
+    }
+    if read_u32(injection, 0x114)? != 0x0001_8f4d
+        || read_u32(injection, 0x118)? != 0x0040_0264
+        || read_u32(injection, 0x11c)? != 0x0040_1360
+    {
+        return Err(Error::Bytes { offset: 0x114 });
+    }
+    let wrapper_target = decode_thumb_bl(
+        read_array(image, DISPATCHER_RETURN_PATCH)?,
+        ThumbAddress::new(u32::try_from(DISPATCHER_RETURN_PATCH).map_err(|_| Error::Layout)?)
+            .map_err(Error::Branch)?,
+    )
+    .map_err(Error::Branch)?;
+    if wrapper_target.get() != EXPERIMENT_DISPATCH {
+        return Err(Error::Bytes {
+            offset: DISPATCHER_RETURN_PATCH,
+        });
+    }
+    let (_, reset_target) = decode_arm_branch(
+        read_array(image, RESET_BRANCH)?,
+        ArmAddress::new(u32::try_from(RESET_BRANCH).map_err(|_| Error::Layout)?)
+            .map_err(Error::Branch)?,
+    )
+    .map_err(Error::Branch)?;
+    if reset_target.get() != TRAMPOLINE {
+        return Err(Error::Bytes {
+            offset: RESET_BRANCH,
+        });
+    }
+    if image.get(0x18f4c..0x19004) != base.get(0x18f4c..0x19004)
+        || image.get(0x1c550..0x1c55a) != base.get(0x1c550..0x1c55a)
+        || image.get(0x1c55e..0x1c58c) != base.get(0x1c55e..0x1c58c)
+        || image.get(0x2300..0x2330) != base.get(0x2300..0x2330)
+    {
+        return Err(Error::Bytes { offset: 0x21d8 });
+    }
+    for offset in [STACK_HEADER_OFFSET, APPLICATION_HEADER_OFFSET] {
+        let header = parse_header(image, offset).map_err(|_| Error::Header)?;
+        if !header.crc_is_valid(image).map_err(|_| Error::Header)? {
+            return Err(Error::Header);
+        }
+    }
+    verify_elf(
+        elf_bytes,
+        &[(".carrier", 0x21ac, 0x120), (".trampoline", 0x22cc, 0x034)],
+    )?;
+    let payload = INPUT_DIAGNOSTICS
+        .validate(image)
+        .map_err(|_| Error::ContainerIdentity)?;
+    Ok(Report {
+        injection_sha256: sha256(injection),
+        container_sha256: sha256(image),
+        payload_sha256: sha256(payload),
+        payload_crc: slimblade_protocol::updater_crc32(payload),
+    })
+}
+
+/// Audits selector scaling, bounded RAM base, proven recovery bytes, and stock return path.
+///
+/// # Errors
+///
+/// Returns the first failed identity, instruction, address, branch, header, or ELF invariant.
+pub fn verify_paged_input_diagnostics(
+    base: &[u8],
+    image: &[u8],
+    injection: &[u8],
+    elf_bytes: &[u8],
+) -> Result<Report, Error> {
+    if image != build_paged_input_diagnostics(base, injection)? {
+        return Err(Error::DerivedImage);
+    }
+    require(injection, 0, &DISPATCH)?;
+    require(injection, 0x12, &PAGED_INPUT_DIAGNOSTICS_ARM_AND_QUERY)?;
+    require(injection, 0x0f4, &PAGED_INPUT_DIAGNOSTICS_HELPER)?;
+    for (offset, expected) in WIRED_CRITICAL_WORDS {
+        let actual = read_u32(injection, offset)?;
+        if actual != expected {
+            return Err(Error::Word { offset, actual });
+        }
+    }
+    if read_u32(injection, 0x114)? != 0x0001_8f4d
+        || read_u32(injection, 0x118)? != 0x0040_0264
+        || read_u32(injection, 0x11c)? != 0x0040_0160
+    {
+        return Err(Error::Bytes { offset: 0x114 });
+    }
+    let wrapper_target = decode_thumb_bl(
+        read_array(image, DISPATCHER_RETURN_PATCH)?,
+        ThumbAddress::new(u32::try_from(DISPATCHER_RETURN_PATCH).map_err(|_| Error::Layout)?)
+            .map_err(Error::Branch)?,
+    )
+    .map_err(Error::Branch)?;
+    if wrapper_target.get() != EXPERIMENT_DISPATCH {
+        return Err(Error::Bytes {
+            offset: DISPATCHER_RETURN_PATCH,
+        });
+    }
+    let (_, reset_target) = decode_arm_branch(
+        read_array(image, RESET_BRANCH)?,
+        ArmAddress::new(u32::try_from(RESET_BRANCH).map_err(|_| Error::Layout)?)
+            .map_err(Error::Branch)?,
+    )
+    .map_err(Error::Branch)?;
+    if reset_target.get() != TRAMPOLINE {
+        return Err(Error::Bytes {
+            offset: RESET_BRANCH,
+        });
+    }
+    if image.get(0x18f4c..0x19004) != base.get(0x18f4c..0x19004)
+        || image.get(0x1c550..0x1c55a) != base.get(0x1c550..0x1c55a)
+        || image.get(0x1c55e..0x1c58c) != base.get(0x1c55e..0x1c58c)
+        || image.get(0x2300..0x2330) != base.get(0x2300..0x2330)
+    {
+        return Err(Error::Bytes { offset: 0x21d8 });
+    }
+    for offset in [STACK_HEADER_OFFSET, APPLICATION_HEADER_OFFSET] {
+        let header = parse_header(image, offset).map_err(|_| Error::Header)?;
+        if !header.crc_is_valid(image).map_err(|_| Error::Header)? {
+            return Err(Error::Header);
+        }
+    }
+    verify_elf(
+        elf_bytes,
+        &[(".carrier", 0x21ac, 0x120), (".trampoline", 0x22cc, 0x034)],
+    )?;
+    let payload = PAGED_INPUT_DIAGNOSTICS
         .validate(image)
         .map_err(|_| Error::ContainerIdentity)?;
     Ok(Report {
@@ -1102,6 +1373,48 @@ mod tests {
         })
     }
 
+    fn input_diagnostics_fixtures() -> Option<Fixtures> {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let target = root.join("firmware/bk3635-stock-harness/target");
+        Some(Fixtures {
+            base: read_if_present(root.join(
+                "firmware/startup_trampoline/build/DO_NOT_FLASH-stock-startup-trampoline.container.bin",
+            ))?,
+            injection: read_if_present(
+                target.join(
+                    "input-diagnostics/DO_NOT_FLASH-input-diagnostics.injection.bin",
+                ),
+            )?,
+            container: read_if_present(
+                target.join(
+                    "input-diagnostics/DO_NOT_FLASH-input-diagnostics.container.bin",
+                ),
+            )?,
+            elf: read_if_present(
+                target.join("thumbv5te-none-eabi/release/slimblade-input-diagnostics"),
+            )?,
+        })
+    }
+
+    fn paged_input_diagnostics_fixtures() -> Option<Fixtures> {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let target = root.join("firmware/bk3635-stock-harness/target");
+        Some(Fixtures {
+            base: read_if_present(root.join(
+                "firmware/startup_trampoline/build/DO_NOT_FLASH-stock-startup-trampoline.container.bin",
+            ))?,
+            injection: read_if_present(target.join(
+                "paged-input-diagnostics/DO_NOT_FLASH-paged-input-diagnostics.injection.bin",
+            ))?,
+            container: read_if_present(target.join(
+                "paged-input-diagnostics/DO_NOT_FLASH-paged-input-diagnostics.container.bin",
+            ))?,
+            elf: read_if_present(
+                target.join("thumbv5te-none-eabi/release/slimblade-paged-input-diagnostics"),
+            )?,
+        })
+    }
+
     #[test]
     fn exact_candidate_rebuilds_and_passes() {
         let Some(data) = fixtures() else { return };
@@ -1112,6 +1425,88 @@ mod tests {
         let report = verify(&data.base, &data.container, &data.injection, &data.elf)
             .expect("audit exact post-init hook probe");
         assert_eq!(report.payload_crc, 0x8065_29df);
+    }
+
+    #[test]
+    fn input_diagnostics_rebuilds_and_passes() {
+        let Some(data) = input_diagnostics_fixtures() else {
+            return;
+        };
+        assert_eq!(
+            build_input_diagnostics(&data.base, &data.injection),
+            Ok(data.container.clone())
+        );
+        let report =
+            verify_input_diagnostics(&data.base, &data.container, &data.injection, &data.elf)
+                .expect("audit exact input diagnostic");
+        assert_eq!(report.payload_crc, 0xef6a_b24a);
+    }
+
+    #[test]
+    fn input_diagnostics_preserves_proven_recovery_bytes() {
+        let Some(data) = input_diagnostics_fixtures() else {
+            return;
+        };
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let guard = std::fs::read(root.join(
+            "firmware/bk3635-stock-harness/target/experiment-dispatch-guard/DO_NOT_FLASH-experiment-dispatch-guard.injection.bin",
+        ))
+        .expect("read proven experiment guard");
+        assert_eq!(&data.injection[0x2c..0x0f4], &guard[0x2c..0x0f4]);
+        assert_eq!(&data.injection[0x120..0x154], &guard[0x120..0x154]);
+    }
+
+    #[test]
+    fn input_diagnostics_rejects_snapshot_corruption() {
+        let Some(mut data) = input_diagnostics_fixtures() else {
+            return;
+        };
+        data.injection[0x108] ^= 1;
+        assert_eq!(
+            build_input_diagnostics(&data.base, &data.injection),
+            Err(Error::InjectionIdentity)
+        );
+    }
+
+    #[test]
+    fn paged_input_diagnostics_rebuilds_and_passes() {
+        let Some(data) = paged_input_diagnostics_fixtures() else {
+            return;
+        };
+        assert_eq!(
+            build_paged_input_diagnostics(&data.base, &data.injection),
+            Ok(data.container.clone())
+        );
+        let report =
+            verify_paged_input_diagnostics(&data.base, &data.container, &data.injection, &data.elf)
+                .expect("audit exact paged input diagnostic");
+        assert_eq!(report.payload_crc, 0x7ed6_3bf1);
+    }
+
+    #[test]
+    fn paged_input_diagnostics_preserves_proven_recovery_bytes() {
+        let Some(data) = paged_input_diagnostics_fixtures() else {
+            return;
+        };
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let guard = std::fs::read(root.join(
+            "firmware/bk3635-stock-harness/target/experiment-dispatch-guard/DO_NOT_FLASH-experiment-dispatch-guard.injection.bin",
+        ))
+        .expect("read proven experiment guard");
+        assert_eq!(&data.injection[0x2c..0x0f4], &guard[0x2c..0x0f4]);
+        assert_eq!(&data.injection[0x120..0x154], &guard[0x120..0x154]);
+    }
+
+    #[test]
+    fn paged_input_diagnostics_rejects_selector_scaling_corruption() {
+        let Some(mut data) = paged_input_diagnostics_fixtures() else {
+            return;
+        };
+        data.injection[0x26] ^= 1;
+        assert_eq!(
+            build_paged_input_diagnostics(&data.base, &data.injection),
+            Err(Error::InjectionIdentity)
+        );
     }
 
     #[test]

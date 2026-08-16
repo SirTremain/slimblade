@@ -1,9 +1,9 @@
 use slimblade_image::{
     ACTIVE_LOOP_HOOK_PROBE, DISPATCHER_RETURN_HOOK_PROBE, EXPERIMENT_DISPATCH_GUARD,
-    EXPERIMENT_ENTRY_PROBE, FirmwareIdentity, LATE_MARKER_PROBE, OFFICIAL_V449,
-    POST_INIT_HOOK_PROBE, RECOVERY_CARRIER, RECOVERY_GUARD, RECOVERY_STUB, RESET_TRAMPOLINE,
-    RUST_RESPONSE_PROBE, STARTUP_TRAMPOLINE, STEADY_LOOP_HOOK_PROBE, STOCK_HARNESS,
-    USB_RECOVERY_PROBE, V449_DESCRIPTOR_PROBE, WIRED_LOOP_HOOK_PROBE,
+    EXPERIMENT_ENTRY_PROBE, FirmwareIdentity, INPUT_DIAGNOSTICS, LATE_MARKER_PROBE, OFFICIAL_V449,
+    PAGED_INPUT_DIAGNOSTICS, POST_INIT_HOOK_PROBE, RECOVERY_CARRIER, RECOVERY_GUARD, RECOVERY_STUB,
+    RESET_TRAMPOLINE, RUST_RESPONSE_PROBE, STARTUP_TRAMPOLINE, STEADY_LOOP_HOOK_PROBE,
+    STOCK_HARNESS, USB_RECOVERY_PROBE, V449_DESCRIPTOR_PROBE, WIRED_LOOP_HOOK_PROBE,
 };
 use slimblade_protocol::NormalReport;
 
@@ -73,6 +73,78 @@ pub fn post_init_hook_state(response: NormalReport) -> Option<u8> {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct InputSnapshot {
+    pub prefix: [u8; 2],
+    pub sequence: u8,
+    pub buttons: u8,
+    pub motion_x: i16,
+    pub motion_y: i16,
+    pub report_6: u8,
+    pub report_7: u8,
+    pub report_8: u8,
+    pub report_9: u8,
+}
+
+#[must_use]
+pub fn input_snapshot(response: NormalReport) -> Option<InputSnapshot> {
+    let bytes = response.as_bytes();
+    if response.command_byte() != 0x0f || bytes.get(2) != Some(&0x01) {
+        return None;
+    }
+    Some(InputSnapshot {
+        prefix: [*bytes.get(4)?, *bytes.get(5)?],
+        sequence: *bytes.get(6)?,
+        buttons: *bytes.get(7)?,
+        motion_x: i16::from_le_bytes([*bytes.get(8)?, *bytes.get(9)?]),
+        motion_y: i16::from_le_bytes([*bytes.get(10)?, *bytes.get(11)?]),
+        report_6: *bytes.get(12)?,
+        report_7: *bytes.get(13)?,
+        report_8: *bytes.get(14)?,
+        report_9: *bytes.get(15)?,
+    })
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct InputStatePage {
+    pub selector: u8,
+    pub bytes: [u8; 12],
+}
+
+impl InputStatePage {
+    #[must_use]
+    pub fn address(self) -> u32 {
+        0x0040_0160 + u32::from(self.selector) * 8
+    }
+
+    #[must_use]
+    pub const fn halfwords(self) -> [u16; 6] {
+        let [b0, b1, b2, b3, b4, b5, b6, b7, b8, b9, b10, b11] = self.bytes;
+        [
+            u16::from_le_bytes([b0, b1]),
+            u16::from_le_bytes([b2, b3]),
+            u16::from_le_bytes([b4, b5]),
+            u16::from_le_bytes([b6, b7]),
+            u16::from_le_bytes([b8, b9]),
+            u16::from_le_bytes([b10, b11]),
+        ]
+    }
+}
+
+#[must_use]
+pub fn input_state_page(response: NormalReport, selector: u8) -> Option<InputStatePage> {
+    let response_bytes = response.as_bytes();
+    if response.command_byte() != 0x0f
+        || response_bytes.get(2) != Some(&0x01)
+        || response_bytes.get(3) != Some(&selector)
+    {
+        return None;
+    }
+    let mut bytes = [0_u8; 12];
+    bytes.copy_from_slice(response_bytes.get(4..16)?);
+    Some(InputStatePage { selector, bytes })
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum FlashArtifact {
     OfficialV449,
     DescriptorProbe,
@@ -92,6 +164,8 @@ pub enum FlashArtifact {
     SteadyLoopHookProbe,
     DispatcherReturnHookProbe,
     ExperimentDispatchGuard,
+    InputDiagnostics,
+    PagedInputDiagnostics,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -123,6 +197,8 @@ impl FlashArtifact {
             Self::SteadyLoopHookProbe => STEADY_LOOP_HOOK_PROBE,
             Self::DispatcherReturnHookProbe => DISPATCHER_RETURN_HOOK_PROBE,
             Self::ExperimentDispatchGuard => EXPERIMENT_DISPATCH_GUARD,
+            Self::InputDiagnostics => INPUT_DIAGNOSTICS,
+            Self::PagedInputDiagnostics => PAGED_INPUT_DIAGNOSTICS,
         }
     }
 
@@ -161,6 +237,8 @@ impl FlashArtifact {
             Self::ExperimentDispatchGuard => {
                 PostFlashExpectation::Application { bcd_device: "0464" }
             },
+            Self::InputDiagnostics => PostFlashExpectation::Application { bcd_device: "0465" },
+            Self::PagedInputDiagnostics => PostFlashExpectation::Application { bcd_device: "0466" },
         }
     }
 }
@@ -365,6 +443,83 @@ mod tests {
             FlashArtifact::ExperimentDispatchGuard.post_flash_expectation(),
             PostFlashExpectation::Application { bcd_device: "0464" }
         );
+    }
+
+    #[test]
+    fn input_diagnostics_needs_exact_hash_confirmation() {
+        assert!(!FlashArtifact::InputDiagnostics.confirmation_matches("wrong"));
+        assert!(FlashArtifact::InputDiagnostics.confirmation_matches(
+            "4a90ccf453b80cbbf4018dfec87d14051dfff3ea076445822c28dfbc3e4f55a3"
+        ));
+        assert_eq!(
+            FlashArtifact::InputDiagnostics.post_flash_expectation(),
+            PostFlashExpectation::Application { bcd_device: "0465" }
+        );
+    }
+
+    #[test]
+    fn paged_input_diagnostics_needs_exact_hash_confirmation() {
+        assert!(!FlashArtifact::PagedInputDiagnostics.confirmation_matches("wrong"));
+        assert!(FlashArtifact::PagedInputDiagnostics.confirmation_matches(
+            "c5fb2b865c6ba1993c673f989e5c811bfa661b31f8c6261d2ab04e95eab5692f"
+        ));
+        assert_eq!(
+            FlashArtifact::PagedInputDiagnostics.post_flash_expectation(),
+            PostFlashExpectation::Application { bcd_device: "0466" }
+        );
+    }
+
+    #[test]
+    #[allow(
+        clippy::expect_used,
+        clippy::indexing_slicing,
+        reason = "the fixed recorded response must parse for the assertion to be meaningful"
+    )]
+    fn input_snapshot_decodes_stock_report_fields() {
+        let mut bytes = [
+            0x08, 0x0f, 0x01, 0x00, 0xaa, 0xbb, 0x07, 0x15, 0x34, 0x12, 0xfe, 0xff, 0x61, 0x62,
+            0x63, 0x64, 0x00,
+        ];
+        bytes[16] = slimblade_protocol::checksum(&bytes[..16]);
+        let response = NormalReport::parse(&bytes).expect("recorded diagnostic response is valid");
+        let snapshot = input_snapshot(response).expect("diagnostic response decodes");
+        assert_eq!(snapshot.prefix, [0xaa, 0xbb]);
+        assert_eq!(snapshot.sequence, 7);
+        assert_eq!(snapshot.buttons, 0x15);
+        assert_eq!(snapshot.motion_x, 0x1234);
+        assert_eq!(snapshot.motion_y, -2);
+        assert_eq!(
+            [
+                snapshot.report_6,
+                snapshot.report_7,
+                snapshot.report_8,
+                snapshot.report_9,
+            ],
+            [0x61, 0x62, 0x63, 0x64]
+        );
+    }
+
+    #[test]
+    #[allow(
+        clippy::expect_used,
+        clippy::indexing_slicing,
+        reason = "the fixed recorded response must parse for the assertion to be meaningful"
+    )]
+    fn input_state_page_requires_matching_selector_and_copies_twelve_bytes() {
+        let mut bytes = [
+            0x08, 0x0f, 0x01, 0x06, 0x60, 0x61, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67, 0x68, 0x69,
+            0x6a, 0x6b, 0x00,
+        ];
+        bytes[16] = slimblade_protocol::checksum(&bytes[..16]);
+        let response = NormalReport::parse(&bytes).expect("recorded diagnostic response is valid");
+        assert_eq!(
+            input_state_page(response, 6),
+            Some(InputStatePage {
+                selector: 6,
+                bytes: *b"`abcdefghijk",
+            })
+        );
+        assert_eq!(input_state_page(response, 2), None);
     }
 
     #[test]
