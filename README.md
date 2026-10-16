@@ -13,21 +13,23 @@ Preserve stock wireless functionality where feasible. Remove it only as the
 first optional feature if measured size limits require that tradeoff in the
 custom firmware—not during stock reconstruction. Current work remains offline.
 
-Current state: offline bootstrap completed on 2026-10-16. Ghidra and Java are
-installed locally, official v4.49 input is hash-verified, and an exported
-inventory contains 776 discovered functions with boundaries still unapproved.
-The [readiness pass](decomp/results/readiness/notes.md) resolved three of four
-Ghidra diagnostics in a separate analysis copy. A shared runtime-helper model
-remains unresolved, including another caller with silently misclassified data;
-inventory approval and the function pilot remain blocked.
-The synthetic comparison prototype passes 21 checks. The original compiler
-and matching coverage remain unknown; no firmware functions were reconstructed
-and no function tasks were created. There is no stock matching build or
-device-writing command in the active toolset.
+Current state: **ready for a six-function offline reconstruction/calibration
+pilot**. [Start here](docs/pilot.md) for the complete copyable coordinator prompt.
+Six reviewed leaf packets, an atomic queue and a pinned source-build/stock-byte
+comparison command are prepared. No workers have started and no firmware C has
+been reconstructed. Commit preparation changes before creating worker worktrees.
+
+The original compiler and matching coverage remain unknown. The remaining
+Ghidra runtime-helper problem is quarantined; the global inventory is still
+unapproved. The comparator provides exact-range feedback, not match
+certification or a complete stock rebuild. There is no device-writing command
+in the active toolset. See the [readiness report](decomp/results/pilot-readiness/notes.md).
 
 - [Current goals, milestone gates and next work](docs/project-plan.md)
 - [Research: Ghidra and collaborative decompilation](docs/decompilation-research.md)
 - [Start and coordinate agents](docs/workflow.md)
+- [First pilot and copyable prompt](docs/pilot.md)
+- [Stock byte accounting and unresolved dependencies](docs/dependencies.md)
 - [Ghidra setup and evidence export](docs/ghidra.md)
 - [Bootstrap results and reproduction](docs/bootstrap.md)
 - [Stock baseline and outstanding questions](docs/stock-baseline.md)
@@ -37,6 +39,12 @@ Inspect the queue with Python 3.10+; no extra packages are needed:
 
 ```sh
 python3 tools/decomp.py status
+```
+
+Verify the local evidence and tool locks before starting a run:
+
+```sh
+python3 tools/decomp.py check --local
 ```
 
 Run the offline scaffold tests:

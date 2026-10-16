@@ -6,6 +6,7 @@ import hashlib
 import json
 from pathlib import Path, PurePosixPath
 import re
+import shlex
 import sqlite3
 import sys
 from datetime import datetime, timezone
@@ -82,6 +83,13 @@ def load_tasks(root):
             require(SHA256.fullmatch(task["evidence_sha256"]), "missing packet hash")
             require(task["boundary_review"] and
                     "REPLACE" not in task["boundary_review"], "unreviewed boundary")
+            if "comparison_scope" in task:
+                require(task["comparison_scope"] == "stock-leaf-pilot-feedback-v1",
+                        "unknown comparison scope")
+                comparison = task["comparison"]
+                relative_path(comparison["lock_path"])
+                require(comparison["lock_path"].startswith(".decomp/") and
+                        SHA256.fullmatch(comparison["lock_sha256"]), "invalid comparison lock")
             relative_path(task["evidence_path"])
             require(task["evidence_path"].startswith(".decomp/evidence/"),
                     "evidence must stay in ignored local storage")
@@ -129,6 +137,13 @@ def evidence_check(root, baseline, task):
         require(meta[key] == task[key], f"packet {key} mismatch")
     for name in ("listing.txt", "context.md"):
         require((path / name).is_file(), f"packet missing {name}")
+    if "comparison_scope" in task:
+        import stock_compare
+        comparison = task["comparison"]
+        lock = stock_compare.load_lock(root / comparison["lock_path"], comparison["lock_sha256"])
+        definition = {k: v for k, v in task.items() if k != "comparison"}
+        require(lock["tasks"][task["id"]]["task_sha256"] ==
+                digest(stock_compare.encode(definition)), "task differs from comparison lock")
 
 
 def connect(state):
@@ -156,11 +171,23 @@ def ready(task, states):
 
 def prompt(root, baseline, task, worker):
     evidence_check(root, baseline, task)
-    return (root / "decomp/prompts/worker.md").read_text() + (
+    output = (root / "decomp/prompts/worker.md").read_text() + (
         f"\n## Assignment\n\nWorker: `{worker}`\n\n"
         f"Baseline: `{baseline['id']}` / `{baseline['sha256']}`\n\n"
         "```json\n" + json.dumps(task, indent=2) + "\n```\n"
     )
+    if "comparison" in task:
+        c = task["comparison"]
+        command = ["python3", str(root / "tools/stock_compare.py"), "verify", "--lock",
+                   str(root / c["lock_path"]), "--lock-sha256", c["lock_sha256"], "--task", task["id"],
+                   "--source", f"decomp/src/{task['id']}.c", "--output", f"decomp/results/{task['id']}/attempt-01"]
+        output += (f"\nMain coordinator root (read-only to worker): {root}\n\n"
+                   f"Evidence directory: {root / task['evidence_path']}\n\n"
+                   "Run from your assigned worker worktree. Change only the attempt output suffix for each build; "
+                   "never reuse an output directory. Exit 0 means exact range bytes, 2 means a byte/size mismatch, "
+                   "1 means rejected source/build or changed trusted inputs. None certifies a recovered function.\n\n"
+                   "```sh\n" + shlex.join(command) + "\n```\n")
+    return output
 
 
 def execute(args):
@@ -168,7 +195,12 @@ def execute(args):
     baseline, tasks = load_tasks(root)
     state = (args.state or root / ".decomp/queue.sqlite3").resolve()
     if args.command == "check":
-        print(f"Valid scaffold: {len(tasks)} tasks; matching verifier NOT IMPLEMENTED")
+        if args.local:
+            for task in tasks.values():
+                evidence_check(root, baseline, task)
+        print(f"Valid scaffold: {len(tasks)} tasks; " +
+              ("local evidence/tool locks verified; " if args.local else "") +
+              "whole-image verifier not implemented; matching coverage unknown")
         return
     if args.command == "verify-input":
         data = args.image.read_bytes()
@@ -264,8 +296,9 @@ def main():
     parser.add_argument("--root", type=Path, default=ROOT)
     parser.add_argument("--state", type=Path, help="coordinator's shared local SQLite file")
     sub = parser.add_subparsers(dest="command", required=True)
-    for name in ("status", "check"):
-        sub.add_parser(name)
+    sub.add_parser("status")
+    sub.add_parser("check").add_argument("--local", action="store_true",
+                                         help="also verify local function packets and compiler locks")
     sub.add_parser("verify-input").add_argument("image", type=Path)
     sub.add_parser("hash-packet").add_argument("directory", type=Path)
     for name in ("claim", "packet", "release", "submit", "review"):

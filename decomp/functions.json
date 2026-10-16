@@ -1,6 +1,199 @@
 {
-  "schema_version": 1,
   "baseline_id": "slimblade-pro-stock-v4.49",
-  "inventory_status": "not_started",
-  "functions": []
+  "functions": [
+    {
+      "acceptance": "Evidence-backed C and recorded comparison, independently rebuilt/reviewed by coordinator. Exact bytes alone do not certify recovered source, ABI or whole-image equivalence.",
+      "allowed_paths": [
+        "decomp/src/fn_00003b48.c",
+        "decomp/results/fn_00003b48/"
+      ],
+      "boundary_review": "2026-10-16 coordinator limited leaf review; see decomp/results/pilot-readiness/notes.md and packet instructions.json/llvm.txt/references.json. Global inventory is NOT approved.",
+      "comparison": {
+        "lock_path": ".decomp/pilot-v1/lock.json",
+        "lock_sha256": "2d9d35cce216a47e0ba0d244f51e3272bb6330ae30ca84e2a006199b9b7ab230"
+      },
+      "comparison_scope": "stock-leaf-pilot-feedback-v1",
+      "depends_on": [
+        "bootstrap-inventory",
+        "bootstrap-toolchain",
+        "bootstrap-verifier"
+      ],
+      "entry": "0x00003b48",
+      "evidence_path": ".decomp/evidence/pilot-v1/fn_00003b48",
+      "evidence_sha256": "780239a45425c9695be2f24eca92c3615034045375e6b11b1cd4910405dff12c",
+      "id": "fn_00003b48",
+      "instructions": "Read the immutable packet and docs/pilot.md. Recover this leaf only; no calls or absolute globals are supported. Name the C function exactly as the task ID. Keep prototype hypotheses in notes. Use the frozen candidate compiler for byte feedback; do not alter flags or demand a match from an unidentified historical toolchain. Stop at 20 minutes/8 builds/3 non-improving attempts. Submit draft or blocked; never matched.",
+      "kind": "function",
+      "mode": "thumb",
+      "ranges": [
+        {
+          "end_exclusive": "0x00003b64",
+          "start": "0x00003b48"
+        }
+      ],
+      "title": "Pilot: reconstruct Thumb leaf at 0x00003b48"
+    },
+    {
+      "acceptance": "Evidence-backed C and recorded comparison, independently rebuilt/reviewed by coordinator. Exact bytes alone do not certify recovered source, ABI or whole-image equivalence.",
+      "allowed_paths": [
+        "decomp/src/fn_00003bb4.c",
+        "decomp/results/fn_00003bb4/"
+      ],
+      "boundary_review": "2026-10-16 coordinator limited leaf review; see decomp/results/pilot-readiness/notes.md and packet instructions.json/llvm.txt/references.json. Global inventory is NOT approved.",
+      "comparison": {
+        "lock_path": ".decomp/pilot-v1/lock.json",
+        "lock_sha256": "2d9d35cce216a47e0ba0d244f51e3272bb6330ae30ca84e2a006199b9b7ab230"
+      },
+      "comparison_scope": "stock-leaf-pilot-feedback-v1",
+      "depends_on": [
+        "bootstrap-inventory",
+        "bootstrap-toolchain",
+        "bootstrap-verifier"
+      ],
+      "entry": "0x00003bb4",
+      "evidence_path": ".decomp/evidence/pilot-v1/fn_00003bb4",
+      "evidence_sha256": "e606a28d54f88d791a5edf78b8ded33b1ee6369f6459efe69fc40cdb93264c7b",
+      "id": "fn_00003bb4",
+      "instructions": "Read the immutable packet and docs/pilot.md. Recover this leaf only; no calls or absolute globals are supported. Name the C function exactly as the task ID. Keep prototype hypotheses in notes. Use the frozen candidate compiler for byte feedback; do not alter flags or demand a match from an unidentified historical toolchain. Stop at 20 minutes/8 builds/3 non-improving attempts. Submit draft or blocked; never matched.",
+      "kind": "function",
+      "mode": "thumb",
+      "ranges": [
+        {
+          "end_exclusive": "0x00003bbe",
+          "start": "0x00003bb4"
+        }
+      ],
+      "title": "Pilot: reconstruct Thumb leaf at 0x00003bb4"
+    },
+    {
+      "acceptance": "Evidence-backed C and recorded comparison, independently rebuilt/reviewed by coordinator. Exact bytes alone do not certify recovered source, ABI or whole-image equivalence.",
+      "allowed_paths": [
+        "decomp/src/fn_0000e4ee.c",
+        "decomp/results/fn_0000e4ee/"
+      ],
+      "boundary_review": "2026-10-16 coordinator limited leaf review; see decomp/results/pilot-readiness/notes.md and packet instructions.json/llvm.txt/references.json. Global inventory is NOT approved.",
+      "comparison": {
+        "lock_path": ".decomp/pilot-v1/lock.json",
+        "lock_sha256": "2d9d35cce216a47e0ba0d244f51e3272bb6330ae30ca84e2a006199b9b7ab230"
+      },
+      "comparison_scope": "stock-leaf-pilot-feedback-v1",
+      "depends_on": [
+        "bootstrap-inventory",
+        "bootstrap-toolchain",
+        "bootstrap-verifier"
+      ],
+      "entry": "0x0000e4ee",
+      "evidence_path": ".decomp/evidence/pilot-v1/fn_0000e4ee",
+      "evidence_sha256": "7e0678caf093173324f751f3bd0965425c6df9affdd2d25d7c19d6e01aa3dc78",
+      "id": "fn_0000e4ee",
+      "instructions": "Read the immutable packet and docs/pilot.md. Recover this leaf only; no calls or absolute globals are supported. Name the C function exactly as the task ID. Keep prototype hypotheses in notes. Use the frozen candidate compiler for byte feedback; do not alter flags or demand a match from an unidentified historical toolchain. Stop at 20 minutes/8 builds/3 non-improving attempts. Submit draft or blocked; never matched.",
+      "kind": "function",
+      "mode": "thumb",
+      "ranges": [
+        {
+          "end_exclusive": "0x0000e4fc",
+          "start": "0x0000e4ee"
+        }
+      ],
+      "title": "Pilot: reconstruct Thumb leaf at 0x0000e4ee"
+    },
+    {
+      "acceptance": "Evidence-backed C and recorded comparison, independently rebuilt/reviewed by coordinator. Exact bytes alone do not certify recovered source, ABI or whole-image equivalence.",
+      "allowed_paths": [
+        "decomp/src/fn_0000e4fc.c",
+        "decomp/results/fn_0000e4fc/"
+      ],
+      "boundary_review": "2026-10-16 coordinator limited leaf review; see decomp/results/pilot-readiness/notes.md and packet instructions.json/llvm.txt/references.json. Global inventory is NOT approved.",
+      "comparison": {
+        "lock_path": ".decomp/pilot-v1/lock.json",
+        "lock_sha256": "2d9d35cce216a47e0ba0d244f51e3272bb6330ae30ca84e2a006199b9b7ab230"
+      },
+      "comparison_scope": "stock-leaf-pilot-feedback-v1",
+      "depends_on": [
+        "bootstrap-inventory",
+        "bootstrap-toolchain",
+        "bootstrap-verifier"
+      ],
+      "entry": "0x0000e4fc",
+      "evidence_path": ".decomp/evidence/pilot-v1/fn_0000e4fc",
+      "evidence_sha256": "85cff56aeeff3f1b637fd270ec90af9ca2f59a6f3e44243bea250e9aa146a681",
+      "id": "fn_0000e4fc",
+      "instructions": "Read the immutable packet and docs/pilot.md. Recover this leaf only; no calls or absolute globals are supported. Name the C function exactly as the task ID. Keep prototype hypotheses in notes. Use the frozen candidate compiler for byte feedback; do not alter flags or demand a match from an unidentified historical toolchain. Stop at 20 minutes/8 builds/3 non-improving attempts. Submit draft or blocked; never matched.",
+      "kind": "function",
+      "mode": "thumb",
+      "ranges": [
+        {
+          "end_exclusive": "0x0000e512",
+          "start": "0x0000e4fc"
+        }
+      ],
+      "title": "Pilot: reconstruct Thumb leaf at 0x0000e4fc"
+    },
+    {
+      "acceptance": "Evidence-backed C and recorded comparison, independently rebuilt/reviewed by coordinator. Exact bytes alone do not certify recovered source, ABI or whole-image equivalence.",
+      "allowed_paths": [
+        "decomp/src/fn_0000e540.c",
+        "decomp/results/fn_0000e540/"
+      ],
+      "boundary_review": "2026-10-16 coordinator limited leaf review; see decomp/results/pilot-readiness/notes.md and packet instructions.json/llvm.txt/references.json. Global inventory is NOT approved.",
+      "comparison": {
+        "lock_path": ".decomp/pilot-v1/lock.json",
+        "lock_sha256": "2d9d35cce216a47e0ba0d244f51e3272bb6330ae30ca84e2a006199b9b7ab230"
+      },
+      "comparison_scope": "stock-leaf-pilot-feedback-v1",
+      "depends_on": [
+        "bootstrap-inventory",
+        "bootstrap-toolchain",
+        "bootstrap-verifier"
+      ],
+      "entry": "0x0000e540",
+      "evidence_path": ".decomp/evidence/pilot-v1/fn_0000e540",
+      "evidence_sha256": "dbfd5c960d383595040d3f0eaf84b5d8b20723d361d0164165170214a644b078",
+      "id": "fn_0000e540",
+      "instructions": "Read the immutable packet and docs/pilot.md. Recover this leaf only; no calls or absolute globals are supported. Name the C function exactly as the task ID. Keep prototype hypotheses in notes. Use the frozen candidate compiler for byte feedback; do not alter flags or demand a match from an unidentified historical toolchain. Stop at 20 minutes/8 builds/3 non-improving attempts. Submit draft or blocked; never matched.",
+      "kind": "function",
+      "mode": "thumb",
+      "ranges": [
+        {
+          "end_exclusive": "0x0000e548",
+          "start": "0x0000e540"
+        }
+      ],
+      "title": "Pilot: reconstruct Thumb leaf at 0x0000e540"
+    },
+    {
+      "acceptance": "Evidence-backed C and recorded comparison, independently rebuilt/reviewed by coordinator. Exact bytes alone do not certify recovered source, ABI or whole-image equivalence.",
+      "allowed_paths": [
+        "decomp/src/fn_0000e548.c",
+        "decomp/results/fn_0000e548/"
+      ],
+      "boundary_review": "2026-10-16 coordinator limited leaf review; see decomp/results/pilot-readiness/notes.md and packet instructions.json/llvm.txt/references.json. Global inventory is NOT approved.",
+      "comparison": {
+        "lock_path": ".decomp/pilot-v1/lock.json",
+        "lock_sha256": "2d9d35cce216a47e0ba0d244f51e3272bb6330ae30ca84e2a006199b9b7ab230"
+      },
+      "comparison_scope": "stock-leaf-pilot-feedback-v1",
+      "depends_on": [
+        "bootstrap-inventory",
+        "bootstrap-toolchain",
+        "bootstrap-verifier"
+      ],
+      "entry": "0x0000e548",
+      "evidence_path": ".decomp/evidence/pilot-v1/fn_0000e548",
+      "evidence_sha256": "b5078bc799ad66c5dd2001c2685ed352b660211d6e7feed21791c21cb6749752",
+      "id": "fn_0000e548",
+      "instructions": "Read the immutable packet and docs/pilot.md. Recover this leaf only; no calls or absolute globals are supported. Name the C function exactly as the task ID. Keep prototype hypotheses in notes. Use the frozen candidate compiler for byte feedback; do not alter flags or demand a match from an unidentified historical toolchain. Stop at 20 minutes/8 builds/3 non-improving attempts. Submit draft or blocked; never matched.",
+      "kind": "function",
+      "mode": "thumb",
+      "ranges": [
+        {
+          "end_exclusive": "0x0000e558",
+          "start": "0x0000e548"
+        }
+      ],
+      "title": "Pilot: reconstruct Thumb leaf at 0x0000e548"
+    }
+  ],
+  "inventory_status": "six_reviewed_pilot_leaves_only_global_inventory_unapproved",
+  "schema_version": 1
 }

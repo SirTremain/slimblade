@@ -38,8 +38,9 @@ supported ingestion path and SDK/device compatibility before implementation.
   boundaries merely to improve a score. Do not disguise original code bytes,
   inline assembly, post-link patches, stubs or omitted behavior as recovered C.
 - Submitted/reviewed drafts are not matched functions. Only an independent,
-  pinned compiler/linker/verifier pipeline may certify matches. That pipeline
-  is not implemented yet; report matching coverage as unknown.
+  pinned compiler/linker/verifier pipeline plus source/ABI review may certify
+  matches. The six-leaf pilot supplies pinned exact-range feedback, not match
+  certification or a whole-image build; report matching coverage as unknown.
 - Separate observed facts, inferences and unresolved questions. Preserve widths,
   signedness, aliasing, volatile MMIO, calling convention, ARM/Thumb state,
   side effects and original bugs. Do not redesign the firmware.

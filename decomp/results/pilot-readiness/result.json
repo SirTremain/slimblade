@@ -1,0 +1,54 @@
+{
+  "task": "pilot-readiness",
+  "worker": "coordinator-current-session",
+  "status": "draft",
+  "pilot_ready": true,
+  "scope": "Six reviewed leaves: offline reconstruction and fixed-candidate compiler calibration only",
+  "stock_matching_campaign_ready": false,
+  "full_inventory_approved": false,
+  "whole_image_build_available": false,
+  "original_compiler_status": "unknown",
+  "matching_coverage": "unknown",
+  "stock_functions_reconstructed": 0,
+  "agents_launched": 0,
+  "device_accessed": false,
+  "source_commit": "a1da42f2c2969cb18c2bb2fac0d4a9c5a4b67cd4",
+  "observations": [
+    "Six unchanged, contiguous Thumb boundaries verified against original bytes, per-instruction Ghidra state/flow, caller references and independent LLVM disassembly.",
+    "Six immutable local packets and pinned compile/link/stock-range feedback are prepared; task claims verify packet/tool/baseline/task-lock integrity.",
+    "Three original bootstrap reports accepted for setup scope by the current coordinator with explicit errata and limits; no separate reviewer identity is impersonated.",
+    "Actual queue has six unclaimed function tasks; claim/packet/release was tested only in a copied queue.",
+    "The runtime-helper diagnostic and related silent inline-data misclassification are preserved and quarantined."
+  ],
+  "inferences": [
+    "These six leaves support an isolated reconstruction/calibration pilot without resolving unrelated runtime dispatch.",
+    "The fixed Clang/LLD candidate may not reproduce historical code generation; mismatches can be toolchain blockers, not proof a semantic draft is wrong."
+  ],
+  "open_questions": [
+    "Historical compiler/ABI/library identity and exact full-image build remain unresolved.",
+    "Runtime dispatcher/call-site/shared-tail model and all non-pilot boundaries remain unapproved.",
+    "Replacement device compatibility, device-specific state, external dependencies and independent recovery remain unknown.",
+    "Worker model, concurrency and total run budget must be assigned before launching jobs.",
+    "Preparation changes need user review/commit before ordinary worker worktrees are created from HEAD."
+  ],
+  "validation": [
+    "48 offline unit tests passed: coordination, inventory regression, leaf-boundary rejection, compiler/comparator positive and negative controls.",
+    "8 existing readiness regression tests passed.",
+    "21 original synthetic verifier controls passed in a fresh .decomp/verifier/pilot-readiness run with unchanged synthetic lock.",
+    "Six deliberately wrong C probes rejected against six actual stock ranges; no stock positive candidate or recovered C was supplied.",
+    "Read-only Ghidra leaf export repeated with identical SHA-256.",
+    "Original global inventory review still exits 1 on the genuine 0x1e480 error; no suppression or blanket boundary approval.",
+    "Prior repair-delta checks passed and recorded SDK source files were rehashed successfully.",
+    "Six claim/packet/release dry runs succeeded in .decomp/pilot-queue-smoke.sqlite3; actual tasks remain unclaimed.",
+    "Local preflight and git diff --check passed."
+  ],
+  "artifacts": {
+    "leaf_export_sha256": "4ca31f47f191060e6d2b89f4ff3c50da8b4930aa80d6bb7625188044f9e56ed6",
+    "comparison_lock_sha256": "2d9d35cce216a47e0ba0d244f51e3272bb6330ae30ca84e2a006199b9b7ab230",
+    "real_target_controls_sha256": "beeb45d92418b5fad7ef4abfa24ea0856d1bc33486c5709d19d4aa34d7ddc3b0",
+    "queue_backup": ".decomp/queue-before-pilot-acceptance.sqlite3"
+  },
+  "attempts": 0,
+  "model": "Current Codex session; exact model identifier and cost not exposed",
+  "next_step": "Review/commit preparation and use docs/pilot.md's complete coordinator prompt to assign a bounded worker run."
+}

@@ -45,7 +45,9 @@ and some peripheral names disagree with the observed BK3635 firmware.
 - The original compiler, version, ABI, flags, linker script and libraries are
   unknown. Ghidra's compiler-spec selection does not identify that toolchain.
 - Function boundaries, literal pools, indirect calls, tables, RAM aliases and
-  unclassified bytes need an inventory. There is no known total function count.
+  unclassified bytes need continued review. Six [pilot](pilot.md) leaves have
+  local boundary approval; the global inventory and total function count remain
+  unknown. See the [dependency ledger](dependencies.md).
 - The replacement device's revision and installed firmware remain unknown.
   Studying v4.49 does not require changing that device.
 - Full stock reconstruction includes all wireless behavior. The later custom

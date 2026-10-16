@@ -19,17 +19,17 @@ submitted assignments or treating old startup prompts as a new work order.
 ## What is ready
 
 The scaffold supplies task validation, an atomic SQLite claim queue, worker
-prompts, evidence hashing and review transitions. It does not compile recovered
-firmware, compare ARM objects, launch models, or certify matching progress.
-The [2026-10-16 bootstrap](bootstrap.md) adds a tested synthetic comparison
-prototype and a local Ghidra inventory. It does not certify stock matches or
-approve discovered function boundaries. Use Python 3.10+. All commands below
-run from the main repository root.
+prompts, evidence hashing and review transitions. The [first pilot](pilot.md)
+adds six reviewed leaf packets and a pinned source-build/exact-stock-range
+comparison command. It does not launch models, certify matching progress or
+build the complete firmware. The global inventory and original compiler remain
+unapproved/unknown. Use Python 3.10+. All commands below run from the main
+repository root; the worker's printed build command runs in its worktree.
 
 Check configuration and inspect tasks:
 
 ```sh
-python3 tools/decomp.py check
+python3 tools/decomp.py check --local
 ```
 
 ```sh
@@ -38,31 +38,30 @@ python3 tools/decomp.py status
 
 ## Continuing from bootstrap
 
-Bootstrap setup has now been performed in a single coordinator session, with
-no additional agents. Its three reports are submitted for independent review;
-do not launch another bootstrap run or a function campaign automatically.
-The instructions below describe the queue workflow for later assigned runs.
-The [readiness pass](../decomp/results/readiness/notes.md) resolved three of the
-four original diagnostics in a separate analysis copy. A shared runtime-helper
-model remains blocked, and a related caller has silently misclassified data.
-Consult that pass and the [original review correction](../decomp/results/bootstrap-inventory/notes.md#review-correction)
-before accepting the submitted inventory report or assigning functions.
+Bootstrap setup is complete. Its three reports have coordinator acceptance
+for their original setup scope, with the [pilot-readiness addendum](../decomp/results/pilot-readiness/notes.md#bootstrap-review).
+Do not restart bootstrap or launch workers automatically. A shared runtime
+helper and related silent data/code misclassification remain quarantined;
+the global inventory checker still fails. Six separately checked leaves are
+ready for a bounded reconstruction/compiler-calibration pilot only.
 
-Start a coordinator with [this prompt](../decomp/prompts/coordinator.md).
-Choose the worker models in the agent application or runner. Start with two
-inexpensive workers, bounded sessions and an independent reviewer. Exact model
+Start with [the copyable pilot prompt](pilot.md#start-here), which references
+the [coordinator instructions](../decomp/prompts/coordinator.md).
+The user assigns worker models, concurrency and a total run budget before any
+launch. Two inexpensive workers are a possible starting configuration, not a
+standing run instruction. Use bounded sessions and independent review. Exact model
 names and pricing are intentionally not hardcoded. No API keys are needed by
 the scaffold; the chosen runner handles authentication.
 
 The three original tasks covered inventory/import setup, compiler/ABI research
-and a synthetic verifier prototype. Review their existing results and resolve
-the remaining inventory, toolchain, verifier and dependency/storage questions
-before a function campaign. Setup completion does not prove a matching
-toolchain is available.
+and a synthetic verifier prototype. Their acceptance does not prove a matching
+toolchain or full inventory is available. Resolve the remaining
+[dependency/storage questions](dependencies.md) and extend/review the verifier
+before expanding beyond the six leaves or claiming full-image verification.
 
 Create each worker's isolated worktree from a commit containing the current
 instructions and tools. The commands below are queue-operation examples, not
-instructions to reclaim already-submitted bootstrap tasks. Substitute the
+instructions to reclaim accepted bootstrap tasks. Substitute the
 actual pending task, worker and report for the assigned run.
 
 ```sh
@@ -78,7 +77,7 @@ same absolute main checkout with --root and the same --state SQLite path.
 Claim an assignment; stdout is the complete worker prompt:
 
 ```sh
-python3 tools/decomp.py claim bootstrap-toolchain --worker worker-a
+python3 tools/decomp.py claim fn_00003b48 --worker worker-a
 ```
 
 Give that output and the worktree location to the worker's agent session.
@@ -87,7 +86,7 @@ are transactional: competing processes cannot both claim the same task.
 Reprint a prompt after a lost terminal session:
 
 ```sh
-python3 tools/decomp.py packet bootstrap-toolchain
+python3 tools/decomp.py packet fn_00003b48
 ```
 
 Workers produce result.json using [the template](../decomp/templates/result.json)
@@ -95,14 +94,15 @@ and notes under their task's allowed directory. The coordinator records a
 completed attempt, referencing the worker's actual result file:
 
 ```sh
-python3 tools/decomp.py submit bootstrap-toolchain --worker worker-a --report .worktrees/worker-a/decomp/results/bootstrap-toolchain/result.json
+python3 tools/decomp.py submit fn_00003b48 --worker worker-a --report .worktrees/worker-a/decomp/results/fn_00003b48/result.json
 ```
 
 An independent reviewer uses [the review prompt](../decomp/prompts/reviewer.md).
-After checking and integrating the bootstrap deliverables, record acceptance:
+After auditing the complete diff and independently rebuilding/reviewing the
+function draft, record review acceptance:
 
 ```sh
-python3 tools/decomp.py review bootstrap-toolchain --reviewer reviewer-1 --decision accept --note "Reviewed evidence and integrated the documented toolchain findings"
+python3 tools/decomp.py review fn_00003b48 --reviewer reviewer-1 --decision accept --note "Reviewed source and independently rebuilt; not match certification"
 ```
 
 Acceptance records a human/coordinator decision. It is not an automated proof.
@@ -111,7 +111,7 @@ be accepted. Return a submitted attempt for another try using decision requeue.
 Release an unfinished claim only after confirming its worker has stopped:
 
 ```sh
-python3 tools/decomp.py release bootstrap-toolchain --worker worker-a --note "Worker stopped; preserve notes before reassignment"
+python3 tools/decomp.py release fn_00003b48 --worker worker-a --note "Worker stopped; preserve notes before reassignment"
 ```
 
 Claims never expire silently. The queue lives in ignored .decomp/queue.sqlite3;
@@ -122,7 +122,9 @@ Identifiers are bookkeeping, not authentication.
 
 ## Creating function assignments later
 
-The inventory exporter does not create runnable tasks. Review boundaries,
+The inventory exporter does not create runnable tasks. The current six pilot
+tasks are already prepared; do not regenerate them on startup. For later work,
+review boundaries,
 instruction state and data ownership, then add task objects to the functions
 array in [functions.json](../decomp/functions.json) using
 [the template](../decomp/templates/function.json). The initial schema assumes
@@ -158,8 +160,10 @@ packets or independent project copies.
 
 ## Verification before scaling
 
-Use the existing synthetic prototype as a starting point, not stock proof.
-Implement and pin these in the real stock verifier, then test independently:
+The current leaf comparator implements pinned real-range feedback for its
+restricted scope; the synthetic prototype additionally tests calls and data.
+Neither is full stock proof. For broader work, require all of the following
+in the extended verifier and test independently:
 
 1. Hash-lock original input, tools, compiler version, flags, ABI, linker settings
    and verifier revision. Keep the oracle/reference files outside worker writes.
@@ -176,7 +180,7 @@ These boundaries are a workflow convention until enforced by the chosen agent
 sandbox and independent integration environment. A worktree alone does not
 prevent a process accessing another directory or a device.
 
-Run a pilot of 5–10 small leaf functions. Record attempts, elapsed time, actual
+Run the prepared six-leaf pilot before proposing more functions. Record attempts, elapsed time, actual
 model/cost when available and rejection reasons. Escalate ABI, shared types,
 interrupts, indirect dispatch and MMIO to stronger review. Apply the worker's
 20-minute/8-attempt limit and stop after 3 non-improving attempts.

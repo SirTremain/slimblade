@@ -10,8 +10,10 @@ require removal. This prompt coordinates offline work, not a hardware session.
 Bootstrap analysis and a synthetic verifier prototype already exist. Read
 docs/bootstrap.md and decomp/results/bootstrap-inventory/notes.md, including the
 review correction, then decomp/results/readiness/notes.md for the later
-analysis repairs and remaining runtime-helper/compiler/verifier blockers.
-Do not restart setup or assume the inventory is approved.
+analysis repairs. Then read docs/pilot.md and the pilot-readiness report for
+the six reviewed leaf assignments and pinned comparison path. The shared
+runtime helper and original toolchain remain unresolved. Do not restart setup,
+reclaim accepted bootstrap tasks or assume the global inventory is approved.
 
 First inspect the queue and available local evidence. Record the user's
 requested worker count, model choices and spending/time limit. If unspecified,
@@ -29,15 +31,18 @@ Keep one coordinator queue in the main checkout and distribute separate
 worktrees and packets to workers.
 Do not infer that a submitted bootstrap result establishes a matching build.
 
-Accept bootstrap work only after independent checks. Integrate the approved
-memory map, toolchain lock and verifier. Preserve unknowns if the original
-compiler cannot be identified; semantic drafts may be useful but are not
-matching progress. Require a synthetic positive control and a wrong candidate
-that fails the real comparison before scaling workers.
+The current coordinator review accepts setup scope only; its checks and
+limitations are documented. Run the local packet/tool preflight before claims.
+Preserve unknowns if the original compiler cannot be identified; semantic
+drafts may be useful but are not matching progress. The supplied range
+comparator uses a fixed candidate toolchain, not a proven historical one.
+Reproduce controls and require another readiness review before expanding beyond
+the six leaves. Do not silently replace the toolchain lock to improve scores.
 
-For an assigned reconstruction run, review the exported inventory,
-create immutable packets and add real tasks to decomp/functions.json using the
-template. Start with a few small leaf functions. Keep volatile MMIO, interrupt,
+For the first assigned reconstruction run, use the six existing tasks and
+immutable packets in decomp/functions.json. Do not add more tasks automatically.
+Later expansion requires reviewed boundaries, dependencies and an extended
+verifier before using the template. Keep volatile MMIO, interrupt,
 storage and reset logic for experienced review. Schedule at most one owner per
 function; shared tails/types require coordinator decisions.
 

@@ -10,8 +10,9 @@ The [bootstrap run](bootstrap.md) installed Ghidra 12.1.4 and Temurin JDK
 functions. The later [readiness pass](../decomp/results/readiness/notes.md)
 resolved three of four saved diagnostics in a separate analysis copy. The
 remaining runtime-helper model also affects a caller with a silent data/code
-misclassification. Inventory approval is blocked, and individual function
-boundaries are not approved. Full commands, memory-map
+misclassification. Global inventory approval is blocked. A later
+[six-leaf review](pilot.md) approves only those individual boundaries for a
+bounded pilot and leaves the runtime cluster quarantined. Full commands, memory-map
 evidence, artifact hashes and limitations are in the
 [inventory result](../decomp/results/bootstrap-inventory/notes.md).
 

@@ -20,6 +20,11 @@ class CoordinationTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
         shutil.copytree(REPO / "decomp", self.root / "decomp")
+        # Unit fixtures must not inherit live stock assignments or local data.
+        inventory = self.root / "decomp/functions.json"
+        data = json.loads(inventory.read_text())
+        data["functions"] = []
+        inventory.write_text(json.dumps(data))
 
     def cli(self, *args, success=True):
         result = subprocess.run(
@@ -144,6 +149,23 @@ class CoordinationTests(unittest.TestCase):
         packet.mkdir()
         (packet / "link").symlink_to(self.root / "decomp/baseline.json")
         self.cli("hash-packet", str(packet), success=False)
+
+    def test_local_check_rejects_missing_packet(self):
+        task, evidence = self.function()
+        self.cli("check", "--local")
+        (evidence / "listing.txt").unlink()
+        self.cli("check", "--local", success=False)
+
+    def test_pilot_claim_requires_local_lock(self):
+        task, _ = self.function()
+        task["comparison_scope"] = "stock-leaf-pilot-feedback-v1"
+        task["comparison"] = {"lock_path": ".decomp/missing.json", "lock_sha256": "0"*64}
+        inventory = self.root / "decomp/functions.json"
+        data = json.loads(inventory.read_text())
+        data["functions"] = [task]
+        inventory.write_text(json.dumps(data))
+        self.accept_bootstraps()
+        self.cli("claim", task["id"], "--worker", "worker-a", success=False)
 
     def test_input_hash_gate_with_synthetic_bytes(self):
         image = self.root / "synthetic.bin"

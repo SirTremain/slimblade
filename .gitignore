@@ -12,6 +12,9 @@ images
 *.o
 /target/
 
+# Generated worker compiler/diff scratch; keep only recovered source and reports.
+/decomp/results/*/attempt-*/
+
 # Retired workspaces may still contain local generated build products.
 /firmware/
 /vendor/

@@ -18,6 +18,12 @@ Use the pinned compile/diff command only if the coordinator supplies a working
 verifier. If it is absent, produce an evidence-backed draft or a blocker, and
 explicitly report that no match was verified. Never alter the baseline, shared
 types, toolchain, build flags, comparison rules, reference assembly or bytes.
+The current six-leaf pilot includes a concrete command in the claim output;
+read docs/pilot.md. It reports exact-range bytes or a mismatch, never certified
+matching coverage. Original compiler provenance and source declaration details
+remain hypotheses. Do not use inline assembly/intrinsics or expand your body
+to absorb padding. No calls, absolute addresses or globals are supported by
+this pilot comparator. Request a coordinator decision if evidence needs them.
 
 Default function budget: 20 minutes, 8 compile/diff attempts maximum; stop after
 3 attempts with no improvement. A smaller assigned budget takes precedence.

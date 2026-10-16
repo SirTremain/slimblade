@@ -175,17 +175,22 @@ baseline intact regardless of later feature choices.
 
 ## Current position and next work
 
-The project is at milestone 1, offline preparation/reconstruction. Bootstrap
-tools and reports exist. The [readiness pass](../decomp/results/readiness/notes.md)
-resolved three of four Ghidra diagnostics in a separate project. The remaining
-runtime-helper call model and a related silent data/code misclassification need
-review. Boundaries remain unapproved, the original compiler/ABI is unknown, and
-a stock matching pipeline is not implemented.
-Matching coverage is unknown; no firmware functions have been reconstructed.
+The project is at milestone 1, offline preparation/reconstruction. A
+[six-leaf pilot](pilot.md) is ready with individually reviewed boundaries,
+immutable evidence and a pinned compile/link/stock-range comparison command.
+It is a reconstruction/calibration pilot, not a full matching campaign.
+No worker has started and no firmware C has been reconstructed.
 
-Next: model the shared runtime helper and both callers, establish the toolchain and real verifier,
-review dependency/storage coverage, then assign bounded reconstruction work.
-See [bootstrap results](bootstrap.md) and [the workflow](workflow.md).
+The global inventory remains unapproved. The remaining runtime-helper call
+model and related silent data/code misclassification are quarantined; the
+original compiler/ABI, full build and matching coverage remain unknown.
+The [dependency ledger](dependencies.md) accounts for the container regions
+and external unknowns without excluding difficult bytes from the denominator.
+
+Next: commit the preparation, assign a worker run/budget and start the bounded
+pilot. Separately resolve the shared helper, historical toolchain and full
+storage/build dependencies before expanding to those regions or claiming
+whole-image verification. See [the workflow](workflow.md).
 
 This roadmap is not an instruction to run all stages immediately. Documentation
 cleanup and offline tasks do not initiate device access, loader entry, HID/vendor
