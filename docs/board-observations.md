@@ -1,5 +1,10 @@
 # Board observations
 
+Historical observations of the earlier device. They do not establish the
+replacement device's revision, installed firmware or recovery behavior.
+The [project plan](project-plan.md) defines current identification and hardware
+validation requirements; this document is evidence, not a hardware assignment.
+
 Last checked: 2026-08-16
 
 User-supplied board photographs are stored in [`images/`](../images/). They show the component side in four overlapping regions.

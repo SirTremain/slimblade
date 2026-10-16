@@ -1,5 +1,9 @@
 # Offline bootstrap results
 
+Historical session record, not a new assignment. The
+[project plan](project-plan.md) defines current goals; the
+[workflow](workflow.md) explains how to continue from these results.
+
 Completed 2026-10-16 in one coordinator session from commit
 `26175f32029cea2d471020b8e96ec6415c447b18`, using isolated worktree
 `.worktrees/bootstrap`. The user requested no additional agents, firmware

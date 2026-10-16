@@ -1,5 +1,9 @@
 # Retired work
 
+Current goals and hardware gates are defined in the [project plan](project-plan.md).
+Old approvals, next-step lists, shopping recommendations and recovery commands
+are historical context, not standing instructions for the replacement device.
+
 The last pre-decompilation snapshot is commit
 `ea2ee1dd6f47ab414180b1b4e6ea375caef489d7` (2026-10-16 cleanup baseline).
 The user committed and pushed it before authorizing removal of tracked work.
@@ -26,9 +30,12 @@ Useful historical paths in that snapshot:
 Retained as historical reference: [board observations](board-observations.md),
 [hardware-loader research](hardware-loader-entry.md),
 [bench notes](embedded-workbench.md), [pogo fixture](../hardware/pogo_fixture/README.md)
-and [marker reachability](marker-reachability-gate.md). These are not task
-instructions for decompilation agents. Old hardware results concern the earlier
-device. The fixture work and local photographs are preserved.
+and [marker reachability](marker-reachability-gate.md). Old hardware results
+concern the earlier device. The marker requirement remains a release gate for
+modified firmware; the other documents are historical references, not active
+decompilation or hardware assignments. The fixture work and local photographs
+are preserved. Revalidate hardware and sources before promoting a historical
+procedure into a new, explicitly scoped hardware session.
 
 Ignored build products from the old workspace may still exist locally. They
 are not active tools or evidence of a current build. The cleanup does not

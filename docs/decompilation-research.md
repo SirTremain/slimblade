@@ -72,6 +72,10 @@ does not submit anything to those projects.
 
 ## Recommendation and limits
 
+This section records the original scaffold rationale. The
+[project plan](project-plan.md) defines the current milestone order and priorities;
+the bootstrap setup below has already been performed and is under review.
+
 Use a small provider-independent coordinator, exported Ghidra evidence and
 isolated workers. Start with inventory, compiler research and a verifier
 prototype, then calibrate inexpensive workers on a few small leaf functions.
@@ -83,7 +87,8 @@ This recommendation is an inference from the workflows above and the
 precede an objective acceptance test. More workers cannot resolve an unknown
 compiler or a wrong memory map merely by producing more plausible C.
 
-The first target is a reproducible stock rebuild, followed by a separate
+The first target is a reproducible stock rebuild, dependency/recovery review
+and gated hardware validation, followed by the separate OpenAxis
 modification phase. Ghidra output alone is not that rebuild. Even complete
 matching only covers the chosen image; calibration, undocumented hardware
 behavior and later modifications remain separate concerns. Offline file

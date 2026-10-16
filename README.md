@@ -1,9 +1,17 @@
 # SlimBlade Pro firmware decompilation
 
-An offline workspace for reconstructing stock Kensington SlimBlade Pro firmware
-before attempting Rotatrix-style changes. The eventual target is wired USB with
-access to both sensors. Reconstruction should account for the whole chosen
-stock image, including wireless code and data.
+A workspace for two milestones, defined in the [project plan](docs/project-plan.md):
+
+1. Reconstruct official Kensington firmware and any necessary dependencies,
+   verify an exact stock rebuild, then flash and validate it through explicit
+   hardware/recovery gates.
+2. Obtain the latest OpenAxis specification, add compatible rotation data
+   and a button toggle between Mouse and Rotation modes. Keep processing on
+   the device where feasible; bridge USB input to the host protocol as required.
+
+Preserve stock wireless functionality where feasible. Remove it only as the
+first optional feature if measured size limits require that tradeoff in the
+custom firmware—not during stock reconstruction. Current work remains offline.
 
 Current state: offline bootstrap completed on 2026-10-16. Ghidra and Java are
 installed locally, official v4.49 input is hash-verified, and an exported
@@ -15,6 +23,7 @@ and matching coverage remain unknown; no firmware functions were reconstructed
 and no function tasks were created. There is no stock matching build or
 device-writing command in the active toolset.
 
+- [Current goals, milestone gates and next work](docs/project-plan.md)
 - [Research: Ghidra and collaborative decompilation](docs/decompilation-research.md)
 - [Start and coordinate agents](docs/workflow.md)
 - [Ghidra setup and evidence export](docs/ghidra.md)
@@ -35,8 +44,8 @@ python3 -m unittest discover -s tests -v
 ```
 
 For a later agent session, start with
-[the coordinator prompt](decomp/prompts/coordinator.md). It describes three
-bootstrap assignments and how to distribute individual functions afterward.
+[the coordinator prompt](decomp/prompts/coordinator.md). It starts from existing
+bootstrap results and describes how to distribute reviewed function assignments.
 Model choice stays with the agent runner; this repository has no provider/API
 dependency and starts no agents automatically.
 

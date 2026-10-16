@@ -1,6 +1,9 @@
 # Worker assignment
 
-Read root AGENTS.md and docs/workflow.md. Work offline in the assigned isolated
+Read root AGENTS.md, docs/project-plan.md and docs/workflow.md. This worker
+prompt covers offline stock reconstruction, not feature changes or flashing.
+Preserve all stock behavior, including wireless; the later custom phase does
+not justify omitting code from the stock build. Work in the assigned isolated
 worktree. The coordinator supplies the task below and, for function tasks, a
 hash-locked local evidence directory. Do not choose extra tasks or launch more
 agents. Do not access hardware or run a retired binary from ignored directories.

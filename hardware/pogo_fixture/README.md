@@ -1,5 +1,10 @@
 # SlimBlade pogo fixture
 
+Retained historical fixture design, not an active fabrication or device-access
+assignment. The [project plan](../../docs/project-plan.md) defines current
+hardware gates. Preserve the existing fabrication lock; revalidate the design
+and target compatibility before any separately requested fixture work.
+
 This fixture provides repeatable access to `RSTN`, `P04`--`P07`, `VCC`, and
 `GND` without soldering to the SlimBlade PCB. The damaged controller is the
 mechanical prototype; the replacement controller must not be the first board

@@ -1,5 +1,9 @@
 # Pogo-clamp shopping list
 
+Archived procurement notes, not a current shopping instruction. These parts are
+not prerequisites for offline decompilation. See the [fixture status](README.md)
+and [project plan](../../docs/project-plan.md) before planning new hardware work.
+
 Checked: 2026-08-19. Prices are AUD including GST where the seller states it.
 Stock and freight can change.
 
@@ -11,7 +15,7 @@ on two 6 mm shafts. Four linear bearings prevent lateral drift. Springs lift
 the plate; two hand-adjusted stops initially limit downward travel. A toggle
 clamp is an optional later convenience and must never be the travel stop.
 
-## Buy now
+## Historical purchase list
 
 ### Core Electronics
 

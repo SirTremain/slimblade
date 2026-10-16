@@ -48,10 +48,13 @@ and some peripheral names disagree with the observed BK3635 firmware.
   unclassified bytes need an inventory. There is no known total function count.
 - The replacement device's revision and installed firmware remain unknown.
   Studying v4.49 does not require changing that device.
-- Full stock reconstruction includes behavior the later wired-only fork may
-  remove. A byte-identical resource rebuild does not reconstruct EEPROM,
-  factory calibration, external ROM or other storage absent from the resource.
+- Full stock reconstruction includes all wireless behavior. The later custom
+  branch should retain it unless measured size limits require removal, as set
+  out in the [project plan](project-plan.md). A byte-identical resource rebuild
+  does not reconstruct EEPROM, factory calibration, external ROM or other
+  storage absent from the resource.
 
 The previous `0475` experiment made the recovery marker unreachable despite
 retaining its writer. Keep the [reachability gate](marker-reachability-gate.md)
-as evidence for any separately requested future hardware phase.
+for modified firmware in the plan's separately requested hardware phase. Do not
+add that custom marker to an exact-match stock artifact.

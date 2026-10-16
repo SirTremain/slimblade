@@ -2,20 +2,33 @@
 
 ## Scope
 
-The active project is offline reconstruction of stock SlimBlade Pro firmware.
-Do not flash, reset, enter the loader, send HID/vendor reports, access a device,
-or restore retired flashing tools as part of decompilation work. Earlier
-standing approval for diagnostic flashes does not apply to this workflow.
-Hardware work needs a new explicit user request. Preserve the historical
-[marker reachability requirement](docs/marker-reachability-gate.md).
+Follow the [current project plan](docs/project-plan.md). Milestone 1 is complete
+stock firmware reconstruction, any necessary dependency analysis, independent
+exact-image verification, then gated flashing and hardware validation. Only
+after that milestone passes does milestone 2 add the latest pinned OpenAxis
+protocol and a user-selected button toggle between Mouse and Rotation modes.
 
-The eventual custom firmware needs wired USB only. During reconstruction,
-account for all code and data in the chosen stock image, including wireless
-paths, before claiming a complete rebuild. Firmware modifications come later.
+Current work is offline. Do not flash, reset, enter the loader, send HID/vendor
+reports, access a device or restore retired flashing tools during documentation
+or decompilation tasks. The planned hardware milestone is not standing approval
+to act on a device. A hardware session needs an explicit user request and the
+plan's compatibility, backup, recovery and verification gates. Earlier approval
+for diagnostic flashes does not carry over. Preserve the
+[marker reachability requirement](docs/marker-reachability-gate.md) for modified
+firmware; do not insert custom markers into a byte-identical stock rebuild.
+
+Reconstruct all code and data in the selected stock image, including wireless
+paths. Preserve Bluetooth and 2.4 GHz in the later custom firmware if feasible;
+wireless is the first optional functionality to remove only if measured size
+limits require it. Do not remove features during stock reconstruction. Prefer
+device-side rotation processing, but distinguish USB device reports from the
+host-facing OpenAxis protocol. A small host bridge is acceptable; verify the
+supported ingestion path and SDK/device compatibility before implementation.
 
 ## Agent work
 
-- Read [the workflow](docs/workflow.md) and your assigned task packet.
+- Read the project plan, [the workflow](docs/workflow.md) and your assigned task
+  packet. Historical notes are evidence, not current operating instructions.
 - Work only on the assigned task and allowed paths in an isolated worktree.
   A coordinator owns the queue, shared headers, Ghidra database, toolchain,
   baseline, verifier and integration. Workers propose shared changes in notes.

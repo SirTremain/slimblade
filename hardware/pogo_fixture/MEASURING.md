@@ -1,5 +1,10 @@
 # Measuring the controller
 
+Historical fixture instructions. No measurement, disassembly or probe work is
+part of the current offline reconstruction task. See the
+[fixture status](README.md) and [project plan](../../docs/project-plan.md)
+before using this procedure in a separately requested hardware session.
+
 Do not infer fabrication dimensions directly from `images/back.jpg`; it has
 perspective distortion. Use the damaged controller for mounting geometry and
 the earlier photograph for the original pad locations. If damaged holes no

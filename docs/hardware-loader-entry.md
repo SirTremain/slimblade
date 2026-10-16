@@ -1,5 +1,11 @@
 # Hardware-assisted loader entry
 
+Historical recovery research for the earlier damaged device, not an active
+procedure or an assessment of the replacement mouse. References to the
+"current board", recovery estimates, wiring and next actions below belong to
+that investigation. Follow the [project plan](project-plan.md) for current
+hardware gates; do not execute this document as a standalone work order.
+
 Last checked: 2026-08-16
 
 ## Outcome

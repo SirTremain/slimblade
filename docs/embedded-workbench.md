@@ -1,5 +1,11 @@
 # Embedded development workbench
 
+Archived bench and purchasing notes from the earlier recovery effort. Prices,
+availability, wiring choices and shopping actions below are not current
+recommendations or prerequisites for offline reconstruction. Revalidate any
+needed equipment in a separately requested hardware session under the
+[project plan](project-plan.md).
+
 Last checked: 2026-08-16
 
 This list covers the SlimBlade recovery and likely future firmware, protocol,
@@ -19,7 +25,7 @@ interface. ASUS documents BIOS control of USB standby power when the entire PC
 is in S4/S5, not live per-port VBUS control. A dedicated switch is required for
 reliable scripted cold boots while the development host remains running.
 
-### Current two-store shopping list
+### Historical two-store shopping list
 
 Prices and availability were checked on 2026-08-16. Store stock remains
 location-dependent.

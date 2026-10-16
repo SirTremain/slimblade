@@ -1,5 +1,10 @@
 # Ghidra setup and inventory
 
+This is the offline analysis procedure for milestone 1 of the
+[project plan](project-plan.md), not a flashing or custom-firmware procedure.
+Use the existing prepared project where available; import/setup examples below
+are for reproduction, not instructions to repeat completed bootstrap work.
+
 The [bootstrap run](bootstrap.md) installed Ghidra 12.1.4 and Temurin JDK
 21.0.12.1+1 locally, verified official v4.49, and exported 776 discovered
 functions. The scripts compiled and ran successfully, but the corrected review

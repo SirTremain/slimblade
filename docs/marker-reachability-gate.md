@@ -2,6 +2,21 @@
 
 Last checked: 2026-08-16
 
+## Scope under the current plan
+
+The failure evidence below comes from the earlier device. This requirement is
+retained for **modified firmware** in milestone 2 of the
+[project plan](project-plan.md); its implementation is not established for the
+replacement device. Revalidate the marker mechanism, addresses and recovery
+path against that target. Do not run the historical hardware test during an
+offline task.
+
+A source-built, byte-identical stock image is not a custom firmware version for
+this gate. Adding a marker to it would defeat the milestone-1 exact-match test.
+Stock flashing instead needs the plan's compatibility, preservation, recovery
+and hardware-validation gates. Neither this marker check nor a matching hash
+proves that flashing has zero risk.
+
 ## Release-blocking task
 
 Implement and require this gate for **every** custom firmware version. A build

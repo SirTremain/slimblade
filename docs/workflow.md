@@ -1,5 +1,21 @@
 # Agent workflow
 
+## Scope and document roles
+
+The [project plan](project-plan.md) owns the current goals and milestone gates:
+exact stock reconstruction and hardware validation first, OpenAxis and a
+mode toggle second. This document covers offline coordination within that plan.
+Hardware testing is a later, explicitly requested session, not an action for a
+decompilation worker. Preserve all wireless behavior during stock reconstruction;
+any size-driven wireless removal belongs only to the later custom branch.
+
+[AGENTS.md](../AGENTS.md) supplies working rules. Bootstrap reports and
+[legacy notes](legacy.md) retain historical evidence; they do not override the
+plan. The original bootstrap task definitions remain unchanged because the
+queue locks assigned definitions. Their setup-only restrictions are task-local.
+Use separately scoped follow-up tasks after review instead of silently changing
+submitted assignments or treating old startup prompts as a new work order.
+
 ## What is ready
 
 The scaffold supplies task validation, an atomic SQLite claim queue, worker
@@ -20,12 +36,12 @@ python3 tools/decomp.py check
 python3 tools/decomp.py status
 ```
 
-## First session
+## Continuing from bootstrap
 
 Bootstrap setup has now been performed in a single coordinator session, with
 no additional agents. Its three reports are submitted for independent review;
 do not launch another bootstrap run or a function campaign automatically.
-The instructions below describe the queue workflow for later authorized runs.
+The instructions below describe the queue workflow for later assigned runs.
 The corrected inventory review is blocked by saved Ghidra analysis errors;
 consult the [review correction](../decomp/results/bootstrap-inventory/notes.md#review-correction)
 before accepting the original submitted inventory report or assigning functions.
@@ -36,13 +52,16 @@ inexpensive workers, bounded sessions and an independent reviewer. Exact model
 names and pricing are intentionally not hardcoded. No API keys are needed by
 the scaffold; the chosen runner handles authentication.
 
-The three initial tasks are inventory/import setup, compiler/ABI research and
-a synthetic verifier prototype. They can run independently. These tasks must
-produce reviewed foundations before a function campaign; completing their
-research alone does not prove that a matching toolchain is available.
+The three original tasks covered inventory/import setup, compiler/ABI research
+and a synthetic verifier prototype. Review their existing results and resolve
+the remaining inventory, toolchain, verifier and dependency/storage questions
+before a function campaign. Setup completion does not prove a matching
+toolchain is available.
 
-After the scaffold is committed, create each worker's isolated worktree from
-that commit. This command is an example for the later session:
+Create each worker's isolated worktree from a commit containing the current
+instructions and tools. The commands below are queue-operation examples, not
+instructions to reclaim already-submitted bootstrap tasks. Substitute the
+actual pending task, worker and report for the assigned run.
 
 ```sh
 git worktree add .worktrees/worker-a -b decomp/worker-a HEAD
@@ -137,7 +156,8 @@ packets or independent project copies.
 
 ## Verification before scaling
 
-Implement and pin these in the verifier bootstrap, then test them independently:
+Use the existing synthetic prototype as a starting point, not stock proof.
+Implement and pin these in the real stock verifier, then test independently:
 
 1. Hash-lock original input, tools, compiler version, flags, ABI, linker settings
    and verifier revision. Keep the oracle/reference files outside worker writes.
@@ -165,4 +185,7 @@ regions, padding, tables, vectors and assembly-only code, not just whatever
 Ghidra found. Completion requires a reproducible complete stock rebuild with
 an exact image hash and an explicit account of every byte; preserved original
 code blobs do not count as recovered source. Full equivalence is limited to
-the selected input image. Any later firmware change starts a separate phase.
+the selected input image. This completes the offline reconstruction gate, not
+the entire first milestone: dependency/recovery review, gated flashing and
+stock hardware validation still follow under the [project plan](project-plan.md).
+Do not begin the OpenAxis custom phase until that milestone passes.

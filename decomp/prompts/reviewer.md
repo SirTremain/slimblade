@@ -1,7 +1,8 @@
 # Independent review
 
-Read AGENTS.md, docs/workflow.md, the original task and immutable evidence before
-the worker's narrative. Inspect every changed file against allowed_paths.
+Read AGENTS.md, docs/project-plan.md, docs/workflow.md, the original task and
+immutable evidence before the worker's narrative. Inspect every changed file
+against allowed_paths.
 Confirm baseline, entry state, boundaries, signatures, memory access widths,
 volatile ordering, call targets, literal pools, data and unresolved dependencies.
 
@@ -14,4 +15,7 @@ review only the draft's evidence; never certify matching.
 For bootstrap work, check the task's acceptance criteria, reproducibility and
 remaining unknowns. For function work, report defects by address and evidence;
 return unsupported guesses to the worker. The coordinator integrates shared
-types and any infrastructure changes separately. No device access.
+types and any infrastructure changes separately. Check that stock wireless and
+required dependencies were accounted for rather than omitted for the later
+custom design. Function acceptance does not satisfy the whole-image or hardware
+milestone. No device access in this offline review.
