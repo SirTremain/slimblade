@@ -19,6 +19,7 @@ Compact notes on the Kensington SlimBlade Pro sensor and firmware interface.
 - [Rust migration plan](docs/rust-migration-plan.md)
 - [Board observations](docs/board-observations.md)
 - [Hardware-assisted loader entry](docs/hardware-loader-entry.md)
+- [Zero-solder pogo fixture](hardware/pogo_fixture/README.md)
 - [Embedded development workbench](docs/embedded-workbench.md)
 
 Active development support:

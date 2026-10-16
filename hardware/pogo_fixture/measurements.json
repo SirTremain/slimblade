@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "fixture_name": "slimblade-pro-pogo",
+  "confirmed_for_fabrication": false,
+  "units": "mm",
+  "coordinate_system": "L1 centre is (0,0); +X points from L1 to L2; +Y is counter-clockwise on the pad side",
+  "board": {
+    "thickness_mm": null
+  },
+  "locators": [
+    {
+      "name": "L1",
+      "x_mm": 0.0,
+      "y_mm": 0.0,
+      "hole_diameter_mm": null,
+      "support_diameter_mm": null
+    },
+    {
+      "name": "L2",
+      "x_mm": null,
+      "y_mm": 0.0,
+      "hole_diameter_mm": null,
+      "support_diameter_mm": null
+    }
+  ],
+  "contacts": [
+    { "name": "RSTN", "x_mm": null, "y_mm": null, "pad_diameter_mm": null },
+    { "name": "P04",  "x_mm": null, "y_mm": null, "pad_diameter_mm": null },
+    { "name": "P05",  "x_mm": null, "y_mm": null, "pad_diameter_mm": null },
+    { "name": "P06",  "x_mm": null, "y_mm": null, "pad_diameter_mm": null },
+    { "name": "P07",  "x_mm": null, "y_mm": null, "pad_diameter_mm": null },
+    { "name": "VCC",  "x_mm": null, "y_mm": null, "pad_diameter_mm": null },
+    { "name": "GND",  "x_mm": null, "y_mm": null, "pad_diameter_mm": null }
+  ],
+  "keepouts": [],
+  "fixture": {
+    "plate_thickness_mm": 4.0,
+    "board_gap_mm": 2.0,
+    "edge_margin_mm": 6.0,
+    "pogo_bore_diameter_mm": 1.15,
+    "locator_fit_clearance_mm": 0.20,
+    "locator_protrusion_mm": 1.0,
+    "fastener_bore_diameter_mm": 2.2,
+    "minimum_wall_mm": 0.8
+  }
+}

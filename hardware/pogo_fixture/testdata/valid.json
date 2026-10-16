@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "fixture_name": "SYNTHETIC-TEST-ONLY",
+  "confirmed_for_fabrication": true,
+  "units": "mm",
+  "coordinate_system": "Synthetic coordinates; not measured from a SlimBlade",
+  "board": {
+    "thickness_mm": 1.6
+  },
+  "locators": [
+    {
+      "name": "L1",
+      "x_mm": 0.0,
+      "y_mm": 0.0,
+      "hole_diameter_mm": 4.2,
+      "support_diameter_mm": 8.0
+    },
+    {
+      "name": "L2",
+      "x_mm": 35.0,
+      "y_mm": 0.0,
+      "hole_diameter_mm": 4.2,
+      "support_diameter_mm": 8.0
+    }
+  ],
+  "contacts": [
+    { "name": "RSTN", "x_mm": 10.0, "y_mm": 8.0,  "pad_diameter_mm": 1.5 },
+    { "name": "P04",  "x_mm": 13.0, "y_mm": 8.0,  "pad_diameter_mm": 1.5 },
+    { "name": "P05",  "x_mm": 16.0, "y_mm": 8.0,  "pad_diameter_mm": 1.5 },
+    { "name": "P06",  "x_mm": 19.0, "y_mm": 8.0,  "pad_diameter_mm": 1.5 },
+    { "name": "P07",  "x_mm": 22.0, "y_mm": 8.0,  "pad_diameter_mm": 1.5 },
+    { "name": "VCC",  "x_mm": 13.0, "y_mm": 11.0, "pad_diameter_mm": 1.5 },
+    { "name": "GND",  "x_mm": 19.0, "y_mm": 11.0, "pad_diameter_mm": 1.5 }
+  ],
+  "keepouts": [
+    {
+      "name": "synthetic-round-clearance",
+      "kind": "circle",
+      "x_mm": 28.0,
+      "y_mm": 8.0,
+      "diameter_mm": 3.0
+    }
+  ],
+  "fixture": {
+    "plate_thickness_mm": 4.0,
+    "board_gap_mm": 2.0,
+    "edge_margin_mm": 6.0,
+    "pogo_bore_diameter_mm": 1.15,
+    "locator_fit_clearance_mm": 0.20,
+    "locator_protrusion_mm": 1.0,
+    "fastener_bore_diameter_mm": 2.2,
+    "minimum_wall_mm": 0.8
+  }
+}
