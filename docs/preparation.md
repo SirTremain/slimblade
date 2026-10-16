@@ -1,5 +1,9 @@
 # Preparation status
 
+Subsequent execution: the [six-task pilot completed](../decomp/results/pilot-run-20261016/notes.md)
+with all six drafts reviewed and independently rebuilt. The preparation record
+below describes the pre-launch state; expansion still needs separate review.
+
 Updated 2026-10-16. **Preparation is complete for the first six-function agent
 pilot.** No firmware worker has started. A user-assigned run and a commit containing
 the preparation changes are the remaining launch steps, not another compiler

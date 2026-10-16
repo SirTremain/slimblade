@@ -18,6 +18,11 @@ submitted assignments or treating old startup prompts as a new work order.
 
 ## What is ready
 
+The [first six-task run](../decomp/results/pilot-run-20261016/notes.md) is complete:
+all six drafts are reviewed and independently rebuilt. Do not reclaim them or
+expand scope automatically. The following preparation details remain scoped
+to those six leaves, not a broader approved inventory.
+
 **Six reviewed leaf assignments are prepared** under the explicit scope in
 [preparation.json](../decomp/preparation.json). The compiler/helper preparation
 blockers have supporting closure evidence in [preparation.md](preparation.md).

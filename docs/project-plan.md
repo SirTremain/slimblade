@@ -175,6 +175,12 @@ baseline intact regardless of later feature choices.
 
 ## Current position and next work
 
+The [first six-task agent run](../decomp/results/pilot-run-20261016/notes.md) has
+completed: all six drafts are reviewed, with independent exact-range rebuilds.
+The next execution scope requires a separate boundary/dependency/verifier
+readiness decision; no additional tasks have been created. The paragraphs below
+retain the preparation context, not an instruction to repeat completed work.
+
 The project is at milestone 1, ready for the first bounded offline worker run.
 The [preparation gate](preparation.md) is scoped to six reviewed leaf tasks;
 their packets and previous comparison lock remain intact. A separately versioned

@@ -1,5 +1,10 @@
 # First decompilation pilot
 
+**Run completed 2026-10-16:** all six tasks are reviewed, with independently
+rebuilt exact ranges. See [the run report](../decomp/results/pilot-run-20261016/notes.md).
+The preparation/startup instructions below are retained for provenance; do not
+requeue completed tasks or treat this prompt as authorization to add more.
+
 Updated 2026-10-16: **six leaf assignments are prepared for a user-budgeted run**.
 [Preparation evidence](preparation.md) records ARMCC5 calibration and comparison
 checks. The new ARMCC lock is separately versioned; the old Clang lock and all

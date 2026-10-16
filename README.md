@@ -13,7 +13,11 @@ Preserve stock wireless functionality where feasible. Remove it only as the
 first optional feature if measured size limits require that tradeoff in the
 custom firmware—not during stock reconstruction. Current work remains offline.
 
-Current state: **prepared for a user-budgeted six-function agent pilot**.
+Current state: **the six-function agent pilot is complete: all six drafts reviewed**.
+[Run results and limits](decomp/results/pilot-run-20261016/notes.md) record nine
+Luna turns and six independent exact-range rebuilds (98 bytes total). This is
+not a full-image rebuild or certified matching coverage. Further tasks need a
+separately assigned scope and readiness review.
 [Start here](docs/pilot.md) for the handoff and copyable coordinator prompt.
 The runtime-helper analysis has been repaired and independently replayed;
 the corrected inventory has zero saved analysis errors, not blanket boundary
@@ -21,7 +25,7 @@ approval. ARMCC 5.06u7 b960 runs headlessly on Linux through Wine and reproduces
 all six fixed stock calibration ranges. A new pinned comparison path replaces
 the exploratory Clang profile without changing the reference bytes or packets.
 
-No firmware workers have started. A synthetic Luna runner test passed; the
+The first firmware worker run has finished. The
 [bounded runner](docs/swarm.md) now enforces worker isolation, task limits and
 a live weekly-usage stop. Small compiler probes are calibration evidence, not
 integrated recovered firmware or certified matches. The comparator still provides

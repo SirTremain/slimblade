@@ -1,0 +1,41 @@
+{
+  "task": "fn_00003b48",
+  "worker": "luna-00003b48",
+  "status": "draft",
+  "observations": [
+    "Addressed Thumb listing at 0x3b48-0x3b62 includes sentinel equality branch to zero at 0x3b60, unsigned subtraction, top-nibble mask, unsigned compare to 0x08000000, and one/zero return blocks.",
+    "Coordinator feedback for the prior unchanged candidate reported 28/28 bytes and four differences at 0x3b4e, 0x3b5b, 0x3b5c, and 0x3b60."
+  ],
+  "inferences": [
+    "Writing the threshold as adjusted >= 0x08000000u with return one before the default zero return may reproduce the observed branch and return-block layout; this is unverified until coordinator compilation."
+  ],
+  "open_questions": [
+    "The pinned two-unsigned-int signature remains an ABI hypothesis; packet call references do not independently establish caller declaration types."
+  ],
+  "validation": [
+    "Read AGENTS.md, docs/project-plan.md, docs/workflow.md, docs/pilot.md and the mounted immutable packet.",
+    "Did not run the compiler; requested coordinator compilation of this single candidate.",
+    "No exact-range comparison has been performed for this candidate; no match is claimed."
+  ],
+  "attempts": 1,
+  "elapsed_minutes": 0,
+  "model": "gpt-6-luna",
+  "source_commit": "43e206115470a6c8b069311db2bb08718439b1bb",
+  "proposed_shared_changes": [],
+  "next_step": "Coordinator: compile this candidate once through the pinned ARMCC5 build service and return redacted comparison feedback for source review.",
+  "coordinator_review": {
+    "reviewer": "coordinator-pilot-20261016",
+    "decision": "reviewed_draft_not_certified_match",
+    "source_sha256": "c104e5ef2dd2a9b3c035e1cc779fdab6e06089c9819279f26ea8c2ab6fc65854",
+    "exact_range_bytes": 28,
+    "independent_rebuild": true,
+    "comparison_sha256": "10bd4de4cb681abb1073d68b556fb856e684d9a614a1d5b3cfc2bb3434e3e693",
+    "ledger_attempts": 3,
+    "actual_candidate_compiles": 2,
+    "worker_turns": 2,
+    "requested_worker_model": "gpt-6-luna",
+    "measured_worker_wall_seconds": 60.28,
+    "worker_metadata_note": "Original worker model/elapsed/attempt fields are retained as a historical self-report; these coordinator measurements and ledger counts are authoritative for this run.",
+    "remaining_uncertainty": "Historical declaration, qualifiers, compiler provenance and unseen callers remain hypotheses. Whole-image verification and matching coverage remain unknown."
+  }
+}

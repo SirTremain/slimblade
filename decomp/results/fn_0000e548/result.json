@@ -1,0 +1,44 @@
+{
+  "task": "fn_0000e548",
+  "worker": "luna-0000e548",
+  "status": "draft",
+  "observations": [
+    "Thumb range 0x0000e548..0x0000e558 contains eight instructions: shifts input r1 by 8, 16 and 24 bits, stores successive low bytes to dst offsets 0 through 3, then returns.",
+    "The packet disassembly and independent LLVM listing agree; the body has no calls, literal/data ranges, absolute globals, stack accesses or MMIO constants.",
+    "Recorded callers at 0x0000bd5c and 0x0000c89a pass an address in r0 and a 32-bit value in r1; neither consumes a return value.",
+    "Baseline is 128112 bytes with SHA-256 e91502e8021e61c97a77fb12324e99ee4acb23bee55a5a67d18e26521ef856f7; artifact URL and packet inspection date are recorded in notes.md."
+  ],
+  "inferences": [
+    "The body serializes the 32-bit input least-significant byte first, with four ordered byte stores.",
+    "The pinned void (unsigned char *, unsigned int) signature is consistent with register use, store widths and observed callers; original declaration details and ABI remain hypotheses."
+  ],
+  "open_questions": [
+    "Original source qualifiers, exact declaration and compiler provenance are unknown.",
+    "Entry-reference analysis does not exclude an undiscovered indirect caller."
+  ],
+  "validation": [
+    "Read the task packet listing, instruction-state JSON, references and caller excerpts; cross-checked the packet listing against its independent LLVM disassembly.",
+    "No compile/diff was run by the worker; exact-range comparison and independent source/ABI review remain pending with the coordinator."
+  ],
+  "attempts": 0,
+  "elapsed_minutes": 2,
+  "model": "gpt-6-luna",
+  "source_commit": "43e206115470a6c8b069311db2bb08718439b1bb",
+  "proposed_shared_changes": [],
+  "next_step": "Coordinator: compile decomp/src/fn_0000e548.c using the pinned pilot command and review sanitized comparison output and source/ABI independently; worker has not verified a match.",
+  "coordinator_review": {
+    "reviewer": "coordinator-pilot-20261016",
+    "decision": "reviewed_draft_not_certified_match",
+    "source_sha256": "5f2296783f2d717bff5f0dc367862a81d24dfba86cb248b4ebea3d4b023df57b",
+    "exact_range_bytes": 16,
+    "independent_rebuild": true,
+    "comparison_sha256": "d9bae3aa7e1d8fd7edab7cdbbe61a0e443af1375cb0b9286a795866b5abe3bbf",
+    "ledger_attempts": 1,
+    "actual_candidate_compiles": 1,
+    "worker_turns": 1,
+    "requested_worker_model": "gpt-6-luna",
+    "measured_worker_wall_seconds": 40.797,
+    "worker_metadata_note": "Original worker model/elapsed/attempt fields are retained as a historical self-report; these coordinator measurements and ledger counts are authoritative for this run.",
+    "remaining_uncertainty": "Historical declaration, qualifiers, compiler provenance and unseen callers remain hypotheses. Whole-image verification and matching coverage remain unknown."
+  }
+}

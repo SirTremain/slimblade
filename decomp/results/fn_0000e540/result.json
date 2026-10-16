@@ -1,0 +1,42 @@
+{
+  "task": "fn_0000e540",
+  "worker": "luna-0000e540",
+  "status": "draft",
+  "observations": [
+    "Thumb bytes at 0x0000e540 store r1's low byte to [r0], shift r1 right by eight, store the resulting low byte to [r0+1], then return via bx lr at 0x0000e546.",
+    "Packet review identifies incoming calls at 0x000044e2, 0x000044ee, 0x0000450c, 0x0000690c, 0x0000691a, 0x00008cea, 0x00008cfa, 0x00008d04, 0x00009022, 0x0000902c, 0x0000ba5a, 0x0000ba98 and 0x0000bd36; no outgoing dependencies are listed."
+  ],
+  "inferences": [
+    "The behavior is consistent with writing an unsigned 16-bit value in low-byte-first order to a byte buffer.",
+    "The locked signature hypothesis void (unsigned char *, unsigned short) is consistent with the instruction behavior and reviewed callers, but does not establish the original source declaration or compiler provenance."
+  ],
+  "open_questions": [
+    "Coordinator must review the ABI/signature hypothesis and independently compare/review the candidate.",
+    "Packet reference discovery cannot rule out hidden indirect callers."
+  ],
+  "validation": [
+    "Read the assigned immutable packet under /evidence; no compiler or comparator was run by the worker, as required by the enforced handoff.",
+    "No exact-range match is claimed; whole-image matching coverage remains unknown."
+  ],
+  "attempts": 0,
+  "elapsed_minutes": 0,
+  "model": "gpt-6-luna",
+  "source_commit": "43e206115470a6c8b069311db2bb08718439b1bb",
+  "proposed_shared_changes": [],
+  "next_step": "Coordinator: compile this source through the pinned build service, return redacted comparison feedback, and review source/ABI independently.",
+  "coordinator_review": {
+    "reviewer": "coordinator-pilot-20261016",
+    "decision": "reviewed_draft_not_certified_match",
+    "source_sha256": "502d696eb3678092e1739fb5af57465d52725a291b94b0448ef260bd33c8ea49",
+    "exact_range_bytes": 8,
+    "independent_rebuild": true,
+    "comparison_sha256": "3cb22e593bef4ae2eda0b49a79d2a68b84df135221aa71e8bcb31260733d3597",
+    "ledger_attempts": 1,
+    "actual_candidate_compiles": 1,
+    "worker_turns": 1,
+    "requested_worker_model": "gpt-6-luna",
+    "measured_worker_wall_seconds": 47.62,
+    "worker_metadata_note": "Original worker model/elapsed/attempt fields are retained as a historical self-report; these coordinator measurements and ledger counts are authoritative for this run.",
+    "remaining_uncertainty": "Historical declaration, qualifiers, compiler provenance and unseen callers remain hypotheses. Whole-image verification and matching coverage remain unknown."
+  }
+}

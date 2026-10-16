@@ -1,0 +1,43 @@
+{
+  "task": "fn_00003bb4",
+  "worker": "luna-00003bb4",
+  "status": "draft",
+  "observations": [
+    "Thumb instructions at 0x3bb4-0x3bbd shift r1 left one, add it to r0, then retain the low 28 result bits; bx lr returns via r0.",
+    "Caller at 0xd51c calls this entry and stores returned r0 at 0xd520. It constructs r1 by shifting a loaded halfword left one and sets r0 from r7.",
+    "The bounded body has no outgoing calls, loads, stores, literal pool or absolute globals."
+  ],
+  "inferences": [
+    "Unsigned 32-bit arguments and return match the pinned signature hypothesis; the C draft expresses the observed arithmetic as (arg0 + (arg1 << 1)) & 0x0fffffff.",
+    "Original source names, declaration details and historical compiler provenance are unknown."
+  ],
+  "open_questions": [
+    "Coordinator review is needed for the AAPCS/signature hypothesis; caller register flow is consistent but does not establish the original declaration.",
+    "Reference inventory does not rule out undiscovered indirect callers."
+  ],
+  "validation": [
+    "Inspected immutable packet instruction bytes, independent LLVM disassembly, references and caller listing under /evidence.",
+    "No compiler comparison run; exact-range bytes and source/ABI equivalence are unverified."
+  ],
+  "attempts": 0,
+  "elapsed_minutes": 0,
+  "model": "GPT-6",
+  "source_commit": "43e206115470a6c8b069311db2bb08718439b1bb",
+  "proposed_shared_changes": [],
+  "next_step": "Coordinator: compile this candidate through the pinned build service, return redacted feedback, and independently review source and ABI.",
+  "coordinator_review": {
+    "reviewer": "coordinator-pilot-20261016",
+    "decision": "reviewed_draft_not_certified_match",
+    "source_sha256": "cf4e715e4ade8788e360cb410aed1f08530415d7f1699f3de50a261a900ed761",
+    "exact_range_bytes": 10,
+    "independent_rebuild": true,
+    "comparison_sha256": "ec8c2d28bd4683a9cf1a3da83ebae9622abd2e41bcca315a27155283ec183c4a",
+    "ledger_attempts": 1,
+    "actual_candidate_compiles": 1,
+    "worker_turns": 1,
+    "requested_worker_model": "gpt-6-luna",
+    "measured_worker_wall_seconds": 32.698,
+    "worker_metadata_note": "Original worker model/elapsed/attempt fields are retained as a historical self-report; these coordinator measurements and ledger counts are authoritative for this run.",
+    "remaining_uncertainty": "Historical declaration, qualifiers, compiler provenance and unseen callers remain hypotheses. Whole-image verification and matching coverage remain unknown."
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "task": "fn_0000e4fc",
+  "worker": "luna-0000e4fc",
+  "status": "draft",
+  "observations": [
+    "Thumb body at 0x0000e4fc spans 0x0000e4fc through 0x0000e511 (22 bytes); listing and independent LLVM disassembly agree on eleven instructions.",
+    "Four LDRB instructions read offsets 1, 0, 2, and 3; additions at 0xe502, 0xe50c, and 0xe50e combine the shifted fields.",
+    "No outgoing calls, data/literal ranges, stack accesses, stores, absolute globals, or MMIO constants appear in the bounded packet.",
+    "One direct caller is recorded at 0x0000c70c and uses the returned value at 0x0000c710."
+  ],
+  "inferences": [
+    "The body appears to implement an unsigned four-byte little-endian load with an unsigned int result; this candidate follows the observed low-pair/high-pair/final-add grouping.",
+    "The pinned signature unsigned int (const unsigned char *) is plausible; source-level const and original declaration are not established."
+  ],
+  "open_questions": [
+    "Original source declaration, compiler provenance, and ABI remain hypotheses; AAPCS is the candidate build convention.",
+    "The recorded direct caller does not rule out undiscovered indirect callers."
+  ],
+  "validation": [
+    "Inspected /evidence/listing.txt, llvm.txt, instructions.json, references.json, callers.txt, context.md, and metadata.json.",
+    "Coordinator build 1 feedback: mismatch, 24 bytes generated versus 22 expected, with 22 differing bytes; it used PUSH/POP, ORR, and a different load/arithmetic schedule.",
+    "This next candidate has not been compiled by the worker; coordinator compilation and source/ABI review are pending. No match is claimed."
+  ],
+  "attempts": 1,
+  "elapsed_minutes": 0,
+  "model": "gpt-6-luna",
+  "source_commit": "43e206115470a6c8b069311db2bb08718439b1bb",
+  "proposed_shared_changes": [],
+  "next_step": "Coordinator: compile/diff the next candidate in decomp/src/fn_0000e4fc.c with the pinned ARMCC5 leaf profile and return redacted feedback; then independently review source and ABI.",
+  "coordinator_review": {
+    "reviewer": "coordinator-pilot-20261016",
+    "decision": "reviewed_draft_not_certified_match",
+    "source_sha256": "a2b085380d684e837095c480f2d84216da7a30cac03542e604962fd55a816764",
+    "exact_range_bytes": 22,
+    "independent_rebuild": true,
+    "comparison_sha256": "04f170ba02ee3f0bc07e35f01f254a4608465e1b9e907b4ff529470847197956",
+    "ledger_attempts": 2,
+    "actual_candidate_compiles": 2,
+    "worker_turns": 2,
+    "requested_worker_model": "gpt-6-luna",
+    "measured_worker_wall_seconds": 92.103,
+    "worker_metadata_note": "Original worker model/elapsed/attempt fields are retained as a historical self-report; these coordinator measurements and ledger counts are authoritative for this run.",
+    "remaining_uncertainty": "Historical declaration, qualifiers, compiler provenance and unseen callers remain hypotheses. Whole-image verification and matching coverage remain unknown."
+  }
+}

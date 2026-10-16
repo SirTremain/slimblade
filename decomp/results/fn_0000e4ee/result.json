@@ -1,0 +1,46 @@
+{
+  "task": "fn_0000e4ee",
+  "worker": "luna-0000e4ee",
+  "status": "draft",
+  "observations": [
+    "Thumb instructions at 0x0000e4ee and 0x0000e4f0 load two consecutive bytes independently.",
+    "Instructions at 0x0000e4f2 through 0x0000e4f8 form a little-endian value and retain its low 16 bits.",
+    "The function returns at 0x0000e4fa and has no observed calls, stores, stack accesses, literals or globals.",
+    "Sampled callers pass a pointer in r0 and consume a result in r0."
+  ],
+  "inferences": [
+    "The body computes bytes[0] + (bytes[1] << 8) as an unsigned 16-bit result; the byte fields do not overlap, the maximum sum is 0xffff, and the promoted arithmetic fits in 32-bit int.",
+    "The task signature hypothesis is consistent with sampled AAPCS-style callers, but original source qualifiers are not recoverable from these instructions alone."
+  ],
+  "open_questions": [
+    "Whether the original declaration used const and whether the pointed-to storage was volatile are not established by machine code or sampled callers.",
+    "No compiler comparison or independent source/ABI review has occurred."
+  ],
+  "validation": [
+    "Reviewed /evidence/listing.txt, instructions.json, references.json, callers.txt, context.md, metadata.json and llvm.txt.",
+    "The prior coordinator comparison reported expected size 14, actual size 10, with a difference at 0x0000e4f5 and omitted narrowing/return instructions; this candidate incorporates the requested addition expression.",
+    "No compile/diff command was run for this candidate; the enforced runner handoff reserves compilation for the coordinator.",
+    "No exact-range match is verified or claimed."
+  ],
+  "attempts": 1,
+  "elapsed_minutes": 0,
+  "model": "gpt-6-luna",
+  "source_commit": "43e206115470a6c8b069311db2bb08718439b1bb",
+  "proposed_shared_changes": [],
+  "next_step": "Coordinator: compile this candidate with the pinned ARMCC5 profile and return redacted comparison feedback; independently review source and ABI before any acceptance.",
+  "coordinator_review": {
+    "reviewer": "coordinator-pilot-20261016",
+    "decision": "reviewed_draft_not_certified_match",
+    "source_sha256": "fa3cd09f97502aaa03593bbf3ca7f7270f39d304b41493916a2dfb83e2f34df7",
+    "exact_range_bytes": 14,
+    "independent_rebuild": true,
+    "comparison_sha256": "f73fc18391e0c9f441c12e927fa9b782325abf790638c9375796c0669a57f119",
+    "ledger_attempts": 2,
+    "actual_candidate_compiles": 2,
+    "worker_turns": 2,
+    "requested_worker_model": "gpt-6-luna",
+    "measured_worker_wall_seconds": 51.271,
+    "worker_metadata_note": "Original worker model/elapsed/attempt fields are retained as a historical self-report; these coordinator measurements and ledger counts are authoritative for this run.",
+    "remaining_uncertainty": "Historical declaration, qualifiers, compiler provenance and unseen callers remain hypotheses. Whole-image verification and matching coverage remain unknown."
+  }
+}

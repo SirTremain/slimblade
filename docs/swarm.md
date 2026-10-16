@@ -4,7 +4,8 @@ The coordinator can now launch and supervise **the six reviewed leaf tasks**
 using the repository runner. This is not a general/full-firmware swarm.
 [Preparation evidence](../decomp/results/swarm-preparation/notes.md) includes
 fresh compiler controls, real isolation tests and a successful synthetic Luna
-turn. No firmware worker has been launched.
+turn. The [first six-task firmware run](../decomp/results/pilot-run-20261016/notes.md)
+has since completed; further tasks are not automatically assigned.
 
 ## Operating boundary
 
