@@ -23,11 +23,14 @@ historical toolchain is still unidentified, not a license/setup blocker for
 this calibrated scope. Do not restart setup,
 reclaim accepted bootstrap tasks or assume the global inventory is approved.
 
-First inspect the queue and available local evidence. Record the user's
-requested worker count, model choices and spending/time limit. If unspecified,
-prepare assignments and request those run parameters before launching paid
-jobs. Prefer two inexpensive workers and one coordinator for an initial pilot;
-use a stronger reviewer for boundaries, ABI and verifier decisions.
+Read docs/swarm.md and decomp/swarm-policy.json. Use the tested isolated CLI
+runner, not ordinary subagents inheriting coordinator permissions. The user's
+current budget retains 40% weekly quota, stops at 45% remaining, and permits at
+most two Luna workers with bounded Sol escalation. Confirm a firmware run was
+assigned; preparation itself is not a launch request. Check the dated quota
+window, live account reading and pause latch. Never silently renew a window,
+clear a stop, purchase credits or use API billing. Poll coordinator usage too.
+Keep the Goal active only within those limits and the six-task scope.
 
 Existing bootstrap assignments are bootstrap-inventory, bootstrap-toolchain and
 bootstrap-verifier. Inspect their actual status before claiming or requeuing;
@@ -54,10 +57,15 @@ verifier before using the template. Keep volatile MMIO, interrupt,
 storage and reset logic for experienced review. Schedule at most one owner per
 function; shared tails/types require coordinator decisions.
 
-Run claims and transitions in this main checkout only. Keep compiler requests
-coordinator-owned and serialized, running the supplied command with the worker
-worktree as cwd. Never expose private license files or the Wine prefix to
-workers. A compiler-busy scheduling retry does not consume a source attempt.
+Run claims and transitions in this main checkout only. Launch bounded turns
+through tools/swarm_worker.py and build through tools/swarm_build.py. The latter
+preserves the pinned comparison command and serializes the compiler. Request
+normal command approval to run coordinator builds outside the incompatible
+outer Codex sandbox; leave the dedicated compiler sandbox enabled. Never expose
+private licence files or the Wine prefix to workers. Preserve ledgers and do not
+release/reclaim tasks to reset budgets. A compiler-busy scheduling retry does
+not consume a source attempt. Independently rebuild unchanged exact source
+with --review before queue submission; review source and ABI separately.
 Review complete worker
 diffs, rebuild independently and recheck prior matches before integration.
 Record recovered C, reviewed drafts, exact matches, data coverage, linked image

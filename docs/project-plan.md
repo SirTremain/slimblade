@@ -179,7 +179,9 @@ The project is at milestone 1, ready for the first bounded offline worker run.
 The [preparation gate](preparation.md) is scoped to six reviewed leaf tasks;
 their packets and previous comparison lock remain intact. A separately versioned
 ARMCC5 lock replaces the exploratory Clang profile. Launch still requires a
-user-assigned model/concurrency/budget and committed preparation changes.
+user-assigned run, a live check against the dated budget policy, and committed
+preparation changes. The [isolated runner](swarm.md) enforces bounded turns and
+the 45%-remaining weekly stop chosen to preserve the user's 40% work reserve.
 
 The runtime-helper call model and inline-data analysis have been repaired on a
 separate project copy, checked against 10,368 original-instruction executions,
@@ -187,7 +189,8 @@ and replayed. Zero saved analysis errors does not approve all discovered
 boundaries. The fixed ARMCC5 profile now reproduces all six calibration ranges
 and supplies tested, pinned feedback. Full-image linking and match certification
 remain subsequent work. Small fixed calibration probes are not
-certified recovered firmware. No worker has started; matching coverage is unknown.
+certified recovered firmware. No firmware worker has started; a synthetic Luna
+runner test passed. Matching coverage is unknown.
 The [dependency ledger](dependencies.md) accounts for the container regions
 and external unknowns without excluding difficult bytes from the denominator.
 

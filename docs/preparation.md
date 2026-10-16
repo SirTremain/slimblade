@@ -1,7 +1,7 @@
 # Preparation status
 
 Updated 2026-10-16. **Preparation is complete for the first six-function agent
-pilot.** No worker has started. A user-assigned run/budget and a commit containing
+pilot.** No firmware worker has started. A user-assigned run and a commit containing
 the preparation changes are the remaining launch steps, not another compiler
 download or license request. Follow [the pilot handoff](pilot.md).
 
@@ -13,6 +13,13 @@ download or license request. Follow [the pilot handoff](pilot.md).
 | Stock calibration | All six unchanged hypotheses reproduce all 98 owned bytes with fixed compiler options and strict LLD leaf layout. Fresh pinned replay also reproduces all six. |
 | Build/comparison path | Versioned ARMCC lock, source/ABI policy, complete load-byte comparison, tool/reference pins, negative controls and serialized compiler access are implemented and checked. |
 | Worker handoff | Six unchanged evidence packets, separately versioned task/profile pins and coordinator-owned build commands. Gate scope is restricted to these six IDs. |
+| Enforced orchestration | Isolated Codex runner, two-worker ceiling, serial builds, persistent attempt limits and live weekly-quota stop; synthetic model round-trip passed. |
+
+The [runner review](../decomp/results/swarm-preparation/notes.md) records the
+fresh replay and controls. On this host ARMCC must run outside the additional
+outer Codex sandbox, while retaining its existing dedicated compiler sandbox.
+This operating route is tested; compiler/reference pins remain unchanged.
+Use [the guarded launch/build procedure](swarm.md), not a raw inherited worker.
 
 The [build review](../decomp/results/preparation/armcc-calibration.md) records
 the evidence and limits; [earlier preparation notes](../decomp/results/preparation/notes.md)
@@ -38,8 +45,9 @@ python3 tools/decomp.py status
 
 Expect local pins to pass, a ready verdict for the reviewed scope, and six
 unclaimed/queued functions. No task is claimed merely by running these checks.
-The [copyable startup prompt](pilot.md#start-here) asks for model choices,
-concurrency and a total spending/time budget before any worker launch.
+The [copyable startup prompt](pilot.md#start-here) uses the user's selected
+weekly reserve: stop at 45% remaining, preserve 40%, at most two Luna workers.
+Check its dated quota window and ask for a renewed run if it has expired.
 
 The coordinator runs compiler requests serially and returns redacted outputs.
 Do not give workers the private Wine prefix, installed license configuration

@@ -21,7 +21,9 @@ approval. ARMCC 5.06u7 b960 runs headlessly on Linux through Wine and reproduces
 all six fixed stock calibration ranges. A new pinned comparison path replaces
 the exploratory Clang profile without changing the reference bytes or packets.
 
-No workers have started. Small compiler probes are calibration evidence, not
+No firmware workers have started. A synthetic Luna runner test passed; the
+[bounded runner](docs/swarm.md) now enforces worker isolation, task limits and
+a live weekly-usage stop. Small compiler probes are calibration evidence, not
 integrated recovered firmware or certified matches. The comparator still provides
 exact-range feedback, not a complete stock rebuild. There is no device-writing
 command in the active toolset. Matching coverage remains unknown.
@@ -58,8 +60,9 @@ python3 -m unittest discover -s tests -v
 For a later agent session, start with
 [the coordinator prompt](decomp/prompts/coordinator.md). It starts from existing
 bootstrap results and describes how to distribute reviewed function assignments.
-Model choice stays with the agent runner; this repository has no provider/API
-dependency and starts no agents automatically.
+The optional worker runner requires the tested Codex CLI and bubblewrap on this
+Linux host, using ChatGPT sign-in, not API billing. Queue/status commands do not
+launch agents. A firmware run still needs an explicit user assignment.
 
 Offline analysis does not write to the device. A complete matching stock build
 would be strong evidence of reconstruction accuracy, but would not make later

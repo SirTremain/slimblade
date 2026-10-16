@@ -3,7 +3,8 @@
 Updated 2026-10-16: **six leaf assignments are prepared for a user-budgeted run**.
 [Preparation evidence](preparation.md) records ARMCC5 calibration and comparison
 checks. The new ARMCC lock is separately versioned; the old Clang lock and all
-original evidence packets remain intact. No worker has started.
+original evidence packets remain intact. No firmware worker has started. The
+[isolated runner and quota guard](swarm.md) passed a synthetic Luna smoke test.
 
 ## Start here
 
@@ -25,7 +26,7 @@ Use a coordinator session in the main checkout. Copy **only the contents of
 the following text block** into that session. The block is the entire prompt:
 
 ```text
-Read AGENTS.md, docs/preparation.md, docs/pilot.md and decomp/prompts/coordinator.md. Check the local evidence/tool locks and queue. Prepare the existing six ARMCC5 leaf assignments from committed changes. Before launching workers, ask me for model choices, concurrency and a total run budget if I have not supplied them. Keep each worker in an isolated worktree with only its assigned paths writable. Run licensed compiler requests serially as coordinator; do not give workers the private Wine prefix or license files. Independently rebuild and review every submitted draft. Do not add tasks, change pins, claim certified coverage, access hardware, commit or push.
+Create a Goal to coordinate the six existing reviewed ARMCC5 leaf tasks only. Read AGENTS.md, docs/preparation.md, docs/swarm.md and decomp/prompts/coordinator.md. Check committed preparation, local pins, queue, runner versions and live quota before claims. Use at most two gpt-6-luna workers through tools/swarm_worker.py, not inherited-permission subagents; use gpt-6.1-sol only for a bounded escalation. Stop at 45% weekly usage remaining to preserve at least 40% for work. Fail closed on unavailable quota, honor PAUSED.json, and ask before resuming or starting a new quota window. Use tools/swarm_build.py for serial pinned compilation and independent unchanged-source rebuilds. Audit every full diff and review source/ABI independently; exact-range bytes are not certification. Respect the 20-minute, eight-attempt and three-no-improvement limits. Continue until these six tasks are reviewed or evidence-backed blocked, or the reserve guard stops the run. Do not add tasks, change pins, access hardware, commit or push.
 ```
 
 ## Coordinator handoff
@@ -52,10 +53,10 @@ prompt, including a concrete pinned comparison command:
 python3 tools/decomp.py claim fn_00003b48 --worker worker-a
 ```
 
-Give that prompt and the absolute worktree location to the worker. Its working
-directory is the worker worktree. Expose its assigned evidence packet read-only,
-not the main checkout's private compiler/license directories. Results go only
-into its assigned source/result paths. Do not create
+Use [the guarded runner commands](swarm.md#coordinator-procedure) to launch the
+worker and perform builds. The worker sees `/workspace` and `/evidence`, not
+the main checkout's private compiler/licence directories. Results go only into
+its assigned source/result paths. Do not create
 a queue in each worktree. A second worker needs a different worktree, branch,
 worker ID and task. Reprint a claimed prompt if needed:
 
@@ -79,8 +80,9 @@ all six fixed calibration examples; it is not proof of the historical version
 or a complete firmware linker. Stop and report evidence-backed ABI/boundary
 questions instead of repeatedly twisting C to match a guessed declaration.
 
-The coordinator executes the printed build command from the worker worktree
-and returns the redacted result directory. Compiler requests are serialized;
+The coordinator uses `tools/swarm_build.py` to enforce the claim, quota and
+attempt limits around that unchanged pinned build, then returns sanitized
+comparison feedback. Compiler requests are serialized;
 the prefix lock rejects overlaps. A busy-lock scheduling retry is not a source
 attempt. Keep the genuine host/prefix used for licensing; no GUI or Windows
 desktop is needed. Do not run license diagnostics concurrently with builds.
@@ -88,8 +90,9 @@ See [the build review](../decomp/results/preparation/armcc-calibration.md).
 
 On return, audit the **entire** worker diff, including untracked files; check
 allowed paths, readable recovered C, types, side effects and source provenance.
-Rebuild independently with the pinned command into a fresh coordinator output
-directory. Do not trust worker objects or a worker-written comparison report.
+Rebuild independently with the wrapper's `--review` option before submission;
+it creates fresh coordinator output and requires unchanged exact source.
+Do not trust worker objects or a worker-written comparison report.
 Submit/review using the [workflow](workflow.md); result status is `draft` or
 `blocked`, and queue acceptance yields `reviewed`, never `matched`.
 Compiler/ABI/source-recovery review is still required even for exact bytes.
@@ -114,10 +117,10 @@ image packaging require a separately reviewed extension before assignment.
 The earlier synthetic verifier still tests call relocations and data/BSS; those
 tests do not imply these features are supported by this leaf comparator.
 
-Same-UID processes can bypass filesystem conventions. Worktrees and read-only
-files are not a security sandbox. Configure the runner to deny device access
-and writes outside worker-owned paths; the coordinator retains the trusted
-reference and independently checks all output. No provider or model is launched
-by this repository. The six-task preparation gate does not start a worker run.
+Worktrees and read-only file conventions alone are not a security sandbox.
+The tested [runner](swarm.md) supplies the enforced boundary; the coordinator
+retains trusted references and independently checks all output. Queue/preflight
+commands do not launch models. Explicit runner calls do, within the assigned
+budget. The six-task preparation gate does not start a worker run.
 Original compiler provenance and matching coverage remain unknown; scaling
 beyond these leaves also needs a separate readiness review.

@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "scope": "six-reviewed-leaf-pilot-only",
+  "worker_models": ["gpt-6-luna", "gpt-6.1-sol"],
+  "maximum_concurrent_workers": 2,
+  "stop_remaining_percent": 45,
+  "work_reserve_percent": 40,
+  "quota_window_resets_at": 1792649638,
+  "maximum_task_seconds": 1200,
+  "maximum_compile_attempts": 8,
+  "maximum_non_improving_attempts": 3,
+  "new_quota_window_requires_user_resume": true,
+  "launches_require_existing_queue_claim": true,
+  "hardware_access": false
+}

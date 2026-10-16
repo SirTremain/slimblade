@@ -7,6 +7,9 @@
   "runtime_helper_analysis": "validated_bounded_model",
   "compiler_configuration": "armcc5_06u7_b960_calibrated_six_leaves",
   "build_verifier_integration": "pinned_leaf_feedback_validated",
+  "agent_runner": "bounded_isolated_codex_cli",
+  "runner_evidence": "decomp/results/swarm-preparation/notes.md",
+  "runner_policy": "decomp/swarm-policy.json",
   "full_image_verifier": "not_implemented",
   "matching_coverage": "unknown"
 }

@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-16",
+  "source": "locally generated preparation checks; no external download URL",
+  "scope": "six-leaf runner preparation; no firmware worker launched",
+  "compiler_lock_sha256": "2c2e3416849c68cade707434e9589c8c2806721fef9f02bd7b68c5286abc0c4a",
+  "reports": [
+    {
+      "path": ".decomp/swarm-calibration-escalated-01/report.json",
+      "bytes": 3569,
+      "sha256": "3c50c846ffd21bb84c233658d2fc2e859fc2b7514ea50a534d775bfa2e6d28ed",
+      "result": "six exact fixed calibration ranges, 98 bytes; not certified recovery"
+    },
+    {
+      "path": ".decomp/swarm-armcc-controls-01/report.json",
+      "bytes": 9330,
+      "sha256": "cb90467dd097aa6393f0e543b86bc67f46f6ea555096f9d3cda869413cdaae1e",
+      "result": "seven controls passed"
+    },
+    {
+      "path": ".decomp/swarm-model-smoke-02/result.json",
+      "bytes": 524,
+      "sha256": "9a359dee1d9c8e4a046e1274d45b576d9aced81b90e23d30fe1b3ac2ef906c43",
+      "result": "isolated gpt-6-luna synthetic turn passed; 80 percent weekly quota remaining"
+    }
+  ],
+  "negative_environment_checks": [
+    ".decomp/swarm-calibration-default-02",
+    ".decomp/swarm-model-smoke-01"
+  ],
+  "runtime": {"codex": "0.162.1", "bubblewrap": "0.13.1"},
+  "offline_tests": {"passed": 123, "model_jobs": 0, "hardware_access": false},
+  "firmware_queue_changed": false,
+  "matching_coverage": "unknown"
+}

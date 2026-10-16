@@ -34,6 +34,10 @@ supported ingestion path and SDK/device compatibility before implementation.
   and local pins before a user-budgeted run. Expansion needs a separate review.
   The coordinator alone runs the licensed compiler; never expose its private
   Wine prefix or license configuration to workers.
+- Use the [bounded runner](docs/swarm.md) for firmware workers, not inherited-
+  permission subagents. Check the live weekly quota and existing user budget;
+  stop at 45% remaining, fail closed on missing readings, and never automatically
+  resume a paused run or a new quota window. Worktrees alone are not isolation.
 - Work only on the assigned task and allowed paths in an isolated worktree.
   A coordinator owns the queue, shared headers, Ghidra database, toolchain,
   baseline, verifier and integration. Workers propose shared changes in notes.

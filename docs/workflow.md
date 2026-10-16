@@ -28,11 +28,11 @@ the user must still assign models, concurrency and a total run budget.
 The scaffold supplies task validation, an atomic SQLite claim queue, worker
 prompts, evidence hashing and review transitions. The [first pilot](pilot.md)
 adds six reviewed leaf packets and a pinned source-build/exact-stock-range
-comparison command. It does not launch models, certify matching progress or
+comparison command. Queue commands do not launch models, certify progress or
 build the complete firmware. ARMCC5 is calibrated for this scope, not identified
 as the exact historical compiler. The global inventory remains unapproved.
 Use Python 3.10+. Queue commands run from the main repository root; the
-coordinator runs printed ARMCC build commands with the worker worktree as cwd.
+coordinator runs guarded ARMCC builds using [the runner](swarm.md).
 
 Check configuration and inspect tasks:
 
@@ -57,11 +57,11 @@ scope; full-image linking and broader function support are later work.
 
 Start with [the copyable startup prompt](pilot.md#start-here), which references
 the [coordinator instructions](../decomp/prompts/coordinator.md).
-The user assigns worker models, concurrency and a total run budget before any
-launch. Two inexpensive workers are a possible starting configuration, not a
-standing run instruction. Use bounded sessions and independent review. Exact model
-names and pricing are intentionally not hardcoded. No API keys are needed by
-the scaffold; the chosen runner handles authentication.
+The user assigns a run before any firmware launch. The existing budget policy
+uses at most two Luna workers, with a 45%-remaining stop to preserve a 40% weekly
+work reserve. It is not unlimited authorization or an automatic weekly renewal.
+Use [the bounded runner](swarm.md), ChatGPT sign-in and independent review;
+no API keys or API-billed runs are part of this setup.
 
 The three original tasks covered inventory/import setup, compiler/ABI research
 and a synthetic verifier prototype. Their acceptance does not prove a matching
@@ -90,7 +90,9 @@ Claim an assignment; stdout is the complete worker prompt:
 python3 tools/decomp.py claim fn_00003b48 --worker worker-a
 ```
 
-Give that output and the worktree location to the worker's agent session.
+Launch through [swarm_worker.py](../tools/swarm_worker.py), as described in
+[the guarded procedure](swarm.md). It supplies the prompt and mounts only the
+task's inputs/outputs; do not paste it into an unrestricted worker session.
 Use the same operation with a different task ID for each other worker. Claims
 are transactional: competing processes cannot both claim the same task.
 Reprint a prompt after a lost terminal session:
@@ -186,9 +188,9 @@ in the extended verifier and test independently:
 4. Rebuild independently of worker outputs and rerun every existing match
    before merging. Audit the full diff for changes outside allowed paths.
 
-These boundaries are a workflow convention until enforced by the chosen agent
-sandbox and independent integration environment. A worktree alone does not
-prevent a process accessing another directory or a device.
+The [bounded runner](swarm.md) enforces the worker mount/permission boundary;
+a worktree alone does not prevent another-directory or device access. Use
+coordinator-owned independent rebuilds and source review as separate checks.
 
 With local pins verified and a user-assigned budget, run the six-leaf pilot
 before proposing more functions. Serialize compiler requests through the
