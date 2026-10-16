@@ -1,14 +1,15 @@
 # First decompilation pilot
 
-Prepared 2026-10-16: **six leaf functions are ready for bounded offline C
-reconstruction and compiler calibration**. No worker has started. No stock C
-has been reconstructed. This is not a ready-to-flash build or a general-purpose
-matching campaign. The [readiness report](../decomp/results/pilot-readiness/notes.md)
-records the checks and the remaining limitations.
+Updated 2026-10-16: **six prepared leaf assignments are held, not launch-ready**.
+The user requested resolution of preparation blockers before worker work.
+[Preparation status](preparation.md) supersedes the earlier
+[exploratory-pilot readiness report](../decomp/results/pilot-readiness/notes.md).
+The packets and comparison lock are preserved. No worker has started.
 
 ## Start here
 
-Review and commit the preparation changes before making worker worktrees;
+Resolve the preparation gate first. After a reviewed ready verdict, review and
+commit preparation changes before making worker worktrees;
 new worktrees start from a commit, not the coordinator's uncommitted files.
 No commit or push was performed during preparation. Keep the ignored local
 `.decomp` artifacts: the published source alone does not contain the firmware,
@@ -26,7 +27,7 @@ Use a coordinator session in the main checkout. Copy **only the contents of
 the following text block** into that session. The block is the entire prompt:
 
 ```text
-Read AGENTS.md, docs/pilot.md and decomp/prompts/coordinator.md. Prepare to run the six existing pilot tasks in decomp/functions.json; do not restart bootstrap or expand the task list. Run the local preflight and inspect the queue. Before launching any workers, ask me for the worker model, number of concurrent workers and total run budget. Use separate worktrees, the main checkout's queue and the existing immutable packets. Give each worker the complete output of its claim command. Keep the 20-minute, 8-build and 3-non-improving-attempt limits. Independently rebuild and review drafts; exact-range feedback is not match certification. Do not access hardware, change the locked compiler/flags/oracle, commit or push.
+Read AGENTS.md, docs/preparation.md and decomp/prompts/coordinator.md. Continue resolving preparation blockers, using decomp/results/preparation/notes.md as the latest evidence. Inspect decomp/preparation.json and the queue. Do not launch workers or bypass the preparation gate. Preserve the existing six task packets and comparison lock; any replacement needs a separately reviewed version. Resolve compiler availability and bounded calibration, then validate the selected build/comparison pipeline before recommending a worker run. Ask for missing user-held artifacts or licensing decisions without purchasing anything. No hardware access, commits or pushes.
 ```
 
 ## Coordinator handoff
@@ -38,7 +39,8 @@ accepted **setup** reports as dependencies. Acceptance is a coordinator review
 of setup scope, not full inventory approval or an independent match certificate.
 See the [review record](../decomp/results/pilot-readiness/notes.md#bootstrap-review).
 
-After the user assigns a run and budget, create each worktree from the committed
+After the preparation gate passes and the user assigns a run and budget,
+create each worktree from the committed
 preparation. Example for the first worker, from the main checkout:
 
 ```sh
@@ -87,9 +89,10 @@ Compiler/ABI/source-recovery review is still required even for exact bytes.
 ## Deliberate limits
 
 The [dependency ledger](dependencies.md) and whole-image gates remain open.
-The runtime-helper cluster around `0x1e4f0`, its two callers, inline data and
-shared tails remain quarantined; the global inventory checker still fails on
-the genuine diagnostic at `0x1e480`. No bookmark or expected byte was changed.
+The subsequent runtime-helper repair resolves the saved diagnostic and models
+both callers' real exits, supported by original-byte execution tests and a
+repeatable bounded analysis delta. No firmware byte changed. This is analysis
+preparation, not recovered C or proof of every discovered function boundary.
 The six individually reviewed leaves have no calls, absolute-address accesses,
 literal pools or shared tails. Their own boundaries and bytes were checked;
 this does not approve the rest of the 776 discoveries.
@@ -107,6 +110,6 @@ Same-UID processes can bypass filesystem conventions. Worktrees and read-only
 files are not a security sandbox. Configure the runner to deny device access
 and writes outside worker-owned paths; the coordinator retains the trusted
 reference and independently checks all output. No provider or model is launched
-by this repository. No proprietary compiler or additional package is required
-to start this local pilot. Original compiler provenance and matching coverage
-remain unknown; scaling beyond these leaves needs another readiness review.
+by this repository. Compiler/build readiness is unresolved and claims are held.
+Original compiler provenance and matching coverage remain unknown; scaling
+beyond these leaves also needs a separate readiness review.

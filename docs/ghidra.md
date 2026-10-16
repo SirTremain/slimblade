@@ -9,10 +9,12 @@ The [bootstrap run](bootstrap.md) installed Ghidra 12.1.4 and Temurin JDK
 21.0.12.1+1 locally, verified official v4.49, and exported 776 discovered
 functions. The later [readiness pass](../decomp/results/readiness/notes.md)
 resolved three of four saved diagnostics in a separate analysis copy. The
-remaining runtime-helper model also affects a caller with a silent data/code
-misclassification. Global inventory approval is blocked. A later
-[six-leaf review](pilot.md) approves only those individual boundaries for a
-bounded pilot and leaves the runtime cluster quarantined. Full commands, memory-map
+subsequent [runtime repair](../decomp/results/preparation/notes.md) resolves the
+last diagnostic and the silent inline-data misclassification. The repeatable
+analysis copy is `SlimBlade-v449-runtime-v4`; original copies remain untouched.
+Its structural checks pass, but global boundary approval is still outstanding.
+The [six-leaf tasks](pilot.md) are held for compiler/build preparation.
+Full original import commands, memory-map
 evidence, artifact hashes and limitations are in the
 [inventory result](../decomp/results/bootstrap-inventory/notes.md).
 

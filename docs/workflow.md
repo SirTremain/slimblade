@@ -18,6 +18,12 @@ submitted assignments or treating old startup prompts as a new work order.
 
 ## What is ready
 
+**Function claims are currently blocked** by [preparation.json](../decomp/preparation.json).
+The user requested preparation-blocker closure before a worker run. Follow
+[preparation.md](preparation.md), not the earlier exploratory-pilot launch verdict.
+Missing or malformed gate files do not enable claims. Passing configuration
+checks is not a readiness verdict; inspect the printed gate and queue status.
+
 The scaffold supplies task validation, an atomic SQLite claim queue, worker
 prompts, evidence hashing and review transitions. The [first pilot](pilot.md)
 adds six reviewed leaf packets and a pinned source-build/exact-stock-range
@@ -40,12 +46,13 @@ python3 tools/decomp.py status
 
 Bootstrap setup is complete. Its three reports have coordinator acceptance
 for their original setup scope, with the [pilot-readiness addendum](../decomp/results/pilot-readiness/notes.md#bootstrap-review).
-Do not restart bootstrap or launch workers automatically. A shared runtime
-helper and related silent data/code misclassification remain quarantined;
-the global inventory checker still fails. Six separately checked leaves are
-ready for a bounded reconstruction/compiler-calibration pilot only.
+Do not restart bootstrap or launch workers automatically. The subsequent
+[preparation work](../decomp/results/preparation/notes.md) repairs the runtime
+helper model and inline-data classification; its corrected inventory passes
+structural checks. Compiler calibration still blocks a reconstruction run.
+The six separately checked leaf packets remain held, not ready to claim.
 
-Start with [the copyable pilot prompt](pilot.md#start-here), which references
+Start with [the copyable preparation prompt](pilot.md#start-here), which references
 the [coordinator instructions](../decomp/prompts/coordinator.md).
 The user assigns worker models, concurrency and a total run budget before any
 launch. Two inexpensive workers are a possible starting configuration, not a
@@ -180,7 +187,8 @@ These boundaries are a workflow convention until enforced by the chosen agent
 sandbox and independent integration environment. A worktree alone does not
 prevent a process accessing another directory or a device.
 
-Run the prepared six-leaf pilot before proposing more functions. Record attempts, elapsed time, actual
+After the preparation gate is reviewed and opened, run the prepared six-leaf pilot
+before proposing more functions. Record attempts, elapsed time, actual
 model/cost when available and rejection reasons. Escalate ABI, shared types,
 interrupts, indirect dispatch and MMIO to stronger review. Apply the worker's
 20-minute/8-attempt limit and stop after 3 non-improving attempts.

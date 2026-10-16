@@ -25,6 +25,7 @@ class CoordinationTests(unittest.TestCase):
         data = json.loads(inventory.read_text())
         data["functions"] = []
         inventory.write_text(json.dumps(data))
+        (self.root / "decomp/preparation.json").write_text(json.dumps({"schema_version": 1, "ready": True}))
 
     def cli(self, *args, success=True):
         result = subprocess.run(
@@ -166,6 +167,25 @@ class CoordinationTests(unittest.TestCase):
         inventory.write_text(json.dumps(data))
         self.accept_bootstraps()
         self.cli("claim", task["id"], "--worker", "worker-a", success=False)
+
+    def test_preparation_gate_blocks_function_claim(self):
+        task, _ = self.function()
+        self.accept_bootstraps()
+        gate = self.root / "decomp/preparation.json"
+        gate.write_text(json.dumps({"schema_version": 1, "ready": False}))
+        self.assertIn("blocked", self.cli("status").stdout)
+        self.cli("claim", task["id"], "--worker", "worker-a", success=False)
+
+    def test_missing_preparation_gate_fails_closed(self):
+        task, _ = self.function()
+        self.accept_bootstraps()
+        (self.root / "decomp/preparation.json").unlink()
+        self.assertIn("blocked", self.cli("status").stdout)
+        self.cli("claim", task["id"], "--worker", "worker-a", success=False)
+
+    def test_invalid_preparation_gate_rejected(self):
+        (self.root / "decomp/preparation.json").write_text('{"schema_version":1,"ready":"true"}')
+        self.cli("check", success=False)
 
     def test_input_hash_gate_with_synthetic_bytes(self):
         image = self.root / "synthetic.bin"

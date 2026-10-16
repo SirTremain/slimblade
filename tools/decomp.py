@@ -169,6 +169,16 @@ def ready(task, states):
     return all(states.get(dep, {}).get("state") == "accepted" for dep in task["depends_on"])
 
 
+def preparation_ready(root):
+    path = root / "decomp/preparation.json"
+    if not path.exists():
+        return False  # Fail closed: deleting the gate must not enable workers.
+    gate = read_json(path)
+    require(gate.get("schema_version") == 1 and isinstance(gate.get("ready"), bool),
+            "invalid preparation gate")
+    return gate["ready"]
+
+
 def prompt(root, baseline, task, worker):
     evidence_check(root, baseline, task)
     output = (root / "decomp/prompts/worker.md").read_text() + (
@@ -201,6 +211,8 @@ def execute(args):
         print(f"Valid scaffold: {len(tasks)} tasks; " +
               ("local evidence/tool locks verified; " if args.local else "") +
               "whole-image verifier not implemented; matching coverage unknown")
+        if not preparation_ready(root):
+            print("Preparation BLOCKED: function claims disabled; see decomp/preparation.json")
         return
     if args.command == "verify-input":
         data = args.image.read_bytes()
@@ -230,6 +242,8 @@ def execute(args):
                     require(IDENTIFIER.fullmatch(args.worker), "invalid worker ID")
                     require(row is None or row["state"] == "queued", "task already owned")
                     require(ready(task, states), "dependencies not accepted")
+                    require(task["kind"] != "function" or preparation_ready(root),
+                            "preparation blockers unresolved; function claims disabled")
                     packet = prompt(root, baseline, task, args.worker)
                     db.execute("INSERT OR REPLACE INTO tasks VALUES (?,?,?,?,?,NULL,NULL,NULL,NULL)",
                                (args.task, digest(canonical(task)), args.worker, "claimed", now))
@@ -286,6 +300,8 @@ def execute(args):
             status = row.get("state", "queued")
             if status == "queued" and not ready(task, states):
                 status = "waiting"
+            if status == "queued" and task["kind"] == "function" and not preparation_ready(root):
+                status = "blocked"
             print(f"{ident:28} {status:10} {row.get('worker', '-')}")
         count = sum(task["kind"] == "function" for task in tasks.values())
         print(f"\nFunction tasks: {count}; complete inventory: unknown; matching coverage: unknown")

@@ -29,6 +29,9 @@ supported ingestion path and SDK/device compatibility before implementation.
 
 - Read the project plan, [the workflow](docs/workflow.md) and your assigned task
   packet. Historical notes are evidence, not current operating instructions.
+- The [preparation gate](decomp/preparation.json) currently blocks function
+  claims. Resolve and review the blockers in [preparation.md](docs/preparation.md)
+  before any worker run; the earlier exploratory-pilot verdict is superseded.
 - Work only on the assigned task and allowed paths in an isolated worktree.
   A coordinator owns the queue, shared headers, Ghidra database, toolchain,
   baseline, verifier and integration. Workers propose shared changes in notes.

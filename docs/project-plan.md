@@ -175,22 +175,26 @@ baseline intact regardless of later feature choices.
 
 ## Current position and next work
 
-The project is at milestone 1, offline preparation/reconstruction. A
-[six-leaf pilot](pilot.md) is ready with individually reviewed boundaries,
-immutable evidence and a pinned compile/link/stock-range comparison command.
-It is a reconstruction/calibration pilot, not a full matching campaign.
-No worker has started and no firmware C has been reconstructed.
+The project is at milestone 1, offline preparation. The user requested resolution
+of preparation blockers before worker reconstruction. A [preparation gate](preparation.md)
+now holds all six existing leaf tasks. Their packets and previous comparison
+lock remain intact; do not launch an exploratory pilot as a substitute for
+resolving the compiler/build blockers.
 
-The global inventory remains unapproved. The remaining runtime-helper call
-model and related silent data/code misclassification are quarantined; the
-original compiler/ABI, full build and matching coverage remain unknown.
+The runtime-helper call model and inline-data analysis have been repaired on a
+separate project copy, checked against 10,368 original-instruction executions,
+and replayed. Zero saved analysis errors does not approve all discovered
+boundaries. Compiler calibration, the production matching configuration and
+full-image build remain unresolved. Small fixed calibration probes are not
+certified recovered firmware. No worker has started; matching coverage is unknown.
 The [dependency ledger](dependencies.md) accounts for the container regions
 and external unknowns without excluding difficult bytes from the denominator.
 
-Next: commit the preparation, assign a worker run/budget and start the bounded
-pilot. Separately resolve the shared helper, historical toolchain and full
-storage/build dependencies before expanding to those regions or claiming
-whole-image verification. See [the workflow](workflow.md).
+Next: resolve usable compiler access and calibration, validate the selected
+build/comparison path, and review the launch gate. Only afterwards assign a
+worker run/budget. The full storage/dependency and hardware gates remain later
+requirements; no current preparation result establishes safe flashing.
+See [the workflow](workflow.md).
 
 This roadmap is not an instruction to run all stages immediately. Documentation
 cleanup and offline tasks do not initiate device access, loader entry, HID/vendor

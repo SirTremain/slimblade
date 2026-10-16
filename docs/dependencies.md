@@ -28,7 +28,7 @@ analysis model; it does not implement updater transport or flash mapping.
 | Dependency/question | State and gate |
 | --- | --- |
 | Original compiler, ABI, linker, libraries | Unknown; ARMCC 5 and GCC leads, possible mixed components. Clang/LLD is only a pinned pilot candidate. |
-| Runtime dispatcher/callers | Quarantine `fn_0001e150`, `fn_0001e420`, `fn_0001e4f0`, inline words at `0x1e364`/`0x1e480`, continuations/shared tails; no ordinary-call model approved. |
+| Runtime dispatcher/callers | Analysis-only callfixup and corrected ownership validated and replayed; 10,368 original-byte cases agree. Nonstandard saved-frame exits remain explicit. See [preparation evidence](../decomp/results/preparation/notes.md); not recovered C. |
 | Resident loader, ROM services, external firmware/storage | Existence, identity and extent unresolved. SDK boot files are leads, not this device's loader. |
 | Updater framing, checksums and destination ranges | Historical evidence needs complete reproduction before hardware work. No updater is executed by the active tools. |
 | Calibration, identity, pairing and nonvolatile device state | Location/readability/backup requirements unresolved; never regenerate from another device's dump. |
@@ -38,6 +38,6 @@ analysis model; it does not implement updater transport or flash mapping.
 The six pilot leaves have no observed outgoing calls, literal-pool/global
 references or shared tails. Pointer arguments are supplied by callers, with
 width/alignment/qualifier hypotheses documented in each packet. These local
-facts justify a bounded reconstruction/calibration pilot while the global
-questions remain open. They do not establish safe flashing, complete dependency
+facts support their narrow task boundaries. The user requested compiler/build
+blocker resolution before a run, so all six remain held. They do not establish safe flashing, complete dependency
 coverage, an original toolchain or equivalence of a later modified image.

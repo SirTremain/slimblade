@@ -1,6 +1,7 @@
 **__pycache__**
 images
 /.decomp/
+/ARMCC/
 /.worktrees/
 /ghidra/projects/
 *.gpr

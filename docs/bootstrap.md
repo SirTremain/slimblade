@@ -12,8 +12,9 @@ inventory or a stock-matching pipeline.
 
 Later still, the [pilot-readiness review](../decomp/results/pilot-readiness/notes.md)
 accepted the three setup deliverables with explicit corrections/limitations
-and prepared six separately reviewed leaf tasks. Current launch instructions
-are in [pilot.md](pilot.md). The submitted-state descriptions below record
+and prepared six separately reviewed leaf tasks. The latest
+[preparation pass](preparation.md) repairs the runtime helper but holds worker
+launches for compiler/build readiness. The submitted-state descriptions below record
 the earlier session, not today's queue.
 
 Completed 2026-10-16 in one coordinator session from commit

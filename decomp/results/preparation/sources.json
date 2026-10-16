@@ -1,0 +1,156 @@
+{
+  "retrieval_date": "2026-10-16",
+  "downloads": [
+    {
+      "artifact": "gcc-arm-none-eabi-4_8-2014q3-20140805-linux.tar.bz2",
+      "source_url": "https://launchpad.net/gcc-arm-embedded/4.8/4.8-2014-q3-update/+download/gcc-arm-none-eabi-4_8-2014q3-20140805-linux.tar.bz2",
+      "bytes": 61804575,
+      "sha256": "e33d7546de1e02844239c72b3ef5563f472fcd6b4637419d513770ae13f551c0",
+      "reported_version": "GCC 4.8.4 20140725 revision 213147",
+      "verification": "Retrieved from official project HTTPS URL; local SHA-256 pin, no independent signature check."
+    },
+    {
+      "artifact": "gcc-arm-none-eabi-9-2019-q4-major-x86_64-linux.tar.bz2",
+      "source_url": "https://developer.arm.com/-/media/Files/downloads/gnu-rm/9-2019q4/gcc-arm-none-eabi-9-2019-q4-major-x86_64-linux.tar.bz2",
+      "bytes": 116802378,
+      "sha256": "bcd840f839d5bf49279638e9f67890b2ef3a7c9c7a9b25271e83ec4ff41d177a",
+      "reported_version": "GCC 9.2.1 20191025 ARM/arm-9-branch revision 277599",
+      "verification": "Retrieved from official Arm HTTPS URL; local SHA-256 pin, no independent signature check."
+    },
+    {
+      "artifact": "sdk-tree-preparation.json",
+      "source_url": "https://gitee.com/api/v5/repos/beken-corp/bk3633_ble_sdk/git/trees/0a461f8ed4a4f17ff6889d6f9d34e521b92b8243?recursive=1",
+      "bytes": 490989,
+      "sha256": "4eb0b570171acb3021ccb6256785d90e647fe51d734b52c9a483d393bf1f37d2"
+    },
+    {
+      "artifact": "bk3633_stack_gcc.elf",
+      "source_url": "https://gitee.com/beken-corp/bk3633_ble_sdk/raw/0a461f8ed4a4f17ff6889d6f9d34e521b92b8243/SDK/src/system/bk3633_stack_gcc.elf",
+      "bytes": 215136,
+      "sha256": "9da4965e48c6bec0c3a08ab22ccd1de15b421d8e9a474f93db082b26b028dd58",
+      "git_blob_sha1_verified": "f18adfec52c63357e88c424c5be5b36ffe2e48d3"
+    },
+    {
+      "artifact": "bk3633_stack.bin",
+      "source_url": "https://gitee.com/beken-corp/bk3633_ble_sdk/raw/0a461f8ed4a4f17ff6889d6f9d34e521b92b8243/SDK/projects/app_mouse/output/stack/bk3633_stack.bin",
+      "bytes": 140596,
+      "sha256": "410da5a8955c3bce0ea700646f72e57aa40236c2fe492ef1b2ad24fe6bc68789",
+      "git_blob_sha1_verified": "349dcc2916aa005b1ccd2eb65bae567ba2a3f76f"
+    },
+    {
+      "artifact": "bk3633_app_sdk.bin",
+      "source_url": "https://gitee.com/beken-corp/bk3633_ble_sdk/raw/0a461f8ed4a4f17ff6889d6f9d34e521b92b8243/SDK/projects/app_mouse/output/app/bk3633_app.bin",
+      "bytes": 54892,
+      "sha256": "82644212c1c6a622dc825bffd5ca8d93333f5a0c0310a92cd23c682e39e77b27",
+      "git_blob_sha1_verified": "541ae5b53df57dfe686e8623a3879965f668c544"
+    },
+    {
+      "artifact": "bk3633_app_sdk.map",
+      "source_url": "https://gitee.com/beken-corp/bk3633_ble_sdk/raw/0a461f8ed4a4f17ff6889d6f9d34e521b92b8243/SDK/projects/app_mouse/Listings/bk3633_app.map",
+      "bytes": 270013,
+      "sha256": "23662cbfdaa385d469f057f914c72284f53440997ea70286a4d80b4e43e5178e",
+      "git_blob_sha1_verified": "732c20bd72ceeea75d76dc0f64aca345f2207612"
+    },
+    {
+      "artifact": "decompme-compilers-linux.yaml",
+      "source_url": "https://raw.githubusercontent.com/decompme/decomp.me/6056cf56b3bf4f1cfcf2496fe97f83cc09b08010/cromper/compilers/compilers.linux.yaml",
+      "bytes": 3988,
+      "sha256": "15c1525fa33653c4c32d3ed19c83bbc79bde1c480ed40b67e85898347ad03ffb"
+    },
+    {
+      "artifact": "decompme-compilers.py",
+      "source_url": "https://raw.githubusercontent.com/decompme/decomp.me/6056cf56b3bf4f1cfcf2496fe97f83cc09b08010/cromper/cromper/compilers.py",
+      "bytes": 52997,
+      "sha256": "518810449e450b8f3f4e88e096513ae97aaacbcd384e22eea19ea8f6a6d1eb68"
+    },
+    {
+      "artifact": "gcc-arm-none-eabi-4_9-2015q3-20150921-linux.tar.bz2",
+      "source_url": "https://launchpad.net/gcc-arm-embedded/4.9/4.9-2015-q3-update/+download/gcc-arm-none-eabi-4_9-2015q3-20150921-linux.tar.bz2",
+      "release_url": "https://launchpad.net/gcc-arm-embedded/4.9/4.9-2015-q3-update",
+      "bytes": 73710332,
+      "sha256": "c50078bfbd29e6c15615900e746f4d0acde917338e55860b0f145f57387c12ab",
+      "published_md5_verified": "8a4a74872830f80c788c944877d3ad8c"
+    },
+    {
+      "artifact": "wine-11.19-1-x86_64.pkg.tar.zst",
+      "source_url": "https://archlinux.cachyos.org/repo/extra/os/x86_64/wine-11.19-1-x86_64.pkg.tar.zst",
+      "bytes": 81055474,
+      "sha256": "44f82c8588db985f5d62a9ac464f807941a4506496242a639b9ee5c9ae53e4f0",
+      "signature_verified_with": "gpgv and the installed /etc/pacman.d/gnupg/pubring.gpg",
+      "signing_key": "B5971F2C5C10A9A08C60030F786C63F330D7CB92",
+      "installation": "Archive extracted under ignored .decomp/tools only; no package install or post-install scripts."
+    },
+    {
+      "artifact": "wine-11.19-1-x86_64.pkg.tar.zst.sig",
+      "source_url": "https://archlinux.cachyos.org/repo/extra/os/x86_64/wine-11.19-1-x86_64.pkg.tar.zst.sig",
+      "bytes": 566,
+      "sha256": "a98362c09fb86b0a976d3fc380c6ca6d213825de782f830e05ef75815d4edae1"
+    }
+  ],
+  "user_supplied": {
+    "path": "ARMCC/",
+    "source_url": null,
+    "provenance_status": "Supplied by user on 2026-10-16; download page requested, not independently authenticated.",
+    "reported_version": "ARM Compiler 5.06 update 7 (build 960)",
+    "platform": "Windows PE32 i386",
+    "file_count": 651,
+    "total_bytes": 449603774,
+    "file_inventory_sha256": "3fd28152ba3d025a1f41488dbd7a3c1faacffebbb111ffab01839af2b07cab92",
+    "armcc_sha256": "52fcff95b164ef766b7ba8931b6fc4cc9504018db94d7f10f8b62107df74f963",
+    "armcc_bytes": 16039376,
+    "armlink_sha256": "774e28f6ee703cf6793d0d014fc24fae05be3a5de733095bcb0d4fd6dac9eadb",
+    "armlink_bytes": 6634448,
+    "license": "No usable license provided; armcc version probe returns C9555E / Flex -1 for compiler5."
+  },
+  "user_supplied_archives": [
+    {
+      "path": "arm-compiler-legacy-5.06.zip",
+      "supplied_date": "2026-10-16",
+      "source_url": null,
+      "provenance_status": "User-supplied; download-page URL requested, origin not authenticated.",
+      "bytes": 86092740,
+      "sha256": "5a37d7f4169d4c2a5536af4fafcab078fe6b829b6304916661d14f7244292974",
+      "zip_comment": "db45a634af904e8452fcc0ccc3053816214606cf",
+      "reported_version": "ARM Compiler 5.06 update 4 (build 422)",
+      "platform": "Windows executable/library tree",
+      "release_notes_member": "arm-compiler-legacy-5.06/sw/info/releasenotes.html",
+      "release_notes_sha256": "0d7e7cd7ee46e8934f79f14ef22bdfabd48a3c10ccfe9f5c2e3e6c07a9d6e059",
+      "armcc_member": "arm-compiler-legacy-5.06/bin/armcc.exe",
+      "armcc_bytes": 15941656,
+      "armcc_sha256": "9eed5bc67aaad98cfdfba733cc7ddf491e430b6ee2e723d87f9d20580ef3333f",
+      "license_evidence": "Bundled release notes lines 163-173 require a suitable toolkit license; no user entitlement established.",
+      "executed": false
+    },
+    {
+      "path": "ARMCompiler_506_Windows_x86_b960.zip",
+      "supplied_date": "2026-10-16",
+      "source_url": null,
+      "provenance_status": "User-supplied; download-page URL requested, origin not authenticated.",
+      "bytes": 84872453,
+      "sha256": "768fc0b63c5329c22afd7a8bdf5b0a321613ea15bbb4c92e4faed4d087c7dbf6",
+      "reported_version": "Arm Compiler 5.06 update 7 for Certification (build 960)",
+      "platform": "Windows MSI installer",
+      "release_notes_member": "releasenotes.html",
+      "release_notes_bytes": 215017,
+      "release_notes_sha256": "f495107732ec267b7ba49ba8d161d4f7e0064800f087fac067265ffa24532a24",
+      "msi_member": "Installer/data/ARMCompiler506_b960.msi",
+      "msi_bytes": 86360064,
+      "msi_sha256": "b86677d837cd7e94c0d4016a63c4ecda61c0887036d456e44d0e75ba49cdf175",
+      "selected_cabinet": "arm_2.cab",
+      "armcc_member": "fil60C47C8674DC72D3B693E1DEF9427DA5",
+      "armcc_duplicate_member": "filF86E04DEFF8CDAB38F6DE515096FD3BB",
+      "armcc_bytes": 16039376,
+      "armcc_sha256": "189ec58db8e9517fc7b1ab5199026e5952913bdfd7d21f11d4a68762a433109a",
+      "armlink_member": "filD023B2F614598D26B229518DA76F045F",
+      "armlink_bytes": 6634448,
+      "armlink_sha256": "ce25bd43ed1f7e25db81167b10965f7d58f4aa563961fd0d84efde28a66363ef",
+      "fz_5s_member": "fil5939A9B081BD4CDE6C0D646F6B0005F4",
+      "fz_5s_bytes": 178970,
+      "fz_5s_sha256": "53d4460ca6f7fc503aff69058d875775efd88751129eef82bd8c7b29f9253194",
+      "comparison": "Compiler/linker whole-file hashes differ from ARMCC/. Selected runtime library matches ARMCC/lib/armlib/fz_5s.l exactly.",
+      "license_evidence": "Bundled release notes lines 142-155 and 225-230 require a suitable toolkit/standalone license and license file/server configuration.",
+      "executed": false,
+      "installed": false
+    }
+  ]
+}

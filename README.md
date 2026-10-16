@@ -13,22 +13,23 @@ Preserve stock wireless functionality where feasible. Remove it only as the
 first optional feature if measured size limits require that tradeoff in the
 custom firmware—not during stock reconstruction. Current work remains offline.
 
-Current state: **ready for a six-function offline reconstruction/calibration
-pilot**. [Start here](docs/pilot.md) for the complete copyable coordinator prompt.
-Six reviewed leaf packets, an atomic queue and a pinned source-build/stock-byte
-comparison command are prepared. No workers have started and no firmware C has
-been reconstructed. Commit preparation changes before creating worker worktrees.
+Current state: **worker launches held pending compiler/build preparation**.
+[Start here](docs/preparation.md) for the current blockers and evidence.
+The runtime-helper analysis has been repaired and independently replayed;
+the corrected inventory has zero saved analysis errors, not blanket boundary
+approval. Compiler calibration is not yet sufficient to select a matching
+configuration. Six existing leaf packets remain preserved but claims are blocked.
 
-The original compiler and matching coverage remain unknown. The remaining
-Ghidra runtime-helper problem is quarantined; the global inventory is still
-unapproved. The comparator provides exact-range feedback, not match
-certification or a complete stock rebuild. There is no device-writing command
-in the active toolset. See the [readiness report](decomp/results/pilot-readiness/notes.md).
+No workers have started. Small compiler probes are calibration evidence, not
+integrated recovered firmware or certified matches. The comparator still provides
+exact-range feedback, not a complete stock rebuild. There is no device-writing
+command in the active toolset. Matching coverage remains unknown.
 
 - [Current goals, milestone gates and next work](docs/project-plan.md)
 - [Research: Ghidra and collaborative decompilation](docs/decompilation-research.md)
 - [Start and coordinate agents](docs/workflow.md)
-- [First pilot and copyable prompt](docs/pilot.md)
+- [Preparation blockers](docs/preparation.md)
+- [Held pilot and copyable preparation prompt](docs/pilot.md)
 - [Stock byte accounting and unresolved dependencies](docs/dependencies.md)
 - [Ghidra setup and evidence export](docs/ghidra.md)
 - [Bootstrap results and reproduction](docs/bootstrap.md)

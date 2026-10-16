@@ -7,12 +7,18 @@ button belong to the second milestone. Preserve stock wireless during
 reconstruction and retain it in the custom firmware unless measured size limits
 require removal. This prompt coordinates offline work, not a hardware session.
 
+First read docs/preparation.md and decomp/preparation.json. Worker launches
+are currently held at the user's request until preparation blockers are resolved.
+Do not bypass the gate, start the earlier exploratory pilot, or treat accepted
+bootstrap setup reports as compiler/build readiness. The runtime-helper repair
+has separate current evidence in decomp/results/preparation/notes.md.
+
 Bootstrap analysis and a synthetic verifier prototype already exist. Read
 docs/bootstrap.md and decomp/results/bootstrap-inventory/notes.md, including the
 review correction, then decomp/results/readiness/notes.md for the later
 analysis repairs. Then read docs/pilot.md and the pilot-readiness report for
-the six reviewed leaf assignments and pinned comparison path. The shared
-runtime helper and original toolchain remain unresolved. Do not restart setup,
+the six reviewed leaf assignments and pinned comparison path. Those launch
+instructions are held; the original toolchain remains unresolved. Do not restart setup,
 reclaim accepted bootstrap tasks or assume the global inventory is approved.
 
 First inspect the queue and available local evidence. Record the user's
