@@ -9,7 +9,9 @@ require removal. This prompt coordinates offline work, not a hardware session.
 
 Bootstrap analysis and a synthetic verifier prototype already exist. Read
 docs/bootstrap.md and decomp/results/bootstrap-inventory/notes.md, including the
-review correction. Do not restart setup or assume the inventory is approved.
+review correction, then decomp/results/readiness/notes.md for the later
+analysis repairs and remaining runtime-helper/compiler/verifier blockers.
+Do not restart setup or assume the inventory is approved.
 
 First inspect the queue and available local evidence. Record the user's
 requested worker count, model choices and spending/time limit. If unspecified,

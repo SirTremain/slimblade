@@ -16,8 +16,10 @@ custom firmware—not during stock reconstruction. Current work remains offline.
 Current state: offline bootstrap completed on 2026-10-16. Ghidra and Java are
 installed locally, official v4.49 input is hash-verified, and an exported
 inventory contains 776 discovered functions with boundaries still unapproved.
-The corrected inventory review reports four Ghidra analysis errors affecting
-three functions; inventory approval is blocked pending investigation.
+The [readiness pass](decomp/results/readiness/notes.md) resolved three of four
+Ghidra diagnostics in a separate analysis copy. A shared runtime-helper model
+remains unresolved, including another caller with silently misclassified data;
+inventory approval and the function pilot remain blocked.
 The synthetic comparison prototype passes 21 checks. The original compiler
 and matching coverage remain unknown; no firmware functions were reconstructed
 and no function tasks were created. There is no stock matching build or

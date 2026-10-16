@@ -7,9 +7,11 @@ are for reproduction, not instructions to repeat completed bootstrap work.
 
 The [bootstrap run](bootstrap.md) installed Ghidra 12.1.4 and Temurin JDK
 21.0.12.1+1 locally, verified official v4.49, and exported 776 discovered
-functions. The scripts compiled and ran successfully, but the corrected review
-exposes four saved analysis errors affecting three functions. Inventory approval
-is blocked, and individual function boundaries are not approved. Full commands, memory-map
+functions. The later [readiness pass](../decomp/results/readiness/notes.md)
+resolved three of four saved diagnostics in a separate analysis copy. The
+remaining runtime-helper model also affects a caller with a silent data/code
+misclassification. Inventory approval is blocked, and individual function
+boundaries are not approved. Full commands, memory-map
 evidence, artifact hashes and limitations are in the
 [inventory result](../decomp/results/bootstrap-inventory/notes.md).
 

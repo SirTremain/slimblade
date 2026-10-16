@@ -176,12 +176,14 @@ baseline intact regardless of later feature choices.
 ## Current position and next work
 
 The project is at milestone 1, offline preparation/reconstruction. Bootstrap
-tools and reports exist; the corrected inventory review exposes four Ghidra
-analysis errors affecting three functions. Boundaries remain unapproved, the
-original compiler/ABI is unknown, and a stock matching pipeline is not implemented.
+tools and reports exist. The [readiness pass](../decomp/results/readiness/notes.md)
+resolved three of four Ghidra diagnostics in a separate project. The remaining
+runtime-helper call model and a related silent data/code misclassification need
+review. Boundaries remain unapproved, the original compiler/ABI is unknown, and
+a stock matching pipeline is not implemented.
 Matching coverage is unknown; no firmware functions have been reconstructed.
 
-Next: resolve the inventory findings, establish the toolchain and real verifier,
+Next: model the shared runtime helper and both callers, establish the toolchain and real verifier,
 review dependency/storage coverage, then assign bounded reconstruction work.
 See [bootstrap results](bootstrap.md) and [the workflow](workflow.md).
 

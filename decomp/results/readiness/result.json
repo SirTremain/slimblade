@@ -1,0 +1,35 @@
+{
+  "task": "readiness",
+  "worker": "session-readiness",
+  "status": "blocked",
+  "scope": "User-assigned offline readiness pass; separate from the three submitted bootstrap tasks",
+  "source_commit": "21abcd4e01540cf08ea4a03870bb4f1e1a99fef8",
+  "observations": [
+    "Three original Ghidra errors resolved on a separate analysis copy without changing firmware bytes.",
+    "Only fn_00003f48 and fn_0000a14c bodies changed; original function entries, modes and other bodies are unchanged.",
+    "The remaining 0x1e480 diagnostic is inline data consumed by a shared runtime dispatcher, not an ordinary instruction.",
+    "The same helper has another caller at 0x1e360 whose inline data at 0x1e364 is silently decoded as code.",
+    "Inventory still has 776 functions and zero overlaps; this is not a matching-coverage claim.",
+    "Existing synthetic verifier passed all 21 controls with its original lock; no stock verifier is implemented."
+  ],
+  "inferences": [
+    "Both callers and the helper need a nonstandard call/continuation and shared-tail model before their boundaries can be approved."
+  ],
+  "open_questions": [
+    "Runtime-helper control-flow modeling and ownership for fn_0001e150, fn_0001e420 and fn_0001e4f0.",
+    "Original compiler/version, ABI, library provenance and legitimate candidate-tool access.",
+    "Real stock-range verifier, whole-container build, external dependencies and hardware recovery prerequisites."
+  ],
+  "blocked_function_ids": ["fn_0001e150", "fn_0001e420", "fn_0001e4f0"],
+  "validation": [
+    "Ghidra repair checks baseline SHA and anchors; firmware bytes compared unchanged.",
+    "Independent LLVM disassembly crosschecks both corrected sites and both runtime callers/helper.",
+    "Bounded delta checker verifies exactly two function-body changes and no unrelated listing/reference changes.",
+    "Structural review exits 1 with the remaining error rather than claiming success.",
+    "Independent fresh project replay produces identical inventory, repair audit and evidence packet.",
+    "29 existing offline tests, 8 readiness controls and 21 synthetic verifier controls pass."
+  ],
+  "matching_coverage": "unknown",
+  "pilot_ready": false,
+  "next_step": "Model both runtime call sites and shared continuations; establish a justified compiler configuration and stock-range verifier before the function pilot."
+}

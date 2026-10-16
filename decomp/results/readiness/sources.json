@@ -1,0 +1,21 @@
+{
+  "checked_at": "2026-10-16",
+  "purpose": "Compiler availability check only; no compiler package or license acquired",
+  "sources": [
+    {
+      "url": "https://www.keil.com/download/product/",
+      "retrieved_at": "2026-10-16T07:57:33.141961+00:00",
+      "bytes": 23092,
+      "sha256": "4fd22afda90d40528ab4e5b3b02ba5ebfd20dc5574e7fbf34cf1f7cf20a518b8",
+      "observation": "Previous-version access asks for a valid product serial number or license code; this does not establish access to ARMCC 5.05 build 41."
+    },
+    {
+      "url": "https://support.arm.com/downloads/view/ACOMP5",
+      "attempted_at": "2026-10-16",
+      "status": "HTTP 403 on direct retrieval; browser tool returned a JavaScript application shell",
+      "bytes": null,
+      "sha256": null,
+      "observation": "No compiler archive or exact version could be verified from this response."
+    }
+  ]
+}

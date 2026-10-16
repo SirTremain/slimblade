@@ -42,9 +42,11 @@ Bootstrap setup has now been performed in a single coordinator session, with
 no additional agents. Its three reports are submitted for independent review;
 do not launch another bootstrap run or a function campaign automatically.
 The instructions below describe the queue workflow for later assigned runs.
-The corrected inventory review is blocked by saved Ghidra analysis errors;
-consult the [review correction](../decomp/results/bootstrap-inventory/notes.md#review-correction)
-before accepting the original submitted inventory report or assigning functions.
+The [readiness pass](../decomp/results/readiness/notes.md) resolved three of the
+four original diagnostics in a separate analysis copy. A shared runtime-helper
+model remains blocked, and a related caller has silently misclassified data.
+Consult that pass and the [original review correction](../decomp/results/bootstrap-inventory/notes.md#review-correction)
+before accepting the submitted inventory report or assigning functions.
 
 Start a coordinator with [this prompt](../decomp/prompts/coordinator.md).
 Choose the worker models in the agent application or runner. Start with two

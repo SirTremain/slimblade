@@ -4,6 +4,12 @@ Historical session record, not a new assignment. The
 [project plan](project-plan.md) defines current goals; the
 [workflow](workflow.md) explains how to continue from these results.
 
+Subsequent status: the [readiness pass](../decomp/results/readiness/notes.md)
+resolved three of the four analysis diagnostics on a separate copy, reproduced
+the repairs independently, and identified a shared runtime-helper blocker. The
+original reports and numbers below remain historical snapshots, not a clean
+inventory or a stock-matching pipeline.
+
 Completed 2026-10-16 in one coordinator session from commit
 `26175f32029cea2d471020b8e96ec6415c447b18`, using isolated worktree
 `.worktrees/bootstrap`. The user requested no additional agents, firmware

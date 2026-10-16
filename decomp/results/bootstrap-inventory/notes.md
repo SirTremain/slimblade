@@ -1,5 +1,10 @@
 # Bootstrap inventory — 2026-10-16
 
+Historical bootstrap record. The subsequent [readiness pass](../readiness/notes.md)
+resolves three of the four diagnostics below in a separate project, leaving
+runtime-helper modeling unresolved. Original reports and packet hashes here
+remain unchanged.
+
 Setup completed without device access or firmware-function reconstruction.
 The [corrected review](#review-correction) is blocked by four saved Ghidra errors;
 the initial clean structural verdict is superseded. Independent acceptance has
