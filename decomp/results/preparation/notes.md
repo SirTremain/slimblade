@@ -7,6 +7,28 @@ launch verdict. No workers, paid jobs, hardware operations, commits or pushes
 were performed. Work used isolated `.worktrees/pilot-ready`; the user committed
 the prior preparation as `c1d2868` during this session. Those changes were preserved.
 
+Earlier continuation, after the user's `be57294` commit: the supplied MDK 5.43a
+installer was minimally extracted, resolving missing Keil product mappings.
+ARMCC's version check then succeeded as MDK-Lite, and µVision opened in local Wine.
+That was not licensed ARM9 compilation. After a user-approved network diagnostic
+and standard Wine prefix repair, two fresh launches detected real adapters and
+displayed the same CID. No activation had been attempted at that stage.
+The complete-network-isolation probe is not a qualified licensed runner.
+See [the updated local ARMCC report](armcc-linux.md#supplied-mdk-543a-product-configuration-resolved).
+
+First supplied-key test: normal Add LIC accepted the user's key as **C-ARM
+Compiler/Assembler Kit**, while ARMCC remained MDK-Lite. Its C3903U result was
+incorrectly attributed to licensing: this release removed the ARM968E-S CPU
+name and documents `--cpu=5TE` as its replacement. The first key was not retested
+with that corrected option.
+
+Latest result: the replacement key installs as **MDK-ARM Professional**. With
+the documented CPU option, ARMCC5 b960 successfully compiles and links the
+unchanged synthetic probe, including a fresh headless run with no µVision or
+display. Local compiler access is demonstrated; stock calibration and pipeline
+qualification remain outstanding. No stock firmware was built. See the
+[Professional-key evidence](armcc-linux.md#professional-lic-test-headless-compile-and-link-pass).
+
 ## Runtime helper: bounded analysis repair
 
 Baseline remains 128,112 bytes, SHA-256

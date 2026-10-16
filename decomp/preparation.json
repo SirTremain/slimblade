@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "ready": false,
-  "reason": "Runtime-helper analysis repaired and replayed. Worker launches remain held pending a usable, calibrated compiler configuration and reviewed build/comparison integration. The exploratory pilot alone does not meet the user's requested preparation standard.",
+  "reason": "Runtime-helper analysis repaired and replayed. Local ARMCC5 synthetic compile/link access now works under Wine. Worker launches remain held pending stock compiler calibration and reviewed build/comparison integration. The exploratory pilot alone does not meet the user's requested preparation standard.",
   "evidence": "decomp/results/preparation/notes.md",
   "runtime_helper_analysis": "validated_bounded_model",
   "compiler_configuration": "unresolved",

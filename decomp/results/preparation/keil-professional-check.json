@@ -1,0 +1,53 @@
+{
+  "date": "2026-10-16",
+  "scope": "Second user-supplied key, normal local installation and synthetic ARMv5TE compile/link checks only",
+  "key_contents_recorded": false,
+  "key_issuer_verified": false,
+  "license_manager_accepted": true,
+  "installed_product": "MDK-ARM Professional",
+  "reported_compiler_product": "MDK Professional 5.43",
+  "compiler": "ARM Compiler 5.06 update 7 (build 960)",
+  "armcc_sha256": "52fcff95b164ef766b7ba8931b6fc4cc9504018db94d7f10f8b62107df74f963",
+  "armlink_sha256": "774e28f6ee703cf6793d0d014fc24fae05be3a5de733095bcb0d4fd6dac9eadb",
+  "initial_attempt": {
+    "cpu": "ARM968E-S",
+    "returncode": 1,
+    "error_code": "C3903U",
+    "object_created": false,
+    "cause": "Removed CPU name, not evidence of an insufficient Professional licence"
+  },
+  "cpu_query": {"returncode": 0, "includes_5TE": true, "includes_ARM968E_S": false},
+  "cpu_replacement_evidence": {
+    "path": "ARMCC/sw/info/releasenotes.html",
+    "source_url": null,
+    "provenance": "Bundled with the user-supplied compiler; inspected locally, not freshly downloaded",
+    "inspection_date": "2026-10-16",
+    "bytes": 214964,
+    "sha256": "8825125e9ec157035fcb4ec1b77f49740855d06d4689297738a872da55e9f42e",
+    "section": "Changes in Arm Compiler 5.06 update 3, SDCOMP-45000",
+    "replacement": "--cpu=5TE instead of --cpu=ARM968E-S"
+  },
+  "source": "decomp/results/preparation/keil_smoke.c",
+  "source_sha256": "4f40fe99ec684f3ba46c32454999485b257fec1def43a9469676b1b58f8b0dd9",
+  "runner_sha256": "cd07153d76bf1fed42ed1559ffa15d7d9c90499b53d22ab64699ad30fba4441e",
+  "ui_helper_source_sha256": "d2ef19648612f8b9e5a31ace586b68efce3a768e34a783615b144c84a82820bc",
+  "compile_arguments": ["--cpu=5TE", "--thumb", "-O2", "-c"],
+  "link_arguments": ["--entry=probe", "--ro-base=0x1000", "--no_scanlib"],
+  "successful_checks": [
+    {"variant": "mdk_basic", "uvision_started": true, "compile_returncode": 0, "object_created": true, "link_returncode": 0, "image_created": true},
+    {"variant": "mdk_std", "uvision_started": true, "compile_returncode": 0, "object_created": true, "link_returncode": 0, "image_created": true},
+    {"variant": "mdk_pro", "uvision_started": true, "compile_returncode": 0, "object_created": true, "link_returncode": 0, "image_created": true},
+    {"variant": "auto", "uvision_started": false, "display_started": false, "compile_returncode": 0, "object_created": true, "link_returncode": 0, "image_created": true}
+  ],
+  "all_checks_reported_product": "MDK Professional 5.43",
+  "artifacts_retained": false,
+  "artifact_storage": "Disposable sandbox /scratch tmpfs; no firmware input mounted",
+  "firmware_compiled_or_modified": false,
+  "hardware_accessed": false,
+  "licensing_screenshots_taken": false,
+  "raw_license_logs_saved": false,
+  "compiler_executables_modified": false,
+  "license_checks_modified": false,
+  "worker_locks_modified": false,
+  "conclusion": "Local command-line ARMCC5 compile/link access now works under Wine with the supplied Professional key and documented ARMv5TE target option. Stock calibration, pinned integration and verifier qualification remain outstanding; no firmware matches certified."
+}

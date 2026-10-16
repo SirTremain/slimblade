@@ -1,0 +1,32 @@
+{
+  "date": "2026-10-16",
+  "scope": "User-requested supplied-key acceptance and synthetic ARM968E-S compiler-access check",
+  "key_contents_recorded": false,
+  "key_issuer_verified": false,
+  "license_manager_accepted": true,
+  "installed_product": "C-ARM Compiler/Assembler Kit",
+  "compiler": "ARM Compiler 5.06 update 7 (build 960)",
+  "armcc_sha256": "52fcff95b164ef766b7ba8931b6fc4cc9504018db94d7f10f8b62107df74f963",
+  "armlink_sha256": "774e28f6ee703cf6793d0d014fc24fae05be3a5de733095bcb0d4fd6dac9eadb",
+  "reported_compiler_product": "MDK-ARM Lite 5.43",
+  "source": "decomp/results/preparation/keil_smoke.c",
+  "compile_arguments": ["--cpu=ARM968E-S", "--thumb", "-O2", "-c"],
+  "checks": [
+    {"configuration": "Original mdk_lite TOOLS.INI, default environment", "compile_attempts": 1},
+    {"configuration": "Original TOOLS.INI, ARM_TOOL_VARIANT mdk_basic / mdk_std / mdk_pro", "compile_attempts": 3},
+    {"configuration": "TOOLS.INI mdk_pro, same three environment selectors; uVision reset TOOLS.INI to mdk_lite", "compile_attempts": 3}
+  ],
+  "all_compile_returncodes": 1,
+  "error_code": "C3903U",
+  "error_message": "Argument 'ARM968E-S' not permitted for option 'cpu'.",
+  "objects_created": 0,
+  "linker_executed": false,
+  "firmware_compiled_or_modified": false,
+  "hardware_accessed": false,
+  "licensing_screenshots_taken": false,
+  "raw_license_logs_saved": false,
+  "compiler_executables_modified": false,
+  "license_checks_modified": false,
+  "conclusion": "Historical first-key result: accepted as C-ARM while ARMCC remained MDK-Lite. C3903U was caused by an obsolete CPU name, so those compile attempts do not independently establish a license restriction.",
+  "causality_correction": "ARMCC 5.06u3 removed ARM968E-S and prescribes --cpu=5TE (SDCOMP-45000). A later Professional key and corrected synthetic test compile/link successfully; see keil-professional-check.json. The first key was not retested with the corrected CPU option."
+}

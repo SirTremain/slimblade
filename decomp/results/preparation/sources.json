@@ -85,6 +85,36 @@
       "source_url": "https://archlinux.cachyos.org/repo/extra/os/x86_64/wine-11.19-1-x86_64.pkg.tar.zst.sig",
       "bytes": 566,
       "sha256": "a98362c09fb86b0a976d3fc380c6ca6d213825de782f830e05ef75815d4edae1"
+    },
+    {
+      "artifact": "xorg-server-xvfb-21.1.25-2-x86_64.pkg.tar.zst",
+      "source_url": "https://archlinux.cachyos.org/repo/extra/os/x86_64/xorg-server-xvfb-21.1.25-2-x86_64.pkg.tar.zst",
+      "bytes": 873530,
+      "sha256": "52c6d0394109b0bdfd0e4d00dd8d89d7e38bfe7576d96145179f216480eb7564",
+      "signature_verified_with": "gpgv and the installed /etc/pacman.d/gnupg/pubring.gpg",
+      "signing_key": "ADC8A1FCC15E01D45310419E94657AB20F2A092B",
+      "installation": "Extracted under ignored .decomp/tools/xvfb-21.1.25-2 only; no package installation or install scripts."
+    },
+    {
+      "artifact": "xorg-server-xvfb-21.1.25-2-x86_64.pkg.tar.zst.sig",
+      "source_url": "https://archlinux.cachyos.org/repo/extra/os/x86_64/xorg-server-xvfb-21.1.25-2-x86_64.pkg.tar.zst.sig",
+      "bytes": 310,
+      "sha256": "21d0cb243c1c56fe71222bd523e74c09889ff02d3a48c6f870997bfb31a09405"
+    },
+    {
+      "artifact": "xorg-server-xvfb-21.1.25-1-x86_64.pkg.tar.zst",
+      "source_url": "https://archive.archlinux.org/packages/x/xorg-server-xvfb/xorg-server-xvfb-21.1.25-1-x86_64.pkg.tar.zst",
+      "bytes": 873559,
+      "sha256": "c6bfb4dff25df8eabab71e64b2fb4a16348c3a786cce8305f1af2602478e2813",
+      "signature_verified_with": "gpgv and the installed /etc/pacman.d/gnupg/pubring.gpg",
+      "signing_key": "ADC8A1FCC15E01D45310419E94657AB20F2A092B",
+      "installation": "Unused fallback download retained under ignored .decomp/downloads; not extracted or executed."
+    },
+    {
+      "artifact": "xorg-server-xvfb-21.1.25-1-x86_64.pkg.tar.zst.sig",
+      "source_url": "https://archive.archlinux.org/packages/x/xorg-server-xvfb/xorg-server-xvfb-21.1.25-1-x86_64.pkg.tar.zst.sig",
+      "bytes": 310,
+      "sha256": "409772f61ff77c12690c7f81f9584ffe2f70e0b7cd5553bf1b8f11bc2ba04b82"
     }
   ],
   "user_supplied": {
@@ -100,9 +130,39 @@
     "armcc_bytes": 16039376,
     "armlink_sha256": "774e28f6ee703cf6793d0d014fc24fae05be3a5de733095bcb0d4fd6dac9eadb",
     "armlink_bytes": 6634448,
-    "license": "No usable license provided; armcc version probe returns C9555E / Flex -1 for compiler5."
+    "license": "The replacement key installs as MDK-ARM Professional. ARMCC5 b960 compiles and links the synthetic probe with the vendor-documented --cpu=5TE replacement, including a headless default-selector run. Earlier C3903U diagnoses were caused by the removed ARM968E-S CPU name, not proof of a licence restriction. See keil-professional-check.json and corrected historical keil-license-check.json. Key issuer/entitlement unverified; no key or key hash recorded."
   },
   "user_supplied_archives": [
+    {
+      "path": "MDK543a.exe",
+      "supplied_date": "2026-10-16",
+      "source_url": "https://www.keil.com/fid/armkeil/files/eval/mdk543a.exe",
+      "redirect_url": "https://armkeil.blob.core.windows.net/eval/MDK543a.exe",
+      "provenance_status": "User supplied after being given the official direct URL. Local SHA-256 recorded; Authenticode signature not independently verified.",
+      "bytes": 893488656,
+      "sha256": "5702ed2093680932da3466134885b2141297099df106e5090c38f65a9510b7ca",
+      "reported_version": "Keil MDK 5.43a",
+      "installer_executed": false,
+      "extraction": "Only UV4/*, ARM/sw/*, TOOLS.* and license_terms/* selected with 7z; ignored .decomp/keil-mdk-5.43a; no system install.",
+      "runtime_checks": "UV4.exe and armlm --help run in device/display-isolated Wine; existing ARMCC/bin/armcc.exe --vsn succeeds as MDK-Lite. Following explicit user agreement to network access and standard wineboot -u setup repair, two fresh launches detected actual host adapters and displayed the same CID. No activation or firmware compilation.",
+      "selected_members": [
+        {
+          "path": "UV4/UV4.exe",
+          "bytes": 12765464,
+          "sha256": "428baf13d15e6760af1618def9c9815c97f0321cc5e459ec7adc4dde41c42f89"
+        },
+        {
+          "path": "UV4/UV4.dll",
+          "bytes": 1858048,
+          "sha256": "20774f7836c59a0c0a9c94bf854f4f36219e2c866f6b2e374369de32288a70a7"
+        },
+        {
+          "path": "ARM/sw/mappings/mdk_pro.elmap",
+          "bytes": 5561,
+          "sha256": "d35bc0cd0ed63e2d0927b9f537bbe5fbe60c9df72fac72261aedd1f4e88af622"
+        }
+      ]
+    },
     {
       "path": "arm-compiler-legacy-5.06.zip",
       "supplied_date": "2026-10-16",

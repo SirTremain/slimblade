@@ -190,8 +190,10 @@ certified recovered firmware. No worker has started; matching coverage is unknow
 The [dependency ledger](dependencies.md) accounts for the container regions
 and external unknowns without excluding difficult bytes from the denominator.
 
-Next: resolve usable compiler access and calibration, validate the selected
-build/comparison path, and review the launch gate. Only afterwards assign a
+Local ARMCC5 access now passes synthetic compile/link checks under Wine with
+the supplied Professional key, including a headless run. Next: calibrate that
+candidate against stock, validate the selected build/comparison path, and
+review the launch gate. Only afterwards assign a
 worker run/budget. The full storage/dependency and hardware gates remain later
 requirements; no current preparation result establishes safe flashing.
 See [the workflow](workflow.md).

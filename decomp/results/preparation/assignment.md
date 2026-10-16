@@ -11,6 +11,19 @@ Keil product selection and Wine compatibility without license bypass, activation
 or host-identity spoofing. Preserve earlier GCC work, the exact-stock requirement,
 and the distinction between candidate and qualified tools.
 
+Subsequent explicit request (2026-10-16): the user supplied a key in ignored
+`.decomp/keil-license.txt` and asked to test it. This authorizes its normal local
+Keil installation and a bounded synthetic compiler/linker check in the existing
+real-adapter Wine environment. It supersedes the earlier no-activation limit
+only for this supplied-key test. Do not log keys, take licensing screenshots,
+change licensing checks, submit purchase/contact forms, or access hardware.
+
+Latest continuation (2026-10-16): the user replaced that key with a Professional
+key and requested the same local test. Normal installation, synthetic checks
+and a headless repeat are within that request. The earlier key's obsolete CPU
+argument is not a valid license-failure test; correct the diagnostic using the
+compiler's documented architecture replacement, without changing worker locks.
+
 Coordinator work in the existing isolated `.worktrees/pilot-ready` worktree;
 allowed paths: preparation results, shared tools/tests, readiness configuration
 and active documentation. Preserve the user's previous changes when integrating
