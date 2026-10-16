@@ -3,11 +3,13 @@
 2026-10-16 user request: continue until all preparation blockers are resolved.
 This supersedes the exploratory-pilot readiness criterion, not earlier evidence.
 
-Latest user clarification: exhaust other avenues before Windows development.
-Keep Linux as the host, investigate public/free toolchains and compiler
-provenance within the existing bounded preparation scope, and do not treat a
-Windows setup or license purchase as the immediate user action. Preserve the
-exact-stock requirement and report candidates separately from qualified tools.
+Latest user clarification: concentrate on the existing ARMCC 5 copies locally
+on Linux. The user reports a valid Keil license on Windows, but has not supplied
+its edition/type. Do not substitute remote Windows compilation or a VM, request
+a new trial/support entitlement, or propose a purchase. Investigate ordinary
+Keil product selection and Wine compatibility without license bypass, activation,
+or host-identity spoofing. Preserve earlier GCC work, the exact-stock requirement,
+and the distinction between candidate and qualified tools.
 
 Coordinator work in the existing isolated `.worktrees/pilot-ready` worktree;
 allowed paths: preparation results, shared tools/tests, readiness configuration

@@ -10,7 +10,12 @@ from pathlib import Path
 import subprocess
 
 
-def command(root):
+TOOL_VARIANTS = ('product', 'mdk_pro', 'mdk_pro_flex', 'mdk_lite')
+
+
+def command(root, tool_variant=None):
+    if tool_variant is not None and tool_variant not in TOOL_VARIANTS:
+        raise ValueError('unsupported diagnostic tool variant')
     state = root/'.decomp'
     work = state/'armcc-wine-work'
     for name in ('cache','runtime'):
@@ -27,14 +32,18 @@ def command(root):
                       'XDG_RUNTIME_DIR':'/work/runtime',
                       'WINEDLLOVERRIDES':'winemenubuilder.exe,mscoree,mshtml,winebus=d'}.items():
         args += ['--setenv',key,value]
+    if tool_variant is not None:
+        args += ['--setenv', 'ARM_TOOL_VARIANT', tool_variant]
     return args+['/opt/wine/usr/bin/wine','Z:\\compiler\\bin\\armcc.exe','--vsn']
 
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('root',type=Path); p.add_argument('output',type=Path)
+    p.add_argument('--tool-variant', choices=TOOL_VARIANTS,
+                   help='diagnose product-map selection; supplies no license')
     a=p.parse_args(); a.output.mkdir(parents=True,exist_ok=False)
-    cmd=command(a.root.resolve())
+    cmd=command(a.root.resolve(), a.tool_variant)
     result=subprocess.run(cmd,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,timeout=60)
     (a.output/'output.txt').write_text(result.stdout)
     (a.output/'command.json').write_text(json.dumps({'command':cmd,'returncode':result.returncode},indent=2)+'\n')

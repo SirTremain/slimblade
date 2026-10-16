@@ -10,9 +10,9 @@ enforces that hold in the claim queue. Deleting the file does not enable claims.
 | Shared runtime helper and both callers | Analysis model validated against 10,368 original-instruction cases and replayed on a second project copy. Inline words and continuation ownership corrected; firmware bytes unchanged. |
 | Ghidra structural errors | Zero in the repaired copy, with zero overlapping function-body bytes. This does not approve all 776 discovered boundaries. |
 | Available stock compiler calibration | Initial GCC 4.9.3 matches 2/6 fixed probes; Clang 23.1.1 matches 1/6. Three further SDK-led GCC 4.8/4.9 configurations still match only 2/6. Those attempts are stopped, not a proven exclusion of all GCC configurations. |
-| Native Linux GCC lead | The pinned SDK stack identifies GCC 9.2.1. That official native Linux release runs and reproduces one 8-byte SDK-only control. This is not a Kensington match or a qualified stock compiler. |
+| Native Linux GCC lead | GCC 9.2.1 runs and reproduces the SDK-only control. The subsequent fixed stock calibration matches 2/6 ranges, so that profile is not qualified. |
 | SDK provenance | 720 sized SDK symbol candidates inspected; two ARM runtime byte correspondences found in stock, zero GCC-stack whole-symbol correspondences under the entry/mode checks. No recovered-C coverage claimed. |
-| ARM compiler candidate | User supplied Windows ARM Compiler 5.06 update 7 build 960. It starts under isolated Wine but refuses operation with C9555E: no license. Its `__fpl_dnaninf` library member exactly matches the 184-byte stock helper. |
+| ARM compiler candidate | Windows ARMCC 5.06u7 b960 starts under isolated Wine. Default selection requests standalone `compiler5`; explicit `mdk_pro` selection fails earlier with C9511E because the MDK product definition is absent. The user's existing Keil license has not been tested. Its `__fpl_dnaninf` library member exactly matches the 184-byte stock helper. |
 | Production build/comparison integration | Held pending a usable, calibrated compiler/ABI configuration; the existing Clang leaf-feedback lock remains unchanged. |
 
 Full evidence, hashes, failed attempts and reproduction are in the
@@ -20,28 +20,27 @@ Full evidence, hashes, failed attempts and reproduction are in the
 
 ## Next action
 
-**Linux remains the development host.** The user requested exhausting other
-avenues before Windows setup. No Windows installation, purchase, activation or
-hosted upload is requested by this handoff. See the
-[Linux-first investigation](../decomp/results/preparation/notes.md#linux-first-investigation)
-for completed experiments, exact results and limits.
+**Focus on the supplied ARMCC 5 locally on Linux through Wine.** The user has
+rejected remote Windows/VM compilation, purchases and requests for new trial
+entitlements. The user reports an existing valid Keil license on Windows;
+edition/type and suitability for this arrangement remain unknown.
 
-The next free-toolchain question is whether GCC 9.2.1 can reproduce
-representative **Kensington** code, not whether it can target this CPU: native
-ARM968E-S compilation/linking now works. Before another calibration round,
-identify and review a nontrivial source-backed stock/SDK correspondence and its
-ABI/boundaries. Do not reopen the six stopped attempts with an arbitrary flag
-search. A new bounded packet needs new evidence; the SDK-only control is not
-sufficient to open the worker gate. The exact stock rebuild requirement stays.
+The earlier missing-license result selected the standalone product. It did not
+test Keil licensing. The new explicit `mdk_pro` diagnostic confirms missing MDK
+product configuration, not rejection of the user's license. Obtain only the
+stock `.elmap` product-definition files from the existing Keil installation's
+`ARM/sw/mappings` directory into ignored `.decomp/keil-mdk/mappings`, and identify
+the edition/license type. Do not request keys, `TOOLS.INI` contents or registry
+dumps in chat. Then reproduce the corresponding product layout and test the
+appropriate configuration; do not assume a Windows node-locked license is
+portable to Wine. See the [local ARMCC investigation](../decomp/results/preparation/armcc-linux.md)
+for exact evidence and next checks.
 
-The supplied ARMCC executable also starts on Linux through Wine, but its
-missing license still prevents compilation. A legitimate entitlement covering
-that compiler, target **and host arrangement** would be needed for that route.
-Starting an executable does not establish supported licensing. decomp.me's
-Linux configuration uses Wibo for older ARMCC releases, but that does not prove
-this project's compiler version, ARM9 settings, linker or licensing works there.
-Do not download unofficial compiler bundles or upload firmware to test that lead.
-Do not modify license checks or publish compiler files.
+Starting the executable is not successful compilation. Stock ARM9 compilation,
+linking, representative calibration and verifier qualification still follow.
+Do not modify license checks, spoof host identity, fetch unofficial compiler
+bundles, upload firmware or publish compiler files. Earlier GCC experiments
+remain evidence, not the current requested direction or a qualified fallback.
 The user-supplied `/ARMCC/` directory is ignored and remains in place. Its source
 download URL has been requested and is not yet independently recorded.
 
