@@ -1,0 +1,75 @@
+{
+  "note": "Documentation snapshots only, downloaded to /tmp/slimblade-decomp-research.Lw3hv6. Mutable upstream URLs and HTML nonces may yield different hashes later. No firmware downloaded.",
+  "sources": [
+    {
+      "id": "ghidra-readme",
+      "url": "https://raw.githubusercontent.com/NationalSecurityAgency/ghidra/master/README.md",
+      "retrieved_at": "2026-10-16",
+      "bytes": 7205,
+      "sha256": "8d4cc75b5c6d0d6ce218bbfa45adc36029d4719d6bcabb33499a36d66ccbf3ec"
+    },
+    {
+      "id": "ghidra-headless",
+      "url": "https://raw.githubusercontent.com/NationalSecurityAgency/ghidra/master/Ghidra/RuntimeScripts/support/analyzeHeadlessREADME.md",
+      "retrieved_at": "2026-10-16",
+      "bytes": 57395,
+      "sha256": "790550bde852f7963d28a377cb115a5e5c741b74c832ed9bb418a771af6d2b2c"
+    },
+    {
+      "id": "ghidra-arm",
+      "url": "https://raw.githubusercontent.com/NationalSecurityAgency/ghidra/master/Ghidra/Processors/ARM/data/languages/ARM.ldefs",
+      "retrieved_at": "2026-10-16",
+      "bytes": 19966,
+      "sha256": "7882fd4210f4987835c9eddaf1ae00c0391ed11cd5968081965f37490228612f"
+    },
+    {
+      "id": "objdiff",
+      "url": "https://raw.githubusercontent.com/encounter/objdiff/main/README.md",
+      "retrieved_at": "2026-10-16",
+      "bytes": 7394,
+      "sha256": "162f58af492cbf87ee1f3f17a0838bf2d691a9da56d008ff04fc7f33545964e3"
+    },
+    {
+      "id": "decomp-wtf",
+      "url": "https://raw.githubusercontent.com/i12bp8/decomp.wtf/main/README.md",
+      "retrieved_at": "2026-10-16",
+      "bytes": 28732,
+      "sha256": "420e2e0e435ad58643c314ac94f6d978f98c6282aaf4ada77888029a47977631"
+    },
+    {
+      "id": "n64-agents",
+      "url": "https://raw.githubusercontent.com/djsaunde/decomp/main/CLAUDE.md",
+      "retrieved_at": "2026-10-16",
+      "bytes": 6409,
+      "sha256": "8603887a88ced1c0edb2deff73661b36990f4965f575d186fae96bfe5b181e6f"
+    },
+    {
+      "id": "pokeemerald",
+      "url": "https://raw.githubusercontent.com/pret/pokeemerald/master/README.md",
+      "retrieved_at": "2026-10-16",
+      "bytes": 383,
+      "sha256": "5ed60cb1aaa9ec6f7c01bea7f166a8208d287799d566dec550d2ed5d067426dd"
+    },
+    {
+      "id": "decomp-dev-site",
+      "url": "https://decomp.dev/",
+      "retrieved_at": "2026-10-16",
+      "bytes": 10870,
+      "sha256": "7cb524508c606e497aa75a0900e65defe59208c4040fc9a4c28573668315ed35"
+    },
+    {
+      "id": "decompedia-home",
+      "url": "https://raw.githubusercontent.com/decompals/decompedia/main/home.md",
+      "retrieved_at": "2026-10-16",
+      "bytes": 2301,
+      "sha256": "c4a7a08ea6d94e75b85e725836ca3feb222dee084d860a86775ef7ff3ca8ac23"
+    },
+    {
+      "id": "ghidra-beginner",
+      "url": "https://ghidra.re/ghidra_docs/GhidraClass/Beginner/Introduction_to_Ghidra_Student_Guide.html",
+      "retrieved_at": "2026-10-16",
+      "bytes": 122533,
+      "sha256": "6d982158b60620021a48f93a1baf0f543901cd552f7dfad0779ddf7f2c742268"
+    }
+  ]
+}

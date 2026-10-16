@@ -1,0 +1,28 @@
+{
+  "id": "fn_00000000",
+  "kind": "function",
+  "title": "Replace with a reviewed inventory entry",
+  "depends_on": [
+    "bootstrap-inventory",
+    "bootstrap-toolchain",
+    "bootstrap-verifier"
+  ],
+  "allowed_paths": [
+    "decomp/src/fn_00000000.c",
+    "decomp/results/fn_00000000/"
+  ],
+  "instructions": "Reconstruct only this function from the immutable evidence packet. Propose shared types in notes. Do not edit the oracle or reference bytes.",
+  "acceptance": "Independent review; matching certification requires the separately implemented pinned verifier.",
+  "entry": "0x00000000",
+  "mode": "thumb",
+  "ranges": [
+    {
+      "start": "0x00000000",
+      "end_exclusive": "0x00000002"
+    }
+  ],
+  "evidence_path": ".decomp/evidence/fn_00000000",
+  "evidence_sha256": "REPLACE_WITH_SHA256_FROM_HASH_PACKET_COMMAND",
+  "boundary_review": "REPLACE_WITH_REVIEWER_AND_EVIDENCE",
+  "note": "TEMPLATE ONLY: never queue placeholder addresses. Preserve discontiguous ranges and literal-pool/data ownership separately in the packet."
+}

@@ -1,0 +1,15 @@
+{
+  "task": "REPLACE_WITH_TASK_ID",
+  "worker": "REPLACE_WITH_WORKER_ID",
+  "status": "draft",
+  "observations": [],
+  "inferences": [],
+  "open_questions": [],
+  "validation": ["Record exact commands, results and limitations; do not claim unrun checks"],
+  "attempts": 0,
+  "elapsed_minutes": 0,
+  "model": "record the actual model used",
+  "source_commit": "record worker base commit",
+  "proposed_shared_changes": [],
+  "next_step": ""
+}

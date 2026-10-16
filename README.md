@@ -1,41 +1,38 @@
-# SlimBlade Pro research
+# SlimBlade Pro firmware decompilation
 
-Compact notes on the Kensington SlimBlade Pro sensor and firmware interface.
+An offline workspace for reconstructing stock Kensington SlimBlade Pro firmware
+before attempting Rotatrix-style changes. The eventual target is wired USB with
+access to both sensors. Reconstruction should account for the whole chosen
+stock image, including wireless code and data.
 
-- [Firmware research](docs/firmware-research.md)
-- [Custom-firmware and recovery gates](docs/custom-firmware-feasibility.md)
-- [Recovery-stub path](docs/recovery-stub.md)
-- [Marker-first recovery guard](docs/recovery-guard.md)
-- [Stock recovery carrier](docs/recovery-carrier.md)
-- [Reset trampoline](docs/reset-trampoline.md)
-- [Startup trampoline](docs/startup-trampoline.md)
-- [BK3633 SDK comparison](docs/bk3633-sdk-comparison.md)
-- [Vendored BK3633 SDK](vendor/bk3633_sdk/README.md)
-- [BK3635 wired port starting point](vendor/bk3633_sdk/SDK/projects/slimblade_wired/README.md)
-- [Development tooling](docs/development-tooling.md)
-- [Custom firmware architecture](docs/development-architecture.md)
-- [Post-initialization recovery marker](docs/post-init-marker.md)
-- [Release-blocking marker reachability gate](docs/marker-reachability-gate.md)
-- [Rust migration plan](docs/rust-migration-plan.md)
-- [Board observations](docs/board-observations.md)
-- [Hardware-assisted loader entry](docs/hardware-loader-entry.md)
-- [Zero-solder pogo fixture](hardware/pogo_fixture/README.md)
-- [Embedded development workbench](docs/embedded-workbench.md)
+Current state: scaffolding only. No firmware was decompiled during this reset.
+The function inventory is empty, the original compiler is unknown, and there
+is no matching build or device-writing command in the active toolset.
 
-Active development support:
+- [Research: Ghidra and collaborative decompilation](docs/decompilation-research.md)
+- [Start and coordinate agents](docs/workflow.md)
+- [Ghidra setup and evidence export](docs/ghidra.md)
+- [Stock baseline and outstanding questions](docs/stock-baseline.md)
+- [Retired work and retained hardware notes](docs/legacy.md)
 
-- [`crates/slimblade-cli`](crates/slimblade-cli): guarded Linux HID inspection,
-  loader control, and exact-hash flashing.
-- [`crates/slimblade-protocol`](crates/slimblade-protocol): `no_std` wire
-  reports, checksums, CRC, and fixed-size packet types.
-- [`crates/slimblade-image`](crates/slimblade-image): firmware containers and
-  recorded artifact identities.
-- [`crates/slimblade-verify`](crates/slimblade-verify): ELF, ARM/Thumb, artifact,
-  and storage-isolation checks.
-- [`firmware/bk3635-rs`](firmware/bk3635-rs): Rust marker-first firmware.
-- [`udev/70-slimblade-research.rules`](udev/70-slimblade-research.rules):
-  scoped permissions and stable HID paths.
+Inspect the queue with Python 3.10+; no extra packages are needed:
 
-Run `cargo xtask all` for the complete non-writing build and verification gate.
-The retained C/assembly probes and vendored BK3633 SDK are research references,
-not part of the active build.
+```sh
+python3 tools/decomp.py status
+```
+
+Run the offline scaffold tests:
+
+```sh
+python3 -m unittest discover -s tests -v
+```
+
+For a later agent session, start with
+[the coordinator prompt](decomp/prompts/coordinator.md). It describes three
+bootstrap assignments and how to distribute individual functions afterward.
+Model choice stays with the agent runner; this repository has no provider/API
+dependency and starts no agents automatically.
+
+Offline analysis does not write to the device. A complete matching stock build
+would be strong evidence of reconstruction accuracy, but would not make later
+firmware edits or flashing risk-free.

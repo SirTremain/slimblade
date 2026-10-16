@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "tasks": [
+    {
+      "id": "bootstrap-inventory",
+      "kind": "bootstrap",
+      "title": "Establish the Ghidra baseline and inventory",
+      "depends_on": [],
+      "allowed_paths": [
+        "decomp/results/bootstrap-inventory/"
+      ],
+      "instructions": "Future run only: follow docs/ghidra.md; verify the stock input, pin Ghidra and Java versions and hashes, check the memory map and ARM/Thumb transitions, export function metadata and local evidence packets. Report unresolved regions and coverage denominator. Propose functions.json; do not populate the shared queue or claim complete discovery. Do not decompile functions in this bootstrap assignment.",
+      "acceptance": "Reviewer can reproduce import and export; address and mode anchors checked; unclassified regions and limitations explicit; no device access."
+    },
+    {
+      "id": "bootstrap-toolchain",
+      "kind": "bootstrap",
+      "title": "Research the original compiler and ABI",
+      "depends_on": [],
+      "allowed_paths": [
+        "decomp/results/bootstrap-toolchain/"
+      ],
+      "instructions": "Research compiler/version/ABI candidates using the historical SDK provenance and vendor documentation. Record tool sources, availability and hashes; distinguish evidence from guesses. Propose a small later calibration experiment. Do not decompile firmware or install proprietary compilers without a legitimate source.",
+      "acceptance": "Evidence-backed candidates, ABI uncertainties and reproducible next experiment; unknowns remain unknown."
+    },
+    {
+      "id": "bootstrap-verifier",
+      "kind": "bootstrap",
+      "title": "Design and prototype an independent matching verifier",
+      "depends_on": [],
+      "allowed_paths": [
+        "decomp/results/bootstrap-verifier/"
+      ],
+      "instructions": "Use synthetic inputs to prototype compile/link/compare verification as specified in docs/workflow.md. Include a deliberately wrong candidate and fail-closed unknown toolchain handling. Propose integration files; do not modify shared tools, baseline or expected bytes. No real firmware decompilation.",
+      "acceptance": "Synthetic negative controls fail; relocation/call targets, literal pools, data and whole-image limitations covered. Prototype is not a stock matching build."
+    }
+  ]
+}

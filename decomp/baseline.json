@@ -1,0 +1,14 @@
+{
+  "id": "slimblade-pro-stock-v4.49",
+  "provenance": "Recorded in commit ea2ee1dd6f47ab414180b1b4e6ea375caef489d7; not re-inspected during scaffold setup",
+  "source_url": "https://accobrands.co.jp/wp/wp-content/uploads/Kensington-Slimblade-Pro-V4.49.zip",
+  "retrieved_at": "2026-08-14",
+  "bytes": 128112,
+  "sha256": "e91502e8021e61c97a77fb12324e99ee4acb23bee55a5a67d18e26521ef856f7",
+  "payload_offset": 8192,
+  "payload_bytes": 119920,
+  "payload_sha256": "3b7849cafa2a8d4a0c2694c9771d70563563dc1c6cdbf84ede9b8648071604bf",
+  "ghidra_language_candidate": "ARM:LE:32:v5",
+  "compiler_status": "unknown",
+  "replacement_device_version": "unknown"
+}

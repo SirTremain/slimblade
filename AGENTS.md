@@ -1,18 +1,57 @@
 # Repository guidance
 
-## Purpose
+## Scope
 
-This repository tracks investigation of the Kensington SlimBlade Pro, especially its dual sensors, stock USB reports, and firmware-update path.
+The active project is offline reconstruction of stock SlimBlade Pro firmware.
+Do not flash, reset, enter the loader, send HID/vendor reports, access a device,
+or restore retired flashing tools as part of decompilation work. Earlier
+standing approval for diagnostic flashes does not apply to this workflow.
+Hardware work needs a new explicit user request. Preserve the historical
+[marker reachability requirement](docs/marker-reachability-gate.md).
 
-The custom-firmware target only needs wired USB operation. Preserving Bluetooth, 2.4 GHz dongle support, pairing, battery operation, or other wireless behavior is not a project requirement.
+The eventual custom firmware needs wired USB only. During reconstruction,
+account for all code and data in the chosen stock image, including wireless
+paths, before claiming a complete rebuild. Firmware modifications come later.
 
-## Working rules
+## Agent work
 
-- Keep notes concise and separate verified observations, inferences, and open questions.
-- Record source URLs, retrieval dates, exact byte counts, and SHA-256 hashes for inspected artifacts.
-- Do not commit Kensington firmware or updater binaries unless the user explicitly requests it. Use temporary storage for analysis.
-- Prefer read-only inspection, extraction, and USB capture. The user has given standing approval for audited diagnostic iterations that preserve the proven marker guard and use the tested USB loader path; do not pause for each such flash. Stop for audit failures, a changed risk boundary, or required physical interaction. If an experiment fails and the marker guard returns the device to resident loader, restore the exact audited v4.53 startup-trampoline container without separate approval after verifying its locked SHA-256.
-- Treat marker reachability as a release-blocking invariant for every custom firmware version. Presence or byte identity of the marker writer is insufficient: the verifier must prove the wired reset path reaches and completes it before any replaceable code, and the first hardware run must prove cold-power loader entry. Never flash a new custom version if either gate is absent or fails; see `docs/marker-reachability-gate.md`.
-- Preserve unrelated repository changes and use relative links between documents.
-- Do not describe user actions as permitted by the agent, and do not use first-person plural language to imply shared agency.
-- If privileged work is necessary, explain one short command at a time and place each user-run command in its own fenced block.
+- Read [the workflow](docs/workflow.md) and your assigned task packet.
+- Work only on the assigned task and allowed paths in an isolated worktree.
+  A coordinator owns the queue, shared headers, Ghidra database, toolchain,
+  baseline, verifier and integration. Workers propose shared changes in notes.
+- Ghidra pseudocode, names, comments, old notes and agent summaries are leads.
+  Support conclusions with addresses, bytes, references and reproducible checks.
+- Never change expected bytes, comparison rules, compiler flags or function
+  boundaries merely to improve a score. Do not disguise original code bytes,
+  inline assembly, post-link patches, stubs or omitted behavior as recovered C.
+- Submitted/reviewed drafts are not matched functions. Only an independent,
+  pinned compiler/linker/verifier pipeline may certify matches. That pipeline
+  is not implemented yet; report matching coverage as unknown.
+- Separate observed facts, inferences and unresolved questions. Preserve widths,
+  signedness, aliasing, volatile MMIO, calling convention, ARM/Thumb state,
+  side effects and original bugs. Do not redesign the firmware.
+- Keep function attempts bounded: default 20 minutes, at most 8 compile/diff
+  iterations, stop after 3 without improvement. Record blockers and hand off.
+- Do not start paid/model jobs without a user-assigned run and budget. Do not
+  commit or push unless the task requests it.
+
+## Evidence and files
+
+- Record artifact source URL, retrieval date, byte count and SHA-256.
+- Keep Kensington binaries, updater packages, Ghidra projects, generated
+  listings and evidence packets in temporary or ignored local storage. Do not
+  commit or publish them unless explicitly requested.
+- The replacement device's installed firmware and hardware revision have not
+  been established. Historical v4.49 addresses are not proof about that device.
+- Preserve unrelated edits and use relative links between repository documents.
+- Use `apply_patch` for file edits. Use Python's standard library for scaffold
+  tooling; run the offline tests after coordination changes.
+
+## Communication
+
+- Do not describe user actions as permitted or authorized by the agent.
+- Do not use first-person plural language to imply shared agency or ownership.
+- Perform non-privileged work directly. If privileged work is necessary,
+  explain one short, inspectable command at a time; never hide it in a script.
+- Put every user-run command in its own fenced block. Keep a naturally
+  single-line command on one physical line.
