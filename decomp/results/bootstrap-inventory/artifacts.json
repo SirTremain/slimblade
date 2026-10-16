@@ -1,0 +1,24 @@
+{
+  "ghidra": {
+    "url": "https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_12.1.4_build/ghidra_12.1.4_PUBLIC_20260921.zip",
+    "bytes": 569649598,
+    "sha256": "ddac49f903da9d5bac833e5cc79395098b9c33cfd3279be5f31bd00387d2d4db",
+    "directory": "ghidra_12.1.4_PUBLIC"
+  },
+  "java": {
+    "url": "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jdk_x64_linux_hotspot_21.0.12.1_1.tar.gz",
+    "bytes": 207473347,
+    "sha256": "ce79869e1307ed8ee1e2baa86a412b1eb5b75d10a01006d788a6f968bcfaee94",
+    "directory": "jdk-21.0.12.1+1"
+  },
+  "firmware_zip": {
+    "url": "https://accobrands.co.jp/wp/wp-content/uploads/Kensington-Slimblade-Pro-V4.49.zip",
+    "bytes": 1037410,
+    "sha256": "dffe13ab063cb9614669914295b273bda0e5906bc5af75b3f73cd2da5f0f41ac"
+  },
+  "updater": {
+    "member": "Kensington Slimblade Pro V4.49.exe",
+    "bytes": 3008000,
+    "sha256": "38fc1b333d316039e4eb732c70183b8c6c4cc831c90246425917e9dce64f7688"
+  }
+}

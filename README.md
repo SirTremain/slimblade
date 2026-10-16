@@ -5,13 +5,20 @@ before attempting Rotatrix-style changes. The eventual target is wired USB with
 access to both sensors. Reconstruction should account for the whole chosen
 stock image, including wireless code and data.
 
-Current state: scaffolding only. No firmware was decompiled during this reset.
-The function inventory is empty, the original compiler is unknown, and there
-is no matching build or device-writing command in the active toolset.
+Current state: offline bootstrap completed on 2026-10-16. Ghidra and Java are
+installed locally, official v4.49 input is hash-verified, and an exported
+inventory contains 776 discovered functions with boundaries still unapproved.
+The corrected inventory review reports four Ghidra analysis errors affecting
+three functions; inventory approval is blocked pending investigation.
+The synthetic comparison prototype passes 21 checks. The original compiler
+and matching coverage remain unknown; no firmware functions were reconstructed
+and no function tasks were created. There is no stock matching build or
+device-writing command in the active toolset.
 
 - [Research: Ghidra and collaborative decompilation](docs/decompilation-research.md)
 - [Start and coordinate agents](docs/workflow.md)
 - [Ghidra setup and evidence export](docs/ghidra.md)
+- [Bootstrap results and reproduction](docs/bootstrap.md)
 - [Stock baseline and outstanding questions](docs/stock-baseline.md)
 - [Retired work and retained hardware notes](docs/legacy.md)
 

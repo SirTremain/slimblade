@@ -1,0 +1,35 @@
+{
+  "task": "bootstrap-inventory",
+  "worker": "session-bootstrap",
+  "status": "draft",
+  "setup_complete": true,
+  "observations": [
+    "Official ZIP, EXE, container and payload match recorded sizes and SHA-256s.",
+    "Installed Ghidra 12.1.4 and Temurin JDK 21.0.12.1+1 locally from verified official archives.",
+    "ARM:LE:32:v5 is ARM-only; the final project uses ARM:LE:32:v5t with explicit ARM/Thumb seeds.",
+    "Mapped container regions, initialized RAM copy, BSS, stack anchors and directly observed volatile MMIO.",
+    "Frozen export has 776 functions (37 ARM, 739 Thumb), no overlapping bodies, and 35774 unclassified bytes."
+  ],
+  "inferences": [
+    "The flat container-offset address model is supported at reviewed startup and MMIO anchors, not proven for all physical storage."
+  ],
+  "open_questions": [
+    "Function boundaries, indirect dispatch, shared tails, unclassified regions, RAM extents/aliases and full data ownership remain unresolved.",
+    "Original compiler/ABI and replacement-device firmware/revision remain unknown."
+  ],
+  "validation": [
+    "tools/decomp.py verify-input passed on the freshly extracted official container.",
+    "Final Ghidra import and analysis completed; frozen export used readOnly/noanalysis.",
+    "review.py checked every exported range, entry, mode, overlap and original database byte.",
+    "Independent LLVM disassembly corroborated ARM startup, exception wrapper calls and Thumb entry.",
+    "Evidence packet c34324c72e4d13eb6b368c3b10894e5511a6c8e2ce8ec645bfd50e781b5b34a7."
+  ],
+  "attempts": 0,
+  "elapsed_minutes": null,
+  "timing_note": "Bootstrap tasks were interleaved in one session; no per-task timer or firmware-function attempts.",
+  "model": "Codex session; exact runner model identifier and cost not exposed",
+  "source_commit": "26175f32029cea2d471020b8e96ec6415c447b18",
+  "proposed_shared_changes": ["Correct current Ghidra documentation to v5t and a non-hidden project path; link reproducible setup/results."],
+  "matching_coverage": "unknown",
+  "next_step": "Independent review of bootstrap deliverables; no function assignments created."
+}

@@ -1,0 +1,31 @@
+{
+  "task": "bootstrap-verifier",
+  "worker": "session-bootstrap",
+  "status": "draft",
+  "prototype_complete": true,
+  "observations": [
+    "Synthetic independent compile/link/compare prototype passes 21 checks.",
+    "Positive controls rebuild from C in fresh output directories; worker-produced objects/images are not accepted.",
+    "Wrong constants, signedness, stores, calls, data, BSS, function interfaces and tampered oracle/tool/configuration controls are rejected.",
+    "The changed-call control has identical object text before relocation and is rejected after linking.",
+    "Unknown toolchains fail closed; this prototype exposes no stock-match certification command."
+  ],
+  "inferences": [],
+  "open_questions": [
+    "Stock compiler/ABI/linker/library identity is unknown.",
+    "Production isolation, complete environment pinning, source-recovery review and whole-container construction remain future work."
+  ],
+  "validation": [
+    "selftest.py .decomp/verifier/suite-v2: 21 checks passed.",
+    "Synthetic oracle lock SHA-256 ee9aac190057fb65face3639fb1f69c1b2a9c55e1d5b405499ac648826133520.",
+    "Reference ELF SHA-256 d26e445b7ebd3e73080523f77f346705c846fee7820b1ed1eaafad2cc6d66dbd.",
+    "Offline scaffold unittest suite: 11 tests passed."
+  ],
+  "attempts": 0,
+  "elapsed_minutes": null,
+  "model": "Codex session; exact runner model identifier and cost not exposed",
+  "source_commit": "26175f32029cea2d471020b8e96ec6415c447b18",
+  "proposed_shared_changes": ["Retain synthetic prototype under bootstrap results; do not present it as a stock matching verifier."],
+  "matching_coverage": "unknown",
+  "next_step": "Independent review of verifier logic and controls before any stock integration or function campaign."
+}

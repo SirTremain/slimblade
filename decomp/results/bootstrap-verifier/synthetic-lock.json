@@ -1,0 +1,169 @@
+{
+  "abi": "ELF32 little-endian ARMv5TE, Thumb, AAPCS, soft-float (synthetic choice)",
+  "compile_flags": [
+    "--target=arm-none-eabi",
+    "-mcpu=arm968e-s",
+    "-march=armv5te",
+    "-mthumb",
+    "-mfloat-abi=soft",
+    "-mabi=aapcs",
+    "-std=c11",
+    "-O2",
+    "-ffreestanding",
+    "-fno-builtin",
+    "-fno-stack-protector",
+    "-fno-lto",
+    "-fno-ident",
+    "-fno-common",
+    "-fno-unwind-tables",
+    "-fno-asynchronous-unwind-tables",
+    "-nostdinc",
+    "-Wall",
+    "-Wextra",
+    "-Werror"
+  ],
+  "compiler": {
+    "path": "/usr/bin/clang",
+    "sha256": "ea47045f5972b743ec57a6757e80cf3ddc652ee38929947051d9598bb489ff24"
+  },
+  "compiler_status": "synthetic-pinned",
+  "compiler_version": "clang version 23.1.1\nTarget: x86_64-pc-linux-gnu\nThread model: posix\nInstalledDir: /usr/bin\n",
+  "environment": {
+    "LC_ALL": "C",
+    "PATH": "/usr/bin:/bin",
+    "SOURCE_DATE_EPOCH": "0",
+    "TZ": "UTC"
+  },
+  "function_interface": [
+    [
+      "candidate",
+      "unsigned int (const unsigned char *, unsigned int)"
+    ],
+    [
+      "external_a",
+      "unsigned int (unsigned int)"
+    ],
+    [
+      "external_b",
+      "unsigned int (unsigned int)"
+    ]
+  ],
+  "host_libraries": [
+    {
+      "path": "/lib64/ld-linux-x86-64.so.2",
+      "sha256": "2db4c1e54273a52f75e7124fcfd6fe0d2d8bd7fc87f29780a75ab544b41bd53d"
+    },
+    {
+      "path": "/usr/lib/libLLVM.so.23.1",
+      "sha256": "63303a27c546c1b6adec20c7b3b70f83704eb66ae1aa35df84be4719c295a3e9"
+    },
+    {
+      "path": "/usr/lib/libc.so.6",
+      "sha256": "911cf3db7875760dc893b464ae89bddd4f697a377c710ffc13b84f67cbe1237b"
+    },
+    {
+      "path": "/usr/lib/libclang-cpp.so.23.1",
+      "sha256": "64345f7d1f2ae7f90c35cfadf40962f7d782116ae6213835402d11e895a5e836"
+    },
+    {
+      "path": "/usr/lib/libedit.so.0",
+      "sha256": "3f20e9639630c0040b50f9476f23ccabd27cf2c3b18824b8321ba4d9cbba6cc0"
+    },
+    {
+      "path": "/usr/lib/libffi.so.8",
+      "sha256": "7d50c553a1efbdf4ac772ddb175f30cddc2547c6eb9b54a5a73d278f66a03a4e"
+    },
+    {
+      "path": "/usr/lib/libgcc_s.so.1",
+      "sha256": "3a19e3a7541ddc0277af34957c00d3ad114e2379a6fb8d812364e94046bfae64"
+    },
+    {
+      "path": "/usr/lib/libicudata.so.78",
+      "sha256": "d72003b08760852bee4c80cff32c1e6248ae6b1fda5bd313482733a4d5e70dc9"
+    },
+    {
+      "path": "/usr/lib/libicuuc.so.78",
+      "sha256": "874d8a44bf66f6a8c30c94d5e3f4f2f7fe1c4483ef0bc660a77d86d74bc9fd27"
+    },
+    {
+      "path": "/usr/lib/liblldCOFF.so.23.1",
+      "sha256": "b2ca89806bbc4c33a9f1d8a654dc4fb9365c7a86829cfa300d3dcd6191e35ea9"
+    },
+    {
+      "path": "/usr/lib/liblldCommon.so.23.1",
+      "sha256": "61e8752a10ce835839585231ccc40c57e9cbf5b1df7b48afcdc2fabfbb6fdc2f"
+    },
+    {
+      "path": "/usr/lib/liblldELF.so.23.1",
+      "sha256": "a7e51cb0d8724f963322692bef4a74ba6ef3ce6d91283bc1c88efc8cf8d7cf6c"
+    },
+    {
+      "path": "/usr/lib/liblldMachO.so.23.1",
+      "sha256": "4f14e06c95e1648406bec0067a49109f2f1f378e4e8aaa0987ad54027bee0e7b"
+    },
+    {
+      "path": "/usr/lib/liblldMinGW.so.23.1",
+      "sha256": "531d1ae41d20ddf8f81a375e41670fa295d89ca87028e32fc4e4c3a96fcdcb6b"
+    },
+    {
+      "path": "/usr/lib/liblldWasm.so.23.1",
+      "sha256": "4825d57e710db530786c945ef01cd4426ade14ec6f54cab852e0bb47a14b2c86"
+    },
+    {
+      "path": "/usr/lib/libm.so.6",
+      "sha256": "b42c5cc9e920e2df2038d06dce1124432e874fbe692c7275c866f9c19137b7a7"
+    },
+    {
+      "path": "/usr/lib/libncursesw.so.6",
+      "sha256": "0818af964c5e86421417a877e3b73266eb2dc5e0ce260f44962694c6f639fdc4"
+    },
+    {
+      "path": "/usr/lib/libpython3.14.so.1.0",
+      "sha256": "3af3675671f40e31c90a22e3ed159b5dfebd32d6719270c40c64bec7e096df3c"
+    },
+    {
+      "path": "/usr/lib/libstdc++.so.6",
+      "sha256": "7913c46122fd82b6de363b3ab5c01c727730604e9685ad9103323a2b3d43c12d"
+    },
+    {
+      "path": "/usr/lib/libxml2.so.16",
+      "sha256": "03ad30e5ecd846339190dc0f874e1c0427650f8ba9578761eadc7e093bce067d"
+    },
+    {
+      "path": "/usr/lib/libz.so.1",
+      "sha256": "2a252a45a28d93ca2e6a7d2662f6cef5cfa666c9da2f8cfbc90bc521c45a03c5"
+    },
+    {
+      "path": "/usr/lib/libzstd.so.1",
+      "sha256": "c60355be9fecd6434fdf19b824d4fd6758191e19277fd8618f0e255196384e53"
+    },
+    {
+      "path": "/usr/lib64/ld-linux-x86-64.so.2",
+      "sha256": "2db4c1e54273a52f75e7124fcfd6fe0d2d8bd7fc87f29780a75ab544b41bd53d"
+    }
+  ],
+  "layout.ld": "92ac1750158adda240926cdb397b57bc7942e13a855751b5f8e36084e6cfbec1",
+  "link_flags": [
+    "-m",
+    "armelf",
+    "--build-id=none",
+    "--no-undefined",
+    "--fatal-warnings"
+  ],
+  "linker": {
+    "path": "/usr/bin/ld.lld",
+    "sha256": "c6f5310961879d0fca51441ea0ea9aab3c1bbf59110bbe260d857ca732863f3a"
+  },
+  "linker_version": "LLD 23.1.1 (compatible with GNU linkers)\n",
+  "python": {
+    "path": "/usr/bin/python3",
+    "sha256": "7579d289e4d95778305acd13fc71be2a3800f7f6a202619505875234659c2c60"
+  },
+  "python_version": "3.14.8 (main, Oct 13 2026, 10:43:33) [GCC 16.2.1 20260810]",
+  "reference.c": "393b560318693f5bcd63584e23179de14a6f544f7355c7697fd3377159445fac",
+  "reference.elf": "d26e445b7ebd3e73080523f77f346705c846fee7820b1ed1eaafad2cc6d66dbd",
+  "schema_version": 1,
+  "scope": "synthetic-only",
+  "stock_compiler_status": "unknown",
+  "verifier_sha256": "0feadc5f68d6ae40374e92eec8a139f7d6966dcfdb1d020d95e081b45c689284"
+}

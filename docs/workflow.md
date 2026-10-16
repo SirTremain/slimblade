@@ -5,7 +5,10 @@
 The scaffold supplies task validation, an atomic SQLite claim queue, worker
 prompts, evidence hashing and review transitions. It does not compile recovered
 firmware, compare ARM objects, launch models, or certify matching progress.
-Use Python 3.10+. All commands below run from the main repository root.
+The [2026-10-16 bootstrap](bootstrap.md) adds a tested synthetic comparison
+prototype and a local Ghidra inventory. It does not certify stock matches or
+approve discovered function boundaries. Use Python 3.10+. All commands below
+run from the main repository root.
 
 Check configuration and inspect tasks:
 
@@ -18,6 +21,14 @@ python3 tools/decomp.py status
 ```
 
 ## First session
+
+Bootstrap setup has now been performed in a single coordinator session, with
+no additional agents. Its three reports are submitted for independent review;
+do not launch another bootstrap run or a function campaign automatically.
+The instructions below describe the queue workflow for later authorized runs.
+The corrected inventory review is blocked by saved Ghidra analysis errors;
+consult the [review correction](../decomp/results/bootstrap-inventory/notes.md#review-correction)
+before accepting the original submitted inventory report or assigning functions.
 
 Start a coordinator with [this prompt](../decomp/prompts/coordinator.md).
 Choose the worker models in the agent application or runner. Start with two

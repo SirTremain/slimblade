@@ -1,0 +1,33 @@
+{
+  "task": "bootstrap-toolchain",
+  "worker": "session-bootstrap",
+  "status": "draft",
+  "research_complete": true,
+  "observations": [
+    "Fresh public SDK boot linker map identifies ARM Compiler 5.05 build 41 and armlink.",
+    "Historical SDK source contains both GCC ARM968E-S/Thumb makefiles and ARM-ADS Keil projects.",
+    "SDK application/RAM link addresses differ from verified SlimBlade startup addresses.",
+    "No compiler-version banner was found by the recorded stock printable-string scan.",
+    "No proprietary compiler was installed; local Clang/LLD 23.1.1 is pinned only for synthetic tests."
+  ],
+  "inferences": [
+    "ARM Compiler 5 is a stronger historical lead; GCC remains plausible. The SDK map does not identify the SlimBlade compiler."
+  ],
+  "open_questions": [
+    "Original compiler/version, mixed library provenance, ABI, optimization, LTO, linker layout and runtime libraries remain unknown.",
+    "A legitimate usable exact-version ARMCC installer and license were not established."
+  ],
+  "validation": [
+    "Six SDK source/configuration files read from pinned historical Git objects without restoring SDK tools.",
+    "Downloaded boot map: 29259 bytes, SHA-256 126722c2df4c6e6385839513e4f27c4e81743b7304ba8ac75fc6266413936985.",
+    "sources.json records URLs, retrieval/inspection dates, lengths, hashes and fetch limitations."
+  ],
+  "attempts": 0,
+  "elapsed_minutes": null,
+  "model": "Codex session; exact runner model identifier and cost not exposed",
+  "source_commit": "26175f32029cea2d471020b8e96ec6415c447b18",
+  "proposed_shared_changes": [],
+  "compiler_status": "unknown",
+  "matching_coverage": "unknown",
+  "next_step": "Independent evidence review; later synthetic ABI calibration using legitimately obtained candidate compilers."
+}

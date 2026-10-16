@@ -1,0 +1,100 @@
+[
+  {
+    "file": "SDK__projects__app_mouse__Makefile",
+    "bytes": 7672,
+    "sha256": "1b7935e8c74bd1d8f2cbae802842fcd7103133e98a9691565a4ff0a11fb6ad10",
+    "retrieved_at_utc": "2026-10-16T07:14:47.025473+00:00",
+    "source_url": "https://gitee.com/beken-corp/bk3633_ble_sdk/raw/0a461f8ed4a4f17ff6889d6f9d34e521b92b8243/SDK/projects/app_mouse/Makefile",
+    "acquisition": "local Git history; upstream provenance recorded in historical UPSTREAM.md",
+    "historical_commit": "ea2ee1dd6f47ab414180b1b4e6ea375caef489d7",
+    "upstream_commit": "0a461f8ed4a4f17ff6889d6f9d34e521b92b8243"
+  },
+  {
+    "file": "SDK__projects__app_mouse__prj3633.uvproj",
+    "bytes": 28385,
+    "sha256": "9336b218aaab7be408e4bb5ab312d88e4a6f2885d5036dcef7740d36b80079e8",
+    "retrieved_at_utc": "2026-10-16T07:14:47.026695+00:00",
+    "source_url": "https://gitee.com/beken-corp/bk3633_ble_sdk/raw/0a461f8ed4a4f17ff6889d6f9d34e521b92b8243/SDK/projects/app_mouse/prj3633.uvproj",
+    "acquisition": "local Git history; upstream provenance recorded in historical UPSTREAM.md",
+    "historical_commit": "ea2ee1dd6f47ab414180b1b4e6ea375caef489d7",
+    "upstream_commit": "0a461f8ed4a4f17ff6889d6f9d34e521b92b8243"
+  },
+  {
+    "file": "SDK__projects__app_2.4g__boot_usb__bk3435.uvproj",
+    "bytes": 22477,
+    "sha256": "33a3ea80ae553cae9a8af17020610a0ce8f7e11fb27d828a1aa5d0ab57630420",
+    "retrieved_at_utc": "2026-10-16T07:14:47.027774+00:00",
+    "source_url": "https://gitee.com/beken-corp/bk3633_ble_sdk/raw/0a461f8ed4a4f17ff6889d6f9d34e521b92b8243/SDK/projects/app_2.4g/boot_usb/bk3435.uvproj",
+    "acquisition": "local Git history; upstream provenance recorded in historical UPSTREAM.md",
+    "historical_commit": "ea2ee1dd6f47ab414180b1b4e6ea375caef489d7",
+    "upstream_commit": "0a461f8ed4a4f17ff6889d6f9d34e521b92b8243"
+  },
+  {
+    "file": "SDK__src__system__peripheral_app_link.txt",
+    "bytes": 1230,
+    "sha256": "bc66d0b14b1846c72eef83db181a759126bf9a1c24d9cee885dc564727c1cfbd",
+    "retrieved_at_utc": "2026-10-16T07:14:47.028953+00:00",
+    "source_url": "https://gitee.com/beken-corp/bk3633_ble_sdk/raw/0a461f8ed4a4f17ff6889d6f9d34e521b92b8243/SDK/src/system/peripheral_app_link.txt",
+    "acquisition": "local Git history; upstream provenance recorded in historical UPSTREAM.md",
+    "historical_commit": "ea2ee1dd6f47ab414180b1b4e6ea375caef489d7",
+    "upstream_commit": "0a461f8ed4a4f17ff6889d6f9d34e521b92b8243"
+  },
+  {
+    "file": "SDK__src__system__link_app.lds",
+    "bytes": 1794,
+    "sha256": "e5c2df5da3f81966d4a3b612eaf108a64f35fe807cc1c0e7c7833f77f18575d4",
+    "retrieved_at_utc": "2026-10-16T07:14:47.029912+00:00",
+    "source_url": "https://gitee.com/beken-corp/bk3633_ble_sdk/raw/0a461f8ed4a4f17ff6889d6f9d34e521b92b8243/SDK/src/system/link_app.lds",
+    "acquisition": "local Git history; upstream provenance recorded in historical UPSTREAM.md",
+    "historical_commit": "ea2ee1dd6f47ab414180b1b4e6ea375caef489d7",
+    "upstream_commit": "0a461f8ed4a4f17ff6889d6f9d34e521b92b8243"
+  },
+  {
+    "file": "SDK__src__system__startup_boot.S",
+    "bytes": 6053,
+    "sha256": "c52aa16232d9162f7cae4e89010d4e9d1f92e9a81be45fde0ed66e23904af054",
+    "retrieved_at_utc": "2026-10-16T07:14:47.030869+00:00",
+    "source_url": "https://gitee.com/beken-corp/bk3633_ble_sdk/raw/0a461f8ed4a4f17ff6889d6f9d34e521b92b8243/SDK/src/system/startup_boot.S",
+    "acquisition": "local Git history; upstream provenance recorded in historical UPSTREAM.md",
+    "historical_commit": "ea2ee1dd6f47ab414180b1b4e6ea375caef489d7",
+    "upstream_commit": "0a461f8ed4a4f17ff6889d6f9d34e521b92b8243"
+  },
+  {
+    "file": "bk3633_boot.map",
+    "bytes": 29259,
+    "sha256": "126722c2df4c6e6385839513e4f27c4e81743b7304ba8ac75fc6266413936985",
+    "retrieved_at_utc": "2026-10-16T07:14:54.562516+00:00",
+    "source_url": "https://gitee.com/beken-corp/bk3633_ble_sdk/raw/0a461f8ed4a4f17ff6889d6f9d34e521b92b8243/SDK/projects/app_2.4g/boot_usb/lst/bk3633_boot.map",
+    "acquisition": "HTTPS"
+  },
+  {
+    "file": "clang-cross-compilation.html",
+    "bytes": 49820,
+    "sha256": "35630a44b54e01fa660b12c3ddc43b31b3599fa809f3c753493557bdb239dc8a",
+    "retrieved_at_utc": "2026-10-16T07:14:55.589189+00:00",
+    "source_url": "https://clang.llvm.org/docs/CrossCompilation.html",
+    "acquisition": "HTTPS"
+  },
+  {
+    "file": "arm-compiler-download-index.html",
+    "bytes": 10268,
+    "sha256": "8cee92dffdb3a5499ca8a3a56b2399d5bb54866a09aad813342b3b73eee1e06d",
+    "retrieved_at_utc": "2026-10-16T07:14:57.729148+00:00",
+    "source_url": "https://support.arm.com/documentation/ka005198/1-0/?lang=en",
+    "acquisition": "HTTPS"
+  },
+  {
+    "file": "keil-legacy.html",
+    "source_url": "https://www.keil.com/download/legacy/",
+    "error": "HTTP Error 500: Internal Server Error",
+    "attempted_at_utc": "2026-10-16T07:15:00.498566+00:00"
+  },
+  {
+    "file": "ghidra-getting-started.md",
+    "bytes": 26090,
+    "sha256": "e3e9b10a30f5792617fcbb8c5d1a17cf36ae1cac399a50bd0fd2b90f19cf0f36",
+    "retrieved_at_utc": "2026-10-16T07:15:00.762586+00:00",
+    "source_url": "https://raw.githubusercontent.com/NationalSecurityAgency/ghidra/Ghidra_12.1.4_build/GhidraDocs/GettingStarted.md",
+    "acquisition": "HTTPS"
+  }
+]

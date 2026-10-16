@@ -1,15 +1,19 @@
-# Ghidra setup for a later inventory run
+# Ghidra setup and inventory
 
-This recipe has not been run on firmware. Neither Ghidra nor Java was found on
-PATH during scaffold setup. The inventory script is supplied for the future
-bootstrap task and has not been compiled against an installed Ghidra release.
+The [bootstrap run](bootstrap.md) installed Ghidra 12.1.4 and Temurin JDK
+21.0.12.1+1 locally, verified official v4.49, and exported 776 discovered
+functions. The scripts compiled and ran successfully, but the corrected review
+exposes four saved analysis errors affecting three functions. Inventory approval
+is blocked, and individual function boundaries are not approved. Full commands, memory-map
+evidence, artifact hashes and limitations are in the
+[inventory result](../decomp/results/bootstrap-inventory/notes.md).
 
 [Ghidra](https://github.com/NationalSecurityAgency/ghidra) provides disassembly,
 decompilation, cross-references, types and scripting. Use an official release
 archive and the Java version required by that release's GettingStarted file.
-The upstream main README inspected on 2026-10-16 specifies JDK 25; older
-releases may differ. Pin the actual release, archive URL, retrieval date, size,
-SHA-256 and Java version in the inventory result before analysis.
+The upstream main README inspected on 2026-10-16 specifies JDK 25, while the
+pinned 12.1.4 release requires JDK 21. The bootstrap result records the actual
+release, archive URLs, retrieval dates, sizes, SHA-256s and Java version.
 
 Start with the [official Ghidra beginner course](https://ghidra.re/ghidra_docs/GhidraClass/Beginner/Introduction_to_Ghidra_Student_Guide.html)
 for GUI import, analysis, types, cross-references and exports. For the broader
@@ -26,12 +30,14 @@ or a modified experimental image. Verify it before import:
 python3 tools/decomp.py verify-input /absolute/path/to/stock-v4.49.bin
 ```
 
-Create a non-shared project under ignored .decomp/ghidra. Import as Raw Binary
-at base address zero with language ARM:LE:32:v5, little endian, initially using
+Create a non-shared project under ignored ghidra/projects. Ghidra 12.1.4 rejects
+hidden components such as .decomp in project paths. Import as Raw Binary
+at base address zero with language ARM:LE:32:v5t, little endian, initially using
 the default compiler specification as a hypothesis. Upstream
 [ARM language definitions](https://github.com/NationalSecurityAgency/ghidra/blob/master/Ghidra/Processors/ARM/data/languages/ARM.ldefs)
-include this processor ID and a separate APCS specification. Neither identifies
-the actual compiler.
+include this processor ID and a separate APCS specification. The historical
+ARM:LE:32:v5 candidate is ARM-only and lacks TMode. Neither compiler
+specification identifies the actual compiler.
 
 Disable automatic analysis for the first import. Check the
 [historical anchors](stock-baseline.md) before selecting code: metadata and
@@ -54,7 +60,7 @@ assumes the imported program has been named stock-v4.49.bin and the output
 parent exists:
 
 ```sh
-/absolute/path/to/ghidra/support/analyzeHeadless .decomp/ghidra SlimBlade -process stock-v4.49.bin -readOnly -noanalysis -scriptPath ghidra -postScript ExportInventory.java .decomp/inventory-unreviewed.json
+python3 decomp/results/bootstrap-inventory/headless.py --state .decomp -- ghidra/projects SlimBlade-v449-bootstrap -process stock-v4.49.bin -readOnly -noanalysis -scriptPath ghidra -postScript ExportInventory.java .decomp/inventory-new-export.json
 ```
 
 The script lists already-defined functions and all their body ranges, entry
@@ -63,6 +69,15 @@ function ends from the next symbol, or enqueue work. It refuses to overwrite
 an existing export. Unknown TMode remains unknown. The stored program hash
 identifies the imported file; it does not prove the database bytes were never
 patched. The reviewer must compare exported bytes to the original input.
+
+Pair the inventory with [ExportEvidence.java](../decomp/results/bootstrap-inventory/ExportEvidence.java)
+and [review.py](../decomp/results/bootstrap-inventory/review.py), using the
+[reproduction commands](../decomp/results/bootstrap-inventory/notes.md#import-analysis-and-frozen-export).
+Evidence schema 2 includes saved Error/Warning bookmarks and incoming control
+flow. Errors block review even outside discovered bodies; warnings remain
+visible. Older packets without diagnostics must be re-exported. The reviewer
+also rejects duplicate IDs, duplicate entry addresses and overlapping ranges,
+including overlaps within a single function. No errors is not boundary approval.
 
 For function assignments, export a reviewed addressed listing, nearby data,
 cross-references and types following the [packet contract](workflow.md).

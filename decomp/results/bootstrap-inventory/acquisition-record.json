@@ -1,0 +1,47 @@
+{
+  "verified_at_utc": "2026-10-16T07:06:15.209992+00:00",
+  "records": [
+    {
+      "artifact": "ghidra",
+      "source_url": "https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_12.1.4_build/ghidra_12.1.4_PUBLIC_20260921.zip",
+      "bytes": 569649598,
+      "sha256": "ddac49f903da9d5bac833e5cc79395098b9c33cfd3279be5f31bd00387d2d4db",
+      "local_file_mtime_utc": "2026-10-16T07:04:40.210953+00:00"
+    },
+    {
+      "artifact": "java",
+      "source_url": "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jdk_x64_linux_hotspot_21.0.12.1_1.tar.gz",
+      "bytes": 207473347,
+      "sha256": "ce79869e1307ed8ee1e2baa86a412b1eb5b75d10a01006d788a6f968bcfaee94",
+      "local_file_mtime_utc": "2026-10-16T07:04:59.982954+00:00"
+    },
+    {
+      "artifact": "firmware_zip",
+      "source_url": "https://accobrands.co.jp/wp/wp-content/uploads/Kensington-Slimblade-Pro-V4.49.zip",
+      "bytes": 1037410,
+      "sha256": "dffe13ab063cb9614669914295b273bda0e5906bc5af75b3f73cd2da5f0f41ac",
+      "local_file_mtime_utc": "2026-10-16T07:04:36.474448+00:00"
+    },
+    {
+      "artifact": "updater",
+      "source_url": "https://accobrands.co.jp/wp/wp-content/uploads/Kensington-Slimblade-Pro-V4.49.zip",
+      "bytes": 3008000,
+      "sha256": "38fc1b333d316039e4eb732c70183b8c6c4cc831c90246425917e9dce64f7688",
+      "zip_member": "Kensington Slimblade Pro V4.49.exe"
+    },
+    {
+      "artifact": "firmware",
+      "source_url": "https://accobrands.co.jp/wp/wp-content/uploads/Kensington-Slimblade-Pro-V4.49.zip",
+      "bytes": 128112,
+      "sha256": "e91502e8021e61c97a77fb12324e99ee4acb23bee55a5a67d18e26521ef856f7",
+      "exe_offset": "0x20090a"
+    },
+    {
+      "artifact": "payload",
+      "source_url": "https://accobrands.co.jp/wp/wp-content/uploads/Kensington-Slimblade-Pro-V4.49.zip",
+      "bytes": 119920,
+      "sha256": "3b7849cafa2a8d4a0c2694c9771d70563563dc1c6cdbf84ede9b8648071604bf",
+      "container_offset": "0x2000"
+    }
+  ]
+}

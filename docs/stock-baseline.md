@@ -1,8 +1,10 @@
 # Stock baseline
 
-Recorded 2026-10-16 from the [pre-reset repository](legacy.md), whose firmware
-inspection date was 2026-08-14. No new firmware download, disassembly or device
-inspection was performed for this scaffold.
+Initially recorded 2026-10-16 from the [pre-reset repository](legacy.md), whose
+firmware inspection date was 2026-08-14. The later same-day
+[bootstrap session](bootstrap.md) freshly downloaded the official package,
+verified every artifact below, and checked startup anchors with Ghidra and
+LLVM. No device inspection was performed.
 
 ## Recorded observations
 
@@ -19,8 +21,8 @@ The [machine-readable baseline](../decomp/baseline.json) preserves its identity.
 | Payload at container offset `0x2000` | 119,920 | `3b7849cafa2a8d4a0c2694c9771d70563563dc1c6cdbf84ede9b8648071604bf` |
 
 Source: [ACCO Brands Japan v4.49 package](https://accobrands.co.jp/wp/wp-content/uploads/Kensington-Slimblade-Pro-V4.49.zip),
-historically retrieved 2026-08-14. The URL has not been downloaded or revalidated
-during this reset. A different hash must become a separate baseline.
+historically retrieved 2026-08-14 and revalidated 2026-10-16. All four hashes
+matched. A different hash must become a separate baseline.
 
 The old updater analysis records payload transfer to address `0x2000`.
 Application metadata precedes ARM vectors at `0x2020`; the reset target is
