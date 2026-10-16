@@ -16,9 +16,11 @@ custom firmware—not during stock reconstruction. Current work remains offline.
 Current state: **the six-function agent pilot is complete: all six drafts reviewed**.
 [Run results and limits](decomp/results/pilot-run-20261016/notes.md) record nine
 Luna turns and six independent exact-range rebuilds (98 bytes total). This is
-not a full-image rebuild or certified matching coverage. Further tasks need a
-separately assigned scope and readiness review.
-[Start here](docs/pilot.md) for the handoff and copyable coordinator prompt.
+not a full-image rebuild or certified matching coverage. **Four additional
+leaves are prepared for batch 2**, with a separate lock and unchanged compiler
+profile. Commit preparation and assign a new run before launching workers.
+[Start here](docs/expansion.md) for the current handoff and copyable prompt.
+The new direct-call verifier remains experimental and outside the worker scope.
 The runtime-helper analysis has been repaired and independently replayed;
 the corrected inventory has zero saved analysis errors, not blanket boundary
 approval. ARMCC 5.06u7 b960 runs headlessly on Linux through Wine and reproduces
@@ -36,7 +38,8 @@ command in the active toolset. Matching coverage remains unknown.
 - [Research: Ghidra and collaborative decompilation](docs/decompilation-research.md)
 - [Start and coordinate agents](docs/workflow.md)
 - [Preparation evidence and limits](docs/preparation.md)
-- [Prepared pilot and copyable startup prompt](docs/pilot.md)
+- [Batch 2 and copyable startup prompt](docs/expansion.md)
+- [Completed pilot and historical startup prompt](docs/pilot.md)
 - [Stock byte accounting and unresolved dependencies](docs/dependencies.md)
 - [Ghidra setup and evidence export](docs/ghidra.md)
 - [Bootstrap results and reproduction](docs/bootstrap.md)

@@ -177,38 +177,31 @@ baseline intact regardless of later feature choices.
 
 The [first six-task agent run](../decomp/results/pilot-run-20261016/notes.md) has
 completed: all six drafts are reviewed, with independent exact-range rebuilds.
-The next execution scope requires a separate boundary/dependency/verifier
-readiness decision; no additional tasks have been created. The paragraphs below
-retain the preparation context, not an instruction to repeat completed work.
+The [second preparation pass](expansion.md) now supplies four additional leaf
+assignments with reviewed boundaries and a separate lock using the unchanged
+ARMCC5 profile. The active gate selects only those four. Their run requires
+committed preparation, an explicit assignment and live quota checks. Two
+direct-call wrappers remain experiments, not runnable tasks.
 
-The project is at milestone 1, ready for the first bounded offline worker run.
-The [preparation gate](preparation.md) is scoped to six reviewed leaf tasks;
-their packets and previous comparison lock remain intact. A separately versioned
-ARMCC5 lock replaces the exploratory Clang profile. Launch still requires a
-user-assigned run, a live check against the dated budget policy, and committed
-preparation changes. The [isolated runner](swarm.md) enforces bounded turns and
-the 45%-remaining weekly stop chosen to preserve the user's 40% work reserve.
+The [isolated runner](swarm.md) retains bounded turns and the 45%-remaining
+weekly stop chosen to preserve the user's 40% work reserve. No new quota window
+or model run is assigned by preparation. The first six sources were freshly
+rebuilt during expansion and still reproduce their complete owned ranges.
 
-The runtime-helper call model and inline-data analysis have been repaired on a
+The runtime-helper call model and inline-data analysis were repaired on a
 separate project copy, checked against 10,368 original-instruction executions,
 and replayed. Zero saved analysis errors does not approve all discovered
-boundaries. The fixed ARMCC5 profile now reproduces all six calibration ranges
-and supplies tested, pinned feedback. Full-image linking and match certification
-remain subsequent work. Small fixed calibration probes are not
-certified recovered firmware. No firmware worker has started; a synthetic Luna
-runner test passed. Matching coverage is unknown.
-The [dependency ledger](dependencies.md) accounts for the container regions
-and external unknowns without excluding difficult bytes from the denominator.
+boundaries. Local ARMCC5 runs headlessly under Wine with the supplied
+Professional key; no additional compiler installer, Windows desktop or licence
+request is needed for the demonstrated leaf profile. The exact historical
+compiler remains unknown. Matching coverage is unknown.
 
-Local ARMCC5 runs headlessly under Wine with the supplied Professional key;
-no further installer, Windows desktop or license request is needed for the
-demonstrated setup. Next: review/commit preparation, assign the first run/budget,
-and independently review/rebuild its returned C drafts. Expansion beyond the
-six leaves requires new boundary/dependency/verifier review. The exact original
-compiler version remains an unknown, not a claim made by calibration.
-The full storage/dependency and hardware gates remain later
-requirements; no current preparation result establishes safe flashing.
-See [the workflow](workflow.md).
+Full-image linking, independent certification and the
+[dependency/storage ledger](dependencies.md) remain milestone work. The two
+direct-call experiments need stock qualification and guarded runner integration
+before assignment; shared data and interworking need further verifier support.
+The full hardware gates still apply, and no current result establishes safe
+flashing. See [the workflow](workflow.md).
 
 This roadmap is not an instruction to run all stages immediately. Documentation
 cleanup and offline tasks do not initiate device access, loader entry, HID/vendor

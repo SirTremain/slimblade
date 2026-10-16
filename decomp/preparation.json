@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "ready": true,
-  "reason": "Runtime-helper analysis repaired and replayed; ARMCC5 b960 reproduces all six fixed calibration ranges through a pinned, tested leaf comparison path. Ready only for these reviewed assignments after the user assigns a run/budget and commits the preparation. This is not historical compiler proof, match certification, full-image support or a hardware verdict.",
-  "allowed_function_ids": ["fn_00003b48", "fn_00003bb4", "fn_0000e4ee", "fn_0000e4fc", "fn_0000e540", "fn_0000e548"],
-  "evidence": "decomp/results/preparation/armcc-calibration.md",
+  "reason": "The first six drafts are reviewed. Four additional leaves have individually reviewed boundaries, immutable evidence and a separate lock using the unchanged ARMCC5 leaf profile. Prior six sources rebuilt exactly. Ready only for batch 2 after committed preparation, an explicit user-assigned run and live preflight. No new recovered source exists yet. Direct-call experiments are excluded. This is not historical compiler proof, match certification, full-image support or a hardware verdict.",
+  "allowed_function_ids": ["fn_00013f58", "fn_00013f72", "fn_000154d4", "fn_00018100"],
+  "evidence": "decomp/results/expansion-preparation/notes.md",
   "runtime_helper_analysis": "validated_bounded_model",
   "compiler_configuration": "armcc5_06u7_b960_calibrated_six_leaves",
   "build_verifier_integration": "pinned_leaf_feedback_validated",

@@ -20,7 +20,7 @@ from swarm_runtime import attempt_budget
 def build(args):
     root, worktree = args.root.resolve(), args.worktree.resolve()
     state = root / '.decomp/swarm'
-    policy = sr.policy(root)
+    policy = sr.policy(root, args.task)
     sr.require(not (state / 'PAUSED.json').exists(), 'run paused; explicit user resume required')
     with sr.compiler_slot(state / 'locks'), sr.task_lock(state / 'locks', args.task):
         task, _, remaining_seconds = assignment(root, worktree, args.task, args.worker,

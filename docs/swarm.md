@@ -1,11 +1,14 @@
 # Bounded agent runner
 
-The coordinator can now launch and supervise **the six reviewed leaf tasks**
+The coordinator is prepared to launch and supervise **the four batch-2 leaf tasks**
 using the repository runner. This is not a general/full-firmware swarm.
 [Preparation evidence](../decomp/results/swarm-preparation/notes.md) includes
 fresh compiler controls, real isolation tests and a successful synthetic Luna
 turn. The [first six-task firmware run](../decomp/results/pilot-run-20261016/notes.md)
-has since completed; further tasks are not automatically assigned.
+has since completed. [Batch 2](expansion.md) has its own reviewed boundaries and
+lock, retaining the same compiler profile and isolation. Commit preparation and
+explicitly assign a run before launching. The active policy now rejects the
+completed six IDs and experimental call wrappers on both launch and build.
 
 ## Operating boundary
 
@@ -69,7 +72,7 @@ bounded to ten minutes and does not grant another source-editing turn.
 ## Coordinator procedure
 
 1. Review/commit preparation before creating worker worktrees. Check local
-   pins and queue using [the pilot preflight](pilot.md#start-here). Confirm the
+   pins and queue using [the batch-2 preflight](expansion.md#next-run). Confirm the
    user assigned this run; preparation and a synthetic smoke are not a request
    to launch the firmware swarm. Check live quota and the policy window.
 2. Create isolated worktrees from that commit. Claim only immediately before
@@ -91,7 +94,7 @@ bounded to ten minutes and does not grant another source-editing turn.
    push, expansion, hardware access or OpenAxis work.
 
 The following are **coordinator examples**, executed from the main checkout.
-They assume `worker-a` already owns `fn_00003b48` and its worktree exists; they
+They assume `worker-a` already owns `fn_00013f58` and its worktree exists; they
 are not instructions to claim a task during preparation.
 
 ```sh
@@ -99,15 +102,15 @@ python3 tools/swarm_account.py
 ```
 
 ```sh
-python3 tools/swarm_worker.py --root /home/tremain/Documents/slimblade --worktree /home/tremain/Documents/slimblade/.worktrees/worker-a --task fn_00003b48 --worker worker-a --model gpt-6-luna --output /home/tremain/Documents/slimblade/.decomp/swarm/runs/worker-a-01
+python3 tools/swarm_worker.py --root /home/tremain/Documents/slimblade --worktree /home/tremain/Documents/slimblade/.worktrees/worker-a --task fn_00013f58 --worker worker-a --model gpt-6-luna --output /home/tremain/Documents/slimblade/.decomp/swarm/runs/worker-a-01
 ```
 
 ```sh
-python3 tools/swarm_build.py --root /home/tremain/Documents/slimblade --worktree /home/tremain/Documents/slimblade/.worktrees/worker-a --task fn_00003b48 --worker worker-a
+python3 tools/swarm_build.py --root /home/tremain/Documents/slimblade --worktree /home/tremain/Documents/slimblade/.worktrees/worker-a --task fn_00013f58 --worker worker-a
 ```
 
 ```sh
-python3 tools/swarm_build.py --root /home/tremain/Documents/slimblade --worktree /home/tremain/Documents/slimblade/.worktrees/worker-a --task fn_00003b48 --worker worker-a --review
+python3 tools/swarm_build.py --root /home/tremain/Documents/slimblade --worktree /home/tremain/Documents/slimblade/.worktrees/worker-a --task fn_00013f58 --worker worker-a --review
 ```
 
 The printed raw comparator command in old packet output documents the immutable

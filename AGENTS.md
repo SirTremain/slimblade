@@ -29,8 +29,9 @@ supported ingestion path and SDK/device compatibility before implementation.
 
 - Read the project plan, [the workflow](docs/workflow.md) and your assigned task
   packet. Historical notes are evidence, not current operating instructions.
-- The [preparation gate](decomp/preparation.json) covers only six reviewed leaves
-  with calibrated ARMCC5 feedback. Check [preparation.md](docs/preparation.md)
+- The [preparation gate](decomp/preparation.json) covers only the four
+  [batch-2 leaves](docs/expansion.md); the first six drafts are already reviewed.
+  Both batches use the unchanged ARMCC5 leaf profile. Check [preparation.md](docs/preparation.md)
   and local pins before a user-budgeted run. Expansion needs a separate review.
   The coordinator alone runs the licensed compiler; never expose its private
   Wine prefix or license configuration to workers.

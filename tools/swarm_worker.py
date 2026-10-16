@@ -81,7 +81,7 @@ def assignment(root, worktree, task_id, worker, *, review=False):
 def run(args):
     sr.check_runtime()
     root, worktree = args.root.resolve(), args.worktree.resolve()
-    policy = sr.policy(root)
+    policy = sr.policy(root, args.task)
     output = args.output.resolve()
     sr.require(output.is_relative_to(root / '.decomp/swarm') and not output.exists(),
                'use a fresh ignored coordinator run directory')

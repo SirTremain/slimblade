@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "scope": "six-reviewed-leaf-pilot-only",
+  "scope": "four-reviewed-leaf-batch-2-only",
   "worker_models": ["gpt-6-luna", "gpt-6.1-sol"],
   "maximum_concurrent_workers": 2,
   "stop_remaining_percent": 45,

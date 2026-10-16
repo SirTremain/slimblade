@@ -1,0 +1,143 @@
+{
+  "baseline_id": "slimblade-pro-stock-v4.49",
+  "functions": [
+    {
+      "abi_status": "hypothesis_requires_review",
+      "acceptance": "Independent source/ABI review and fresh unchanged-source exact-range rebuild; not certification.",
+      "allowed_paths": [
+        "decomp/src/fn_00013f58.c",
+        "decomp/results/fn_00013f58/"
+      ],
+      "boundary_review": "2026-10-16 coordinator: Ghidra TMode/flow/boundaries, original bytes, references, LLVM; see docs/expansion.md.",
+      "comparison": {
+        "lock_path": ".decomp/next-leaves-v2/lock.json",
+        "lock_sha256": "282c4bd898a44217d491dceef956452aee8f0eabba834b5c85f36ec87c92f76b"
+      },
+      "comparison_scope": "armcc5-leaf-feedback-v1",
+      "depends_on": [
+        "bootstrap-inventory",
+        "bootstrap-toolchain",
+        "bootstrap-verifier"
+      ],
+      "entry": "0x00013f58",
+      "evidence_path": ".decomp/evidence/next-leaves-v2/fn_00013f58",
+      "evidence_sha256": "e3b92c4775ac05e2348cbaf852ff1d75751a70e2dc9a09acf7647914572d5b7f",
+      "id": "fn_00013f58",
+      "instructions": "Read the immutable packet and docs/expansion.md. Recover only this leaf with the pinned ARMCC5 profile. Review callers, aliasing, signedness and exact register clobbers. No calls, absolute globals, asm, intrinsics or raw instruction data. Coordinator builds only. Stop at 20 minutes/8 attempts/3 non-improving attempts. Report draft or blocked; never matched. Propose ABI corrections instead of changing pins.",
+      "kind": "function",
+      "mode": "thumb",
+      "ranges": [
+        {
+          "end_exclusive": "0x00013f72",
+          "start": "0x00013f58"
+        }
+      ],
+      "signature": "void (unsigned char *, const unsigned char *)",
+      "title": "Batch 2 proposal: Thumb leaf at 0x00013f58"
+    },
+    {
+      "abi_status": "hypothesis_requires_review",
+      "acceptance": "Independent source/ABI review and fresh unchanged-source exact-range rebuild; not certification.",
+      "allowed_paths": [
+        "decomp/src/fn_00013f72.c",
+        "decomp/results/fn_00013f72/"
+      ],
+      "boundary_review": "2026-10-16 coordinator: Ghidra TMode/flow/boundaries, original bytes, references, LLVM; see docs/expansion.md.",
+      "comparison": {
+        "lock_path": ".decomp/next-leaves-v2/lock.json",
+        "lock_sha256": "282c4bd898a44217d491dceef956452aee8f0eabba834b5c85f36ec87c92f76b"
+      },
+      "comparison_scope": "armcc5-leaf-feedback-v1",
+      "depends_on": [
+        "bootstrap-inventory",
+        "bootstrap-toolchain",
+        "bootstrap-verifier"
+      ],
+      "entry": "0x00013f72",
+      "evidence_path": ".decomp/evidence/next-leaves-v2/fn_00013f72",
+      "evidence_sha256": "c8987189ea4877337421e9d8624b0c583f96b9503c9c050b5ba1e37e4fe164be",
+      "id": "fn_00013f72",
+      "instructions": "Read the immutable packet and docs/expansion.md. Recover only this leaf with the pinned ARMCC5 profile. Review callers, aliasing, signedness and exact register clobbers. No calls, absolute globals, asm, intrinsics or raw instruction data. Coordinator builds only. Stop at 20 minutes/8 attempts/3 non-improving attempts. Report draft or blocked; never matched. Propose ABI corrections instead of changing pins.",
+      "kind": "function",
+      "mode": "thumb",
+      "ranges": [
+        {
+          "end_exclusive": "0x00013f7a",
+          "start": "0x00013f72"
+        }
+      ],
+      "signature": "void (unsigned char *, unsigned short)",
+      "title": "Batch 2 proposal: Thumb leaf at 0x00013f72"
+    },
+    {
+      "abi_status": "hypothesis_requires_review",
+      "acceptance": "Independent source/ABI review and fresh unchanged-source exact-range rebuild; not certification.",
+      "allowed_paths": [
+        "decomp/src/fn_000154d4.c",
+        "decomp/results/fn_000154d4/"
+      ],
+      "boundary_review": "2026-10-16 coordinator: Ghidra TMode/flow/boundaries, original bytes, references, LLVM; see docs/expansion.md.",
+      "comparison": {
+        "lock_path": ".decomp/next-leaves-v2/lock.json",
+        "lock_sha256": "282c4bd898a44217d491dceef956452aee8f0eabba834b5c85f36ec87c92f76b"
+      },
+      "comparison_scope": "armcc5-leaf-feedback-v1",
+      "depends_on": [
+        "bootstrap-inventory",
+        "bootstrap-toolchain",
+        "bootstrap-verifier"
+      ],
+      "entry": "0x000154d4",
+      "evidence_path": ".decomp/evidence/next-leaves-v2/fn_000154d4",
+      "evidence_sha256": "5fa00063b8549fdd991f067c806345ce683bb2fddbb31559fc78c043cb184715",
+      "id": "fn_000154d4",
+      "instructions": "Read the immutable packet and docs/expansion.md. Recover only this leaf with the pinned ARMCC5 profile. Review callers, aliasing, signedness and exact register clobbers. No calls, absolute globals, asm, intrinsics or raw instruction data. Coordinator builds only. Stop at 20 minutes/8 attempts/3 non-improving attempts. Report draft or blocked; never matched. Propose ABI corrections instead of changing pins.",
+      "kind": "function",
+      "mode": "thumb",
+      "ranges": [
+        {
+          "end_exclusive": "0x000154ea",
+          "start": "0x000154d4"
+        }
+      ],
+      "signature": "unsigned int (const unsigned char *)",
+      "title": "Batch 2 proposal: Thumb leaf at 0x000154d4"
+    },
+    {
+      "abi_status": "hypothesis_requires_review",
+      "acceptance": "Independent source/ABI review and fresh unchanged-source exact-range rebuild; not certification.",
+      "allowed_paths": [
+        "decomp/src/fn_00018100.c",
+        "decomp/results/fn_00018100/"
+      ],
+      "boundary_review": "2026-10-16 coordinator: Ghidra TMode/flow/boundaries, original bytes, references, LLVM; see docs/expansion.md.",
+      "comparison": {
+        "lock_path": ".decomp/next-leaves-v2/lock.json",
+        "lock_sha256": "282c4bd898a44217d491dceef956452aee8f0eabba834b5c85f36ec87c92f76b"
+      },
+      "comparison_scope": "armcc5-leaf-feedback-v1",
+      "depends_on": [
+        "bootstrap-inventory",
+        "bootstrap-toolchain",
+        "bootstrap-verifier"
+      ],
+      "entry": "0x00018100",
+      "evidence_path": ".decomp/evidence/next-leaves-v2/fn_00018100",
+      "evidence_sha256": "57ff7a5a83682ae18c21f6249dda3d60a2c1f6e4202266d1d29405a840608e37",
+      "id": "fn_00018100",
+      "instructions": "Read the immutable packet and docs/expansion.md. Recover only this leaf with the pinned ARMCC5 profile. Review callers, aliasing, signedness and exact register clobbers. No calls, absolute globals, asm, intrinsics or raw instruction data. Coordinator builds only. Stop at 20 minutes/8 attempts/3 non-improving attempts. Report draft or blocked; never matched. Propose ABI corrections instead of changing pins.",
+      "kind": "function",
+      "mode": "thumb",
+      "ranges": [
+        {
+          "end_exclusive": "0x00018114",
+          "start": "0x00018100"
+        }
+      ],
+      "signature": "unsigned int (unsigned int, unsigned int)",
+      "title": "Batch 2 proposal: Thumb leaf at 0x00018100"
+    }
+  ],
+  "inventory_status": "four_reviewed_leaf_proposals_not_active",
+  "schema_version": 1
+}

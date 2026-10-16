@@ -19,6 +19,25 @@ import swarm_build as sb
 
 
 class HandoffTests(unittest.TestCase):
+    def test_actual_batch_definitions_gate_and_policy_agree(self):
+        _, tasks = decomp.load_tasks(ROOT)
+        proposal = json.loads((ROOT / 'decomp/proposals/batch-2-leaves.json').read_text())
+        gate = json.loads((ROOT / 'decomp/preparation.json').read_text())
+        policy = json.loads((ROOT / 'decomp/swarm-policy.json').read_text())
+        expected = set(sr.BATCHES[policy['scope']])
+        self.assertEqual(expected, {t['id'] for t in proposal['functions']})
+        self.assertEqual(expected, set(gate['allowed_function_ids']))
+        for task in proposal['functions']:
+            self.assertEqual(tasks[task['id']], task)
+            self.assertTrue(task['evidence_path'].startswith('.decomp/evidence/'))
+            self.assertTrue(decomp.preparation_ready(ROOT, task))
+        for ident in sr.BATCHES['six-reviewed-leaf-pilot-only']:
+            self.assertFalse(decomp.preparation_ready(ROOT, tasks[ident]))
+            self.assertEqual(tasks[ident]['comparison']['lock_sha256'],
+                             '2c2e3416849c68cade707434e9589c8c2806721fef9f02bd7b68c5286abc0c4a')
+        self.assertNotIn('fn_00006464', tasks)
+        self.assertNotIn('fn_00006500', tasks)
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix='slimblade-handoff-test-')
         self.addCleanup(self.temp.cleanup)

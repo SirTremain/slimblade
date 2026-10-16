@@ -4,14 +4,18 @@
 rebuilt exact ranges. See [the run report](../decomp/results/pilot-run-20261016/notes.md).
 The preparation/startup instructions below are retained for provenance; do not
 requeue completed tasks or treat this prompt as authorization to add more.
+The current four-task handoff is [batch 2](expansion.md); use its prompt for
+the next run, not the historical six-task prompt below.
 
-Updated 2026-10-16: **six leaf assignments are prepared for a user-budgeted run**.
+Historical pre-launch snapshot, 2026-10-16: six leaf assignments were prepared.
 [Preparation evidence](preparation.md) records ARMCC5 calibration and comparison
 checks. The new ARMCC lock is separately versioned; the old Clang lock and all
-original evidence packets remain intact. No firmware worker has started. The
+original evidence packets remain intact. No firmware worker had started at that point. The
 [isolated runner and quota guard](swarm.md) passed a synthetic Luna smoke test.
 
-## Start here
+<a id="start-here"></a>
+
+## Historical startup prompt — do not rerun
 
 Review and commit preparation changes before making worker worktrees;
 new worktrees start from a commit, not the coordinator's uncommitted files.

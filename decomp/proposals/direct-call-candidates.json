@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "status": "experimental_not_swarm_ready",
+  "baseline_sha256": "e91502e8021e61c97a77fb12324e99ee4acb23bee55a5a67d18e26521ef856f7",
+  "tasks": [
+    {
+      "id": "fn_00006464",
+      "entry": "0x00006464",
+      "end_exclusive": "0x0000646e",
+      "mode": "thumb",
+      "signature": "unsigned int (void)",
+      "abi_status": "hypothesis_requires_review",
+      "calls": [{"address": "0x00006466", "callee": "fn_0001291c"}],
+      "extern_functions": {
+        "fn_0001291c": {"entry": "0x0001291c", "mode": "thumb", "signature": "void (void)"}
+      },
+      "review": "Body saves r4/lr, calls 0x1291c, clears r0, returns. Known caller at 0xd1aa does not consume r0. Callee replaces r0 before use and conditionally changes byte at 0x401624 via literal 0x1292c. No-argument and return declarations remain hypotheses. Callee code/state is not reconstructed by this assignment."
+    },
+    {
+      "id": "fn_00006500",
+      "entry": "0x00006500",
+      "end_exclusive": "0x0000650a",
+      "mode": "thumb",
+      "signature": "unsigned int (void)",
+      "abi_status": "hypothesis_requires_review",
+      "calls": [{"address": "0x00006502", "callee": "fn_000134d4"}],
+      "extern_functions": {
+        "fn_000134d4": {"entry": "0x000134d4", "mode": "thumb", "signature": "unsigned int (void)"}
+      },
+      "review": "Body saves r4/lr, calls 0x134d4, clears r0, returns. Known callers at 0x12574 and 0x12d4c do not consume r0. Callee writes byte 1 at 0x400501 via literal 0x134e0 then clears r0, with no incoming register dependency. No-argument and return declarations remain hypotheses. Callee code/state is not reconstructed by this assignment."
+    }
+  ]
+}

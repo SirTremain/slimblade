@@ -1,13 +1,22 @@
 # Preparation status
 
-Subsequent execution: the [six-task pilot completed](../decomp/results/pilot-run-20261016/notes.md)
-with all six drafts reviewed and independently rebuilt. The preparation record
-below describes the pre-launch state; expansion still needs separate review.
+Current scope: **the four batch-2 leaves are prepared**, after individual
+boundary/ABI-hypothesis review and creation of a separate leaf lock. The
+[batch-2 handoff](expansion.md) and [review report](../decomp/results/expansion-preparation/notes.md)
+record the checks. All six prior sources rebuilt exactly; their original pins
+and queue-reviewed state are unchanged. The new direct-call experiment is not
+enabled for workers. Commit the preparation and explicitly assign the next
+run before launching; no batch-2 worker has started.
 
-Updated 2026-10-16. **Preparation is complete for the first six-function agent
-pilot.** No firmware worker has started. A user-assigned run and a commit containing
-the preparation changes are the remaining launch steps, not another compiler
-download or license request. Follow [the pilot handoff](pilot.md).
+The following sections are the **historical first-pilot preparation record**.
+That [six-task pilot completed](../decomp/results/pilot-run-20261016/notes.md)
+with all six drafts reviewed and independently rebuilt. Its old launch steps
+are not instructions to reclaim those tasks. Use [expansion.md](expansion.md)
+for the current four-task prompt and expected queue state.
+
+At the first pilot's pre-launch review on 2026-10-16, preparation was complete
+for six functions. That run and its prerequisite commit have since happened;
+no further compiler download or license request is required for batch 2.
 
 | Preparation item | Evidence and disposition |
 | --- | --- |
@@ -30,7 +39,7 @@ the evidence and limits; [earlier preparation notes](../decomp/results/preparati
 retain the runtime repair, GCC experiments and licensing history. Those earlier
 failed configurations are not instructions to repeat the investigation.
 
-## Start the first run
+## Historical first-run procedure — completed
 
 Review and commit the preparation changes before creating worker worktrees:
 worktrees start from a commit, not uncommitted files. No agent commit or push was
@@ -49,7 +58,7 @@ python3 tools/decomp.py status
 
 Expect local pins to pass, a ready verdict for the reviewed scope, and six
 unclaimed/queued functions. No task is claimed merely by running these checks.
-The [copyable startup prompt](pilot.md#start-here) uses the user's selected
+The [historical startup prompt](pilot.md#historical-startup-prompt--do-not-rerun) used the user's selected
 weekly reserve: stop at 45% remaining, preserve 40%, at most two Luna workers.
 Check its dated quota window and ask for a renewed run if it has expired.
 

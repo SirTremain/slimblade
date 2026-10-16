@@ -19,7 +19,13 @@ import time
 MODELS = ('gpt-6-luna', 'gpt-6.1-sol')
 STOP_REMAINING = 45.0
 WORKER_READS = ('AGENTS.md', 'docs/project-plan.md', 'docs/workflow.md',
-                'docs/pilot.md', 'decomp/templates/result.json')
+                'docs/pilot.md', 'docs/expansion.md', 'decomp/templates/result.json')
+BATCHES = {
+    'six-reviewed-leaf-pilot-only': ('fn_00003b48', 'fn_00003bb4', 'fn_0000e4ee',
+                                   'fn_0000e4fc', 'fn_0000e540', 'fn_0000e548'),
+    'four-reviewed-leaf-batch-2-only': ('fn_00013f58', 'fn_00013f72',
+                                     'fn_000154d4', 'fn_00018100'),
+}
 
 
 def check_runtime():
@@ -195,9 +201,13 @@ def guarded_quota(read_quota, state_dir, expected_reset):
         raise
 
 
-def policy(root):
+def policy(root, task_id=None):
     value = json.loads((root / 'decomp/swarm-policy.json').read_text())
-    expected = {'schema_version': 1, 'scope': 'six-reviewed-leaf-pilot-only',
+    require(isinstance(value.get('scope'), str) and value['scope'] in BATCHES,
+            'unreviewed batch scope')
+    if task_id is not None:
+        require(task_id in BATCHES[value['scope']], 'task outside selected batch policy')
+    expected = {'schema_version': 1,
                 'worker_models': list(MODELS), 'maximum_concurrent_workers': 2,
                 'stop_remaining_percent': 45, 'work_reserve_percent': 40,
                 'maximum_task_seconds': 1200, 'maximum_compile_attempts': 8,

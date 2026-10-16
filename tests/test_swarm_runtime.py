@@ -146,6 +146,28 @@ class RuntimeTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             sr.codex_command('unreviewed-model', [])
 
+    def test_batch_policy_excludes_old_tasks_and_call_experiments(self):
+        (self.root / 'decomp').mkdir()
+        file = self.root / 'decomp/swarm-policy.json'
+        value = json.loads((ROOT / 'decomp/swarm-policy.json').read_text())
+        value['quota_window_resets_at'] = int(time.time()) + 1000
+        file.write_text(json.dumps(value))
+        for ident in sr.BATCHES['four-reviewed-leaf-batch-2-only']:
+            self.assertEqual(sr.policy(self.root, ident)['scope'], 'four-reviewed-leaf-batch-2-only')
+        for ident in ('fn_00003b48', 'fn_00006464', 'fn_00006500', 'fn_00001000'):
+            with self.assertRaisesRegex(ValueError, 'outside selected batch'):
+                sr.policy(self.root, ident)
+        for change in ({'scope': 'all-functions'}, {'maximum_concurrent_workers': 3},
+                       {'stop_remaining_percent': 40}, {'quota_window_resets_at': 1}):
+            file.write_text(json.dumps({**value, **change}))
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                sr.policy(self.root)
+        value['scope'] = 'six-reviewed-leaf-pilot-only'
+        file.write_text(json.dumps(value))
+        sr.policy(self.root, 'fn_00003b48')
+        with self.assertRaises(ValueError):
+            sr.policy(self.root, 'fn_00013f58')
+
     def test_real_mount_isolation(self):
         # Only synthetic files; tests don't attempt to open a physical device.
         work, evidence, runtime = [self.root / p for p in ('work', 'evidence', 'runtime')]
