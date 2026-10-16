@@ -1,0 +1,51 @@
+{
+  "task": "fn_000154d4",
+  "worker": "luna-b2-000154d4",
+  "status": "draft",
+  "observations": [
+    "At 0x154d4 and 0x154d6, LDRB reads offsets 1 and 0; 0x154da combines these into r2. At 0x154e2, shifted byte 2 is ORed into the accumulated value; at 0x154e6, shifted byte 3 is ORed into it, then BX LR at 0x154e8.",
+    "Packet listing and independent LLVM decode agree; packet range SHA-256 is 627c59a19dec894d2b05a7be29b415f545c96f65d3690d9f8aed1b7fb34dffc5.",
+    "Eight discovered incoming calls target the entry; no outgoing references, stack adjustment, or literal/data references are recorded."
+  ],
+  "inferences": [
+    "The draft implements a 32-bit unsigned value assembled from bytes[0] through bytes[3].",
+    "Unsigned widening before shifts models the observed bit composition without signed-shift behavior.",
+    "The body leaves r3 unchanged; caller context makes this exact register effect important."
+  ],
+  "open_questions": [
+    "Original source qualifiers, pointer alignment, and historical compiler provenance are unknown.",
+    "Coordinator reports attempts 1 and 2 were identical: 24 bytes with 12 differing bytes. Attempt 3 improved to 22 bytes with 5 differing bytes, confined to the first three instructions; 0x154da onward matched. This sequential-load C revision needs coordinator compilation and review.",
+    "Hidden indirect references remain unknown."
+  ],
+  "validation": [
+    "Reviewed immutable packet instructions, references, and caller context; independent LLVM decode matches the packet listing.",
+    "Coordinator reports attempt 3 produced 22 actual/expected bytes with 5 differing bytes, all within the first three instructions; the remainder from 0x154da matched.",
+    "Corrected: the reference cumulatively combines byte 0/1 at 0x154da, shifted byte 2 at 0x154e2, then shifted byte 3 at 0x154e6. It does not separately combine the high-byte pair.",
+    "Coordinator correction: final C initializes byte0 then accumulates shifted byte1; that source order is not the original machine order. The pinned final ELF reads offsets 1,0,2,3, all byte-width, and preserves r3. Nonvolatile scheduling explains the source/instruction order distinction; arbitrary recompilation and volatile semantics are not established."
+  ],
+  "attempts": 3,
+  "elapsed_minutes": 0,
+  "model": "gpt-6-luna",
+  "source_commit": "df1957bf90973987591705fddccf541108a3dfec",
+  "proposed_shared_changes": [],
+  "next_step": "Coordinator: compile the revised sequential-load candidate in decomp/src/fn_000154d4.c using a fresh output directory; return redacted output and review the byte range and r3 preservation.",
+  "coordinator_review": {
+    "reviewer": "coordinator-batch2-20261017",
+    "decision": "reviewed_draft_not_certified_match",
+    "source_sha256": "924f56903f0dc42e0468ca18a82210db5180ad41771474afc0b75810fcafbdcc",
+    "exact_range_bytes": 22,
+    "independent_rebuild": true,
+    "ledger_attempts": 4,
+    "worker_turns": 4,
+    "requested_worker_model": "gpt-6-luna",
+    "source_review": "coordinator-review.md",
+    "worker_metadata_note": "Worker narrative/model/timing fields are preserved as historical self-report. Runner checkpoints establish gpt-6-luna invocation and elapsed time; coordinator ledger establishes compiler attempts.",
+    "remaining_uncertainty": "Historical declarations, qualifiers, compiler provenance and hidden callers remain unproven. Whole-image verification is not implemented; matching coverage is unknown.",
+    "attempt_differing_bytes": [
+      12,
+      12,
+      5,
+      0
+    ]
+  }
+}

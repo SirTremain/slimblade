@@ -1,0 +1,43 @@
+{
+  "task": "fn_00013f58",
+  "worker": "luna-b2-00013f58",
+  "status": "draft",
+  "observations": [
+    "The 26-byte range 0x00013f58..0x00013f72 is Thumb code: six ordered LDRB/STRB pairs at offsets 0 through 5, followed by BX LR.",
+    "The immutable packet lists incoming calls from 0x00004ff2 and 0x000055e6, no outgoing dependencies, and no literal/data ranges.",
+    "The two callers do not consume a result according to the packet context."
+  ],
+  "inferences": [
+    "The body copies six bytes from the pointer in r1 to the pointer in r0.",
+    "Six ordered byte assignments preserve the observed access order for overlapping buffers."
+  ],
+  "open_questions": [
+    "The assigned void/pointer signature and source qualifiers remain ABI/source hypotheses; caller evidence does not prove declaration details.",
+    "Compiler register allocation and exact clobbers require the pinned coordinator build and source/ABI review.",
+    "Hidden indirect callers are not established by the packet."
+  ],
+  "validation": [
+    "Reviewed /evidence/instructions.json, listing.txt, callers.txt, context.md, references.json, metadata.json, and llvm.txt.",
+    "No compiler/comparator command was run by the worker under the enforced handoff; exact-range bytes are not verified.",
+    "No tests run; no test request was made."
+  ],
+  "attempts": 0,
+  "elapsed_minutes": 0,
+  "model": "GPT-6 Codex worker",
+  "source_commit": "df1957bf90973987591705fddccf541108a3dfec",
+  "proposed_shared_changes": [],
+  "next_step": "Coordinator: compile this source with the pinned ARMCC5 profile, return redacted exact-range feedback, and independently review source/ABI before any status change.",
+  "coordinator_review": {
+    "reviewer": "coordinator-batch2-20261017",
+    "decision": "reviewed_draft_not_certified_match",
+    "source_sha256": "c48c73f2c93f0dcae0e55d73b34f9fbe20d58cb3471089f684754889abbed35d",
+    "exact_range_bytes": 26,
+    "independent_rebuild": true,
+    "ledger_attempts": 1,
+    "worker_turns": 1,
+    "requested_worker_model": "gpt-6-luna",
+    "source_review": "coordinator-review.md",
+    "worker_metadata_note": "Worker narrative/model/timing fields are preserved as historical self-report. Runner checkpoints establish gpt-6-luna invocation and elapsed time; coordinator ledger establishes compiler attempts.",
+    "remaining_uncertainty": "Historical declarations, qualifiers, compiler provenance and hidden callers remain unproven. Whole-image verification is not implemented; matching coverage is unknown."
+  }
+}

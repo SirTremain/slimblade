@@ -1,0 +1,43 @@
+{
+  "task": "fn_00018100",
+  "worker": "luna-b2-00018100",
+  "status": "draft",
+  "observations": [
+    "The Thumb instructions at 0x00018100..0x00018114 compare r0 with zero, then compare r1 with 0x800 using unsigned carry semantics; the two return paths produce 0 and 1.",
+    "All ten listing instructions are accounted for in the owned 20-byte range. The body has no calls, data references, stack use, or literal pool.",
+    "The evidence records incoming calls at 0x000175d4 and 0x000177fe; each caller tests the return value against zero."
+  ],
+  "inferences": [
+    "The result is zero exactly when arg0 is zero and arg1 is less than 0x800; otherwise it is one.",
+    "The argument and result types follow the assigned unsigned-int signature; original declaration details remain unproven."
+  ],
+  "open_questions": [
+    "The semantic names and intended meaning of both arguments are unknown.",
+    "The original source declaration, qualifiers, compiler provenance, and any hidden indirect callers are not established.",
+    "Independent source/ABI review and exact-range rebuild remain outstanding."
+  ],
+  "validation": [
+    "Reviewed immutable listing, per-instruction TMode/flow JSON, LLVM disassembly, references, caller context, and metadata in /evidence.",
+    "No compiler command was run; ARMCC5 build and byte comparison are pending coordinator execution. No match is verified.",
+    "Evidence packet SHA-256 supplied by assignment: 57ff7a5a83682ae18c21f6249dda3d60a2c1f6e4202266d1d29405a840608e37."
+  ],
+  "attempts": 0,
+  "elapsed_minutes": 0,
+  "model": "unknown",
+  "source_commit": "df1957bf90973987591705fddccf541108a3dfec",
+  "proposed_shared_changes": [],
+  "next_step": "Coordinator: review source/ABI and compile this unchanged source with the pinned ARMCC5 comparator in a fresh attempt output directory.",
+  "coordinator_review": {
+    "reviewer": "coordinator-batch2-20261017",
+    "decision": "reviewed_draft_not_certified_match",
+    "source_sha256": "fcec50a4c3020f1b95e478f5ccbe6c34c1b83f16149799f41043489b0b882666",
+    "exact_range_bytes": 20,
+    "independent_rebuild": true,
+    "ledger_attempts": 1,
+    "worker_turns": 1,
+    "requested_worker_model": "gpt-6-luna",
+    "source_review": "coordinator-review.md",
+    "worker_metadata_note": "Worker narrative/model/timing fields are preserved as historical self-report. Runner checkpoints establish gpt-6-luna invocation and elapsed time; coordinator ledger establishes compiler attempts.",
+    "remaining_uncertainty": "Historical declarations, qualifiers, compiler provenance and hidden callers remain unproven. Whole-image verification is not implemented; matching coverage is unknown."
+  }
+}
