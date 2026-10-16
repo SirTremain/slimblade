@@ -38,6 +38,12 @@ and leave agents with usable, reviewed tasks. Small calibration probes and
 helper-analysis models are preparation, not a bulk reconstruction campaign.
 Do not label blockers resolved merely by excluding them from the pilot.
 
+Continuation after the Professional-key success: calibrate the existing fixed
+hypotheses without source tuning, validate and pin the selected leaf comparison
+path, and prepare the six assignments for a separately budgeted run. Retain the
+prior locks and all failed experiments. No bulk decompilation or automatic
+worker launch is included. The user committed the previous stage as `fd6e659`.
+
 If a license, unavailable proprietary tool or material user decision is truly
 required, exhaust safe public/offline alternatives, preserve completed work and
 report the precise blocking evidence. Do not invent historical provenance or

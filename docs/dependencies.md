@@ -27,7 +27,7 @@ analysis model; it does not implement updater transport or flash mapping.
 
 | Dependency/question | State and gate |
 | --- | --- |
-| Original compiler, ABI, linker, libraries | Unknown; ARMCC 5 and GCC leads, possible mixed components. Clang/LLD is only a pinned pilot candidate. |
+| Original compiler, ABI, linker, libraries | Historical provenance unknown; possible mixed components. ARMCC 5.06u7 b960 + strict LLD leaf layout reproduces all six calibration ranges. The new pinned feedback path is not a full-image toolchain or proof of original declarations. |
 | Runtime dispatcher/callers | Analysis-only callfixup and corrected ownership validated and replayed; 10,368 original-byte cases agree. Nonstandard saved-frame exits remain explicit. See [preparation evidence](../decomp/results/preparation/notes.md); not recovered C. |
 | Resident loader, ROM services, external firmware/storage | Existence, identity and extent unresolved. SDK boot files are leads, not this device's loader. |
 | Updater framing, checksums and destination ranges | Historical evidence needs complete reproduction before hardware work. No updater is executed by the active tools. |
@@ -38,6 +38,7 @@ analysis model; it does not implement updater transport or flash mapping.
 The six pilot leaves have no observed outgoing calls, literal-pool/global
 references or shared tails. Pointer arguments are supplied by callers, with
 width/alignment/qualifier hypotheses documented in each packet. These local
-facts support their narrow task boundaries. The user requested compiler/build
-blocker resolution before a run, so all six remain held. They do not establish safe flashing, complete dependency
+facts support their narrow task boundaries. Compiler/build preparation now
+passes for those six tasks; a user-assigned run/budget is still needed. These
+results do not establish safe flashing, complete dependency
 coverage, an original toolchain or equivalence of a later modified image.

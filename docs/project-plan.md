@@ -175,26 +175,29 @@ baseline intact regardless of later feature choices.
 
 ## Current position and next work
 
-The project is at milestone 1, offline preparation. The user requested resolution
-of preparation blockers before worker reconstruction. A [preparation gate](preparation.md)
-now holds all six existing leaf tasks. Their packets and previous comparison
-lock remain intact; do not launch an exploratory pilot as a substitute for
-resolving the compiler/build blockers.
+The project is at milestone 1, ready for the first bounded offline worker run.
+The [preparation gate](preparation.md) is scoped to six reviewed leaf tasks;
+their packets and previous comparison lock remain intact. A separately versioned
+ARMCC5 lock replaces the exploratory Clang profile. Launch still requires a
+user-assigned model/concurrency/budget and committed preparation changes.
 
 The runtime-helper call model and inline-data analysis have been repaired on a
 separate project copy, checked against 10,368 original-instruction executions,
 and replayed. Zero saved analysis errors does not approve all discovered
-boundaries. Compiler calibration, the production matching configuration and
-full-image build remain unresolved. Small fixed calibration probes are not
+boundaries. The fixed ARMCC5 profile now reproduces all six calibration ranges
+and supplies tested, pinned feedback. Full-image linking and match certification
+remain subsequent work. Small fixed calibration probes are not
 certified recovered firmware. No worker has started; matching coverage is unknown.
 The [dependency ledger](dependencies.md) accounts for the container regions
 and external unknowns without excluding difficult bytes from the denominator.
 
-Local ARMCC5 access now passes synthetic compile/link checks under Wine with
-the supplied Professional key, including a headless run. Next: calibrate that
-candidate against stock, validate the selected build/comparison path, and
-review the launch gate. Only afterwards assign a
-worker run/budget. The full storage/dependency and hardware gates remain later
+Local ARMCC5 runs headlessly under Wine with the supplied Professional key;
+no further installer, Windows desktop or license request is needed for the
+demonstrated setup. Next: review/commit preparation, assign the first run/budget,
+and independently review/rebuild its returned C drafts. Expansion beyond the
+six leaves requires new boundary/dependency/verifier review. The exact original
+compiler version remains an unknown, not a claim made by calibration.
+The full storage/dependency and hardware gates remain later
 requirements; no current preparation result establishes safe flashing.
 See [the workflow](workflow.md).
 

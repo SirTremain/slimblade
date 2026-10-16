@@ -19,7 +19,9 @@ verifier. If it is absent, produce an evidence-backed draft or a blocker, and
 explicitly report that no match was verified. Never alter the baseline, shared
 types, toolchain, build flags, comparison rules, reference assembly or bytes.
 The current six-leaf pilot includes a concrete command in the claim output;
-read docs/pilot.md. It reports exact-range bytes or a mismatch, never certified
+read docs/pilot.md. For ARMCC builds, send the command/source path to the
+coordinator and await the redacted outputs. Do not access its private Wine
+prefix or license files. The calibrated profile reports exact-range bytes or a mismatch, never certified
 matching coverage. Original compiler provenance and source declaration details
 remain hypotheses. Do not use inline assembly/intrinsics or expand your body
 to absorb padding. No calls, absolute addresses or globals are supported by

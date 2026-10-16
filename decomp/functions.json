@@ -2,6 +2,7 @@
   "baseline_id": "slimblade-pro-stock-v4.49",
   "functions": [
     {
+      "abi_status": "hypothesis_requires_review",
       "acceptance": "Evidence-backed C and recorded comparison, independently rebuilt/reviewed by coordinator. Exact bytes alone do not certify recovered source, ABI or whole-image equivalence.",
       "allowed_paths": [
         "decomp/src/fn_00003b48.c",
@@ -9,10 +10,10 @@
       ],
       "boundary_review": "2026-10-16 coordinator limited leaf review; see decomp/results/pilot-readiness/notes.md and packet instructions.json/llvm.txt/references.json. Global inventory is NOT approved.",
       "comparison": {
-        "lock_path": ".decomp/pilot-v1/lock.json",
-        "lock_sha256": "2d9d35cce216a47e0ba0d244f51e3272bb6330ae30ca84e2a006199b9b7ab230"
+        "lock_path": ".decomp/pilot-armcc5-v1/lock.json",
+        "lock_sha256": "2c2e3416849c68cade707434e9589c8c2806721fef9f02bd7b68c5286abc0c4a"
       },
-      "comparison_scope": "stock-leaf-pilot-feedback-v1",
+      "comparison_scope": "armcc5-leaf-feedback-v1",
       "depends_on": [
         "bootstrap-inventory",
         "bootstrap-toolchain",
@@ -22,7 +23,7 @@
       "evidence_path": ".decomp/evidence/pilot-v1/fn_00003b48",
       "evidence_sha256": "780239a45425c9695be2f24eca92c3615034045375e6b11b1cd4910405dff12c",
       "id": "fn_00003b48",
-      "instructions": "Read the immutable packet and docs/pilot.md. Recover this leaf only; no calls or absolute globals are supported. Name the C function exactly as the task ID. Keep prototype hypotheses in notes. Use the frozen candidate compiler for byte feedback; do not alter flags or demand a match from an unidentified historical toolchain. Stop at 20 minutes/8 builds/3 non-improving attempts. Submit draft or blocked; never matched.",
+      "instructions": "Read the immutable packet and docs/pilot.md. Recover this leaf only; no calls or absolute globals are supported. Name the C function exactly as the task ID. Review the pinned signature hypothesis against callers and document ambiguities; propose any ABI correction to the coordinator instead of changing the lock. Use the calibrated ARMCC5 profile through the coordinator build service. Never change flags, ranges or reference bytes. Stop at 20 minutes/8 builds/3 non-improving attempts. Submit draft or blocked; never matched.",
       "kind": "function",
       "mode": "thumb",
       "ranges": [
@@ -31,9 +32,11 @@
           "start": "0x00003b48"
         }
       ],
+      "signature": "unsigned int (unsigned int, unsigned int)",
       "title": "Pilot: reconstruct Thumb leaf at 0x00003b48"
     },
     {
+      "abi_status": "hypothesis_requires_review",
       "acceptance": "Evidence-backed C and recorded comparison, independently rebuilt/reviewed by coordinator. Exact bytes alone do not certify recovered source, ABI or whole-image equivalence.",
       "allowed_paths": [
         "decomp/src/fn_00003bb4.c",
@@ -41,10 +44,10 @@
       ],
       "boundary_review": "2026-10-16 coordinator limited leaf review; see decomp/results/pilot-readiness/notes.md and packet instructions.json/llvm.txt/references.json. Global inventory is NOT approved.",
       "comparison": {
-        "lock_path": ".decomp/pilot-v1/lock.json",
-        "lock_sha256": "2d9d35cce216a47e0ba0d244f51e3272bb6330ae30ca84e2a006199b9b7ab230"
+        "lock_path": ".decomp/pilot-armcc5-v1/lock.json",
+        "lock_sha256": "2c2e3416849c68cade707434e9589c8c2806721fef9f02bd7b68c5286abc0c4a"
       },
-      "comparison_scope": "stock-leaf-pilot-feedback-v1",
+      "comparison_scope": "armcc5-leaf-feedback-v1",
       "depends_on": [
         "bootstrap-inventory",
         "bootstrap-toolchain",
@@ -54,7 +57,7 @@
       "evidence_path": ".decomp/evidence/pilot-v1/fn_00003bb4",
       "evidence_sha256": "e606a28d54f88d791a5edf78b8ded33b1ee6369f6459efe69fc40cdb93264c7b",
       "id": "fn_00003bb4",
-      "instructions": "Read the immutable packet and docs/pilot.md. Recover this leaf only; no calls or absolute globals are supported. Name the C function exactly as the task ID. Keep prototype hypotheses in notes. Use the frozen candidate compiler for byte feedback; do not alter flags or demand a match from an unidentified historical toolchain. Stop at 20 minutes/8 builds/3 non-improving attempts. Submit draft or blocked; never matched.",
+      "instructions": "Read the immutable packet and docs/pilot.md. Recover this leaf only; no calls or absolute globals are supported. Name the C function exactly as the task ID. Review the pinned signature hypothesis against callers and document ambiguities; propose any ABI correction to the coordinator instead of changing the lock. Use the calibrated ARMCC5 profile through the coordinator build service. Never change flags, ranges or reference bytes. Stop at 20 minutes/8 builds/3 non-improving attempts. Submit draft or blocked; never matched.",
       "kind": "function",
       "mode": "thumb",
       "ranges": [
@@ -63,9 +66,11 @@
           "start": "0x00003bb4"
         }
       ],
+      "signature": "unsigned int (unsigned int, unsigned int)",
       "title": "Pilot: reconstruct Thumb leaf at 0x00003bb4"
     },
     {
+      "abi_status": "hypothesis_requires_review",
       "acceptance": "Evidence-backed C and recorded comparison, independently rebuilt/reviewed by coordinator. Exact bytes alone do not certify recovered source, ABI or whole-image equivalence.",
       "allowed_paths": [
         "decomp/src/fn_0000e4ee.c",
@@ -73,10 +78,10 @@
       ],
       "boundary_review": "2026-10-16 coordinator limited leaf review; see decomp/results/pilot-readiness/notes.md and packet instructions.json/llvm.txt/references.json. Global inventory is NOT approved.",
       "comparison": {
-        "lock_path": ".decomp/pilot-v1/lock.json",
-        "lock_sha256": "2d9d35cce216a47e0ba0d244f51e3272bb6330ae30ca84e2a006199b9b7ab230"
+        "lock_path": ".decomp/pilot-armcc5-v1/lock.json",
+        "lock_sha256": "2c2e3416849c68cade707434e9589c8c2806721fef9f02bd7b68c5286abc0c4a"
       },
-      "comparison_scope": "stock-leaf-pilot-feedback-v1",
+      "comparison_scope": "armcc5-leaf-feedback-v1",
       "depends_on": [
         "bootstrap-inventory",
         "bootstrap-toolchain",
@@ -86,7 +91,7 @@
       "evidence_path": ".decomp/evidence/pilot-v1/fn_0000e4ee",
       "evidence_sha256": "7e0678caf093173324f751f3bd0965425c6df9affdd2d25d7c19d6e01aa3dc78",
       "id": "fn_0000e4ee",
-      "instructions": "Read the immutable packet and docs/pilot.md. Recover this leaf only; no calls or absolute globals are supported. Name the C function exactly as the task ID. Keep prototype hypotheses in notes. Use the frozen candidate compiler for byte feedback; do not alter flags or demand a match from an unidentified historical toolchain. Stop at 20 minutes/8 builds/3 non-improving attempts. Submit draft or blocked; never matched.",
+      "instructions": "Read the immutable packet and docs/pilot.md. Recover this leaf only; no calls or absolute globals are supported. Name the C function exactly as the task ID. Review the pinned signature hypothesis against callers and document ambiguities; propose any ABI correction to the coordinator instead of changing the lock. Use the calibrated ARMCC5 profile through the coordinator build service. Never change flags, ranges or reference bytes. Stop at 20 minutes/8 builds/3 non-improving attempts. Submit draft or blocked; never matched.",
       "kind": "function",
       "mode": "thumb",
       "ranges": [
@@ -95,9 +100,11 @@
           "start": "0x0000e4ee"
         }
       ],
+      "signature": "unsigned short (const unsigned char *)",
       "title": "Pilot: reconstruct Thumb leaf at 0x0000e4ee"
     },
     {
+      "abi_status": "hypothesis_requires_review",
       "acceptance": "Evidence-backed C and recorded comparison, independently rebuilt/reviewed by coordinator. Exact bytes alone do not certify recovered source, ABI or whole-image equivalence.",
       "allowed_paths": [
         "decomp/src/fn_0000e4fc.c",
@@ -105,10 +112,10 @@
       ],
       "boundary_review": "2026-10-16 coordinator limited leaf review; see decomp/results/pilot-readiness/notes.md and packet instructions.json/llvm.txt/references.json. Global inventory is NOT approved.",
       "comparison": {
-        "lock_path": ".decomp/pilot-v1/lock.json",
-        "lock_sha256": "2d9d35cce216a47e0ba0d244f51e3272bb6330ae30ca84e2a006199b9b7ab230"
+        "lock_path": ".decomp/pilot-armcc5-v1/lock.json",
+        "lock_sha256": "2c2e3416849c68cade707434e9589c8c2806721fef9f02bd7b68c5286abc0c4a"
       },
-      "comparison_scope": "stock-leaf-pilot-feedback-v1",
+      "comparison_scope": "armcc5-leaf-feedback-v1",
       "depends_on": [
         "bootstrap-inventory",
         "bootstrap-toolchain",
@@ -118,7 +125,7 @@
       "evidence_path": ".decomp/evidence/pilot-v1/fn_0000e4fc",
       "evidence_sha256": "85cff56aeeff3f1b637fd270ec90af9ca2f59a6f3e44243bea250e9aa146a681",
       "id": "fn_0000e4fc",
-      "instructions": "Read the immutable packet and docs/pilot.md. Recover this leaf only; no calls or absolute globals are supported. Name the C function exactly as the task ID. Keep prototype hypotheses in notes. Use the frozen candidate compiler for byte feedback; do not alter flags or demand a match from an unidentified historical toolchain. Stop at 20 minutes/8 builds/3 non-improving attempts. Submit draft or blocked; never matched.",
+      "instructions": "Read the immutable packet and docs/pilot.md. Recover this leaf only; no calls or absolute globals are supported. Name the C function exactly as the task ID. Review the pinned signature hypothesis against callers and document ambiguities; propose any ABI correction to the coordinator instead of changing the lock. Use the calibrated ARMCC5 profile through the coordinator build service. Never change flags, ranges or reference bytes. Stop at 20 minutes/8 builds/3 non-improving attempts. Submit draft or blocked; never matched.",
       "kind": "function",
       "mode": "thumb",
       "ranges": [
@@ -127,9 +134,11 @@
           "start": "0x0000e4fc"
         }
       ],
+      "signature": "unsigned int (const unsigned char *)",
       "title": "Pilot: reconstruct Thumb leaf at 0x0000e4fc"
     },
     {
+      "abi_status": "hypothesis_requires_review",
       "acceptance": "Evidence-backed C and recorded comparison, independently rebuilt/reviewed by coordinator. Exact bytes alone do not certify recovered source, ABI or whole-image equivalence.",
       "allowed_paths": [
         "decomp/src/fn_0000e540.c",
@@ -137,10 +146,10 @@
       ],
       "boundary_review": "2026-10-16 coordinator limited leaf review; see decomp/results/pilot-readiness/notes.md and packet instructions.json/llvm.txt/references.json. Global inventory is NOT approved.",
       "comparison": {
-        "lock_path": ".decomp/pilot-v1/lock.json",
-        "lock_sha256": "2d9d35cce216a47e0ba0d244f51e3272bb6330ae30ca84e2a006199b9b7ab230"
+        "lock_path": ".decomp/pilot-armcc5-v1/lock.json",
+        "lock_sha256": "2c2e3416849c68cade707434e9589c8c2806721fef9f02bd7b68c5286abc0c4a"
       },
-      "comparison_scope": "stock-leaf-pilot-feedback-v1",
+      "comparison_scope": "armcc5-leaf-feedback-v1",
       "depends_on": [
         "bootstrap-inventory",
         "bootstrap-toolchain",
@@ -150,7 +159,7 @@
       "evidence_path": ".decomp/evidence/pilot-v1/fn_0000e540",
       "evidence_sha256": "dbfd5c960d383595040d3f0eaf84b5d8b20723d361d0164165170214a644b078",
       "id": "fn_0000e540",
-      "instructions": "Read the immutable packet and docs/pilot.md. Recover this leaf only; no calls or absolute globals are supported. Name the C function exactly as the task ID. Keep prototype hypotheses in notes. Use the frozen candidate compiler for byte feedback; do not alter flags or demand a match from an unidentified historical toolchain. Stop at 20 minutes/8 builds/3 non-improving attempts. Submit draft or blocked; never matched.",
+      "instructions": "Read the immutable packet and docs/pilot.md. Recover this leaf only; no calls or absolute globals are supported. Name the C function exactly as the task ID. Review the pinned signature hypothesis against callers and document ambiguities; propose any ABI correction to the coordinator instead of changing the lock. Use the calibrated ARMCC5 profile through the coordinator build service. Never change flags, ranges or reference bytes. Stop at 20 minutes/8 builds/3 non-improving attempts. Submit draft or blocked; never matched.",
       "kind": "function",
       "mode": "thumb",
       "ranges": [
@@ -159,9 +168,11 @@
           "start": "0x0000e540"
         }
       ],
+      "signature": "void (unsigned char *, unsigned short)",
       "title": "Pilot: reconstruct Thumb leaf at 0x0000e540"
     },
     {
+      "abi_status": "hypothesis_requires_review",
       "acceptance": "Evidence-backed C and recorded comparison, independently rebuilt/reviewed by coordinator. Exact bytes alone do not certify recovered source, ABI or whole-image equivalence.",
       "allowed_paths": [
         "decomp/src/fn_0000e548.c",
@@ -169,10 +180,10 @@
       ],
       "boundary_review": "2026-10-16 coordinator limited leaf review; see decomp/results/pilot-readiness/notes.md and packet instructions.json/llvm.txt/references.json. Global inventory is NOT approved.",
       "comparison": {
-        "lock_path": ".decomp/pilot-v1/lock.json",
-        "lock_sha256": "2d9d35cce216a47e0ba0d244f51e3272bb6330ae30ca84e2a006199b9b7ab230"
+        "lock_path": ".decomp/pilot-armcc5-v1/lock.json",
+        "lock_sha256": "2c2e3416849c68cade707434e9589c8c2806721fef9f02bd7b68c5286abc0c4a"
       },
-      "comparison_scope": "stock-leaf-pilot-feedback-v1",
+      "comparison_scope": "armcc5-leaf-feedback-v1",
       "depends_on": [
         "bootstrap-inventory",
         "bootstrap-toolchain",
@@ -182,7 +193,7 @@
       "evidence_path": ".decomp/evidence/pilot-v1/fn_0000e548",
       "evidence_sha256": "b5078bc799ad66c5dd2001c2685ed352b660211d6e7feed21791c21cb6749752",
       "id": "fn_0000e548",
-      "instructions": "Read the immutable packet and docs/pilot.md. Recover this leaf only; no calls or absolute globals are supported. Name the C function exactly as the task ID. Keep prototype hypotheses in notes. Use the frozen candidate compiler for byte feedback; do not alter flags or demand a match from an unidentified historical toolchain. Stop at 20 minutes/8 builds/3 non-improving attempts. Submit draft or blocked; never matched.",
+      "instructions": "Read the immutable packet and docs/pilot.md. Recover this leaf only; no calls or absolute globals are supported. Name the C function exactly as the task ID. Review the pinned signature hypothesis against callers and document ambiguities; propose any ABI correction to the coordinator instead of changing the lock. Use the calibrated ARMCC5 profile through the coordinator build service. Never change flags, ranges or reference bytes. Stop at 20 minutes/8 builds/3 non-improving attempts. Submit draft or blocked; never matched.",
       "kind": "function",
       "mode": "thumb",
       "ranges": [
@@ -191,6 +202,7 @@
           "start": "0x0000e548"
         }
       ],
+      "signature": "void (unsigned char *, unsigned int)",
       "title": "Pilot: reconstruct Thumb leaf at 0x0000e548"
     }
   ],

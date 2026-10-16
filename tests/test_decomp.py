@@ -9,9 +9,13 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 REPO = Path(__file__).resolve().parents[1]
 SCRIPT = REPO / "tools/decomp.py"
+sys.path.insert(0, str(REPO / 'tools'))
+import decomp as coordinator
+import armcc_compare
 
 
 class CoordinationTests(unittest.TestCase):
@@ -25,7 +29,8 @@ class CoordinationTests(unittest.TestCase):
         data = json.loads(inventory.read_text())
         data["functions"] = []
         inventory.write_text(json.dumps(data))
-        (self.root / "decomp/preparation.json").write_text(json.dumps({"schema_version": 1, "ready": True}))
+        (self.root / "decomp/preparation.json").write_text(json.dumps(
+            {"schema_version": 1, "ready": True, "allowed_function_ids": []}))
 
     def cli(self, *args, success=True):
         result = subprocess.run(
@@ -70,6 +75,8 @@ class CoordinationTests(unittest.TestCase):
         data = json.loads(inventory.read_text())
         data["functions"] = [task]
         inventory.write_text(json.dumps(data))
+        (self.root / "decomp/preparation.json").write_text(json.dumps(
+            {"schema_version": 1, "ready": True, "allowed_function_ids": [task["id"]]}))
         return task, evidence
 
     def test_status_does_not_create_database(self):
@@ -186,6 +193,47 @@ class CoordinationTests(unittest.TestCase):
     def test_invalid_preparation_gate_rejected(self):
         (self.root / "decomp/preparation.json").write_text('{"schema_version":1,"ready":"true"}')
         self.cli("check", success=False)
+
+    def test_ready_gate_does_not_expand_to_unreviewed_tasks(self):
+        task, _ = self.function()
+        self.accept_bootstraps()
+        gate = self.root / "decomp/preparation.json"
+        gate.write_text(json.dumps({"schema_version": 1, "ready": True, "allowed_function_ids": []}))
+        self.assertIn("blocked", self.cli("status").stdout)
+        self.cli("claim", task["id"], "--worker", "worker-a", success=False)
+        gate.write_text(json.dumps({"schema_version": 1, "ready": True}))
+        self.cli("check", success=False)
+
+    def test_armcc_scope_requires_new_local_lock(self):
+        task, _ = self.function()
+        task["comparison_scope"] = "armcc5-leaf-feedback-v1"
+        task["comparison"] = {"lock_path": ".decomp/missing.json", "lock_sha256": "0"*64}
+        path = self.root / "decomp/functions.json"
+        data = json.loads(path.read_text())
+        data["functions"] = [task]
+        path.write_text(json.dumps(data))
+        self.cli("check")
+        self.cli("check", "--local", success=False)
+
+    def test_armcc_task_binding_and_coordinator_build_prompt(self):
+        task, _ = self.function()
+        task.update(comparison_scope=armcc_compare.SCOPE, signature='unsigned int (unsigned int)',
+                    abi_status='hypothesis_requires_review',
+                    comparison={'lock_path': '.decomp/test-lock.json', 'lock_sha256': '0'*64})
+        baseline = coordinator.read_json(self.root / 'decomp/baseline.json')
+        definition = {k: v for k, v in task.items() if k != 'comparison'}
+        pinned = {**task, 'end_exclusive': task['ranges'][0]['end_exclusive'],
+                  'task_sha256': coordinator.digest(armcc_compare.sc.encode(definition))}
+        lock = {'baseline': {'sha256': baseline['sha256']}, 'baseline_bytes': baseline['bytes'],
+                'tasks': {task['id']: pinned}}
+        with mock.patch.object(armcc_compare, 'load_lock', return_value=lock):
+            prompt = coordinator.prompt(self.root, baseline, task, 'fixture')
+            self.assertIn('tools/armcc_compare.py', prompt)
+            self.assertIn('coordinator build service', prompt)
+            self.assertNotIn('tools/stock_compare.py', prompt)
+            pinned['signature'] = 'int (unsigned int)'
+            with self.assertRaisesRegex(ValueError, 'ABI/entry'):
+                coordinator.evidence_check(self.root, baseline, task)
 
     def test_input_hash_gate_with_synthetic_bytes(self):
         image = self.root / "synthetic.bin"

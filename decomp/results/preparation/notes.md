@@ -1,11 +1,14 @@
 # Preparation-blocker work — 2026-10-16
 
-**Not ready to launch workers.** The runtime analysis blocker is repaired, but
-compiler calibration and its dependent production build/comparison integration
-remain unresolved. The user's request supersedes the earlier limited-pilot
-launch verdict. No workers, paid jobs, hardware operations, commits or pushes
-were performed. Work used isolated `.worktrees/pilot-ready`; the user committed
-the prior preparation as `c1d2868` during this session. Those changes were preserved.
+**Prepared for the six-leaf run, pending the user's run/budget and commit.**
+The runtime analysis blocker is repaired; ARMCC 5.06u7 b960 now reproduces all
+six unchanged calibration hypotheses through a pinned, tested comparison path.
+See [the calibration/build review](armcc-calibration.md) for the new verdict,
+failed linker-layout attempts, exact scope and remaining full-image work.
+Earlier investigation sections below are historical evidence, not startup
+instructions. No workers, paid jobs, hardware operations, agent commits or
+pushes were performed. Work used isolated `.worktrees/pilot-ready`; the user's
+prior commits, most recently `fd6e659`, were preserved.
 
 Earlier continuation, after the user's `be57294` commit: the supplied MDK 5.43a
 installer was minimally extracted, resolving missing Keil product mappings.
@@ -22,11 +25,12 @@ incorrectly attributed to licensing: this release removed the ARM968E-S CPU
 name and documents `--cpu=5TE` as its replacement. The first key was not retested
 with that corrected option.
 
-Latest result: the replacement key installs as **MDK-ARM Professional**. With
+Prior license result: the replacement key installs as **MDK-ARM Professional**. With
 the documented CPU option, ARMCC5 b960 successfully compiles and links the
 unchanged synthetic probe, including a fresh headless run with no µVision or
-display. Local compiler access is demonstrated; stock calibration and pipeline
-qualification remain outstanding. No stock firmware was built. See the
+display. Local compiler access was demonstrated; stock calibration was still
+outstanding at that stage and has since passed the scoped review above.
+No complete stock firmware image was built. See the
 [Professional-key evidence](armcc-linux.md#professional-lic-test-headless-compile-and-link-pass).
 
 ## Runtime helper: bounded analysis repair

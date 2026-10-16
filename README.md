@@ -13,12 +13,13 @@ Preserve stock wireless functionality where feasible. Remove it only as the
 first optional feature if measured size limits require that tradeoff in the
 custom firmware—not during stock reconstruction. Current work remains offline.
 
-Current state: **worker launches held pending compiler/build preparation**.
-[Start here](docs/preparation.md) for the current blockers and evidence.
+Current state: **prepared for a user-budgeted six-function agent pilot**.
+[Start here](docs/pilot.md) for the handoff and copyable coordinator prompt.
 The runtime-helper analysis has been repaired and independently replayed;
 the corrected inventory has zero saved analysis errors, not blanket boundary
-approval. Compiler calibration is not yet sufficient to select a matching
-configuration. Six existing leaf packets remain preserved but claims are blocked.
+approval. ARMCC 5.06u7 b960 runs headlessly on Linux through Wine and reproduces
+all six fixed stock calibration ranges. A new pinned comparison path replaces
+the exploratory Clang profile without changing the reference bytes or packets.
 
 No workers have started. Small compiler probes are calibration evidence, not
 integrated recovered firmware or certified matches. The comparator still provides
@@ -28,8 +29,8 @@ command in the active toolset. Matching coverage remains unknown.
 - [Current goals, milestone gates and next work](docs/project-plan.md)
 - [Research: Ghidra and collaborative decompilation](docs/decompilation-research.md)
 - [Start and coordinate agents](docs/workflow.md)
-- [Preparation blockers](docs/preparation.md)
-- [Held pilot and copyable preparation prompt](docs/pilot.md)
+- [Preparation evidence and limits](docs/preparation.md)
+- [Prepared pilot and copyable startup prompt](docs/pilot.md)
 - [Stock byte accounting and unresolved dependencies](docs/dependencies.md)
 - [Ghidra setup and evidence export](docs/ghidra.md)
 - [Bootstrap results and reproduction](docs/bootstrap.md)

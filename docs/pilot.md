@@ -1,15 +1,13 @@
 # First decompilation pilot
 
-Updated 2026-10-16: **six prepared leaf assignments are held, not launch-ready**.
-The user requested resolution of preparation blockers before worker work.
-[Preparation status](preparation.md) supersedes the earlier
-[exploratory-pilot readiness report](../decomp/results/pilot-readiness/notes.md).
-The packets and comparison lock are preserved. No worker has started.
+Updated 2026-10-16: **six leaf assignments are prepared for a user-budgeted run**.
+[Preparation evidence](preparation.md) records ARMCC5 calibration and comparison
+checks. The new ARMCC lock is separately versioned; the old Clang lock and all
+original evidence packets remain intact. No worker has started.
 
 ## Start here
 
-Resolve the preparation gate first. After a reviewed ready verdict, review and
-commit preparation changes before making worker worktrees;
+Review and commit preparation changes before making worker worktrees;
 new worktrees start from a commit, not the coordinator's uncommitted files.
 No commit or push was performed during preparation. Keep the ignored local
 `.decomp` artifacts: the published source alone does not contain the firmware,
@@ -27,7 +25,7 @@ Use a coordinator session in the main checkout. Copy **only the contents of
 the following text block** into that session. The block is the entire prompt:
 
 ```text
-Read AGENTS.md, docs/preparation.md and decomp/prompts/coordinator.md. Continue resolving preparation blockers, using decomp/results/preparation/notes.md as the latest evidence. Inspect decomp/preparation.json and the queue. Do not launch workers or bypass the preparation gate. Preserve the existing six task packets and comparison lock; any replacement needs a separately reviewed version. Resolve compiler availability and bounded calibration, then validate the selected build/comparison pipeline before recommending a worker run. Ask for missing user-held artifacts or licensing decisions without purchasing anything. No hardware access, commits or pushes.
+Read AGENTS.md, docs/preparation.md, docs/pilot.md and decomp/prompts/coordinator.md. Check the local evidence/tool locks and queue. Prepare the existing six ARMCC5 leaf assignments from committed changes. Before launching workers, ask me for model choices, concurrency and a total run budget if I have not supplied them. Keep each worker in an isolated worktree with only its assigned paths writable. Run licensed compiler requests serially as coordinator; do not give workers the private Wine prefix or license files. Independently rebuild and review every submitted draft. Do not add tasks, change pins, claim certified coverage, access hardware, commit or push.
 ```
 
 ## Coordinator handoff
@@ -39,7 +37,7 @@ accepted **setup** reports as dependencies. Acceptance is a coordinator review
 of setup scope, not full inventory approval or an independent match certificate.
 See the [review record](../decomp/results/pilot-readiness/notes.md#bootstrap-review).
 
-After the preparation gate passes and the user assigns a run and budget,
+After local preflight passes and the user assigns a run and budget,
 create each worktree from the committed
 preparation. Example for the first worker, from the main checkout:
 
@@ -55,8 +53,9 @@ python3 tools/decomp.py claim fn_00003b48 --worker worker-a
 ```
 
 Give that prompt and the absolute worktree location to the worker. Its working
-directory is the worker worktree. Evidence and tools are read from the main
-checkout; results go only into its assigned source/result paths. Do not create
+directory is the worker worktree. Expose its assigned evidence packet read-only,
+not the main checkout's private compiler/license directories. Results go only
+into its assigned source/result paths. Do not create
 a queue in each worktree. A second worker needs a different worktree, branch,
 worker ID and task. Reprint a claimed prompt if needed:
 
@@ -74,9 +73,18 @@ The packet's comparison command uses a fresh numbered output directory per
 attempt. Exit status 0 means exact bytes for the owned range, 2 means byte/size
 mismatch, and 1 means source/build/trust-input rejection. Compare lengths and
 byte differences; do not optimize a percentage or change boundaries. A rejected
-build also counts toward the attempt limit. The compiler is a fixed Clang/LLD
-23.1.1 candidate, not Kensington's identified historical toolchain. Stop and
-report plausible compiler/ABI blockers instead of repeatedly twisting C.
+build also counts toward the attempt limit. The compiler is ARMCC 5.06u7 b960
+under Wine; LLD 23.1.1 performs strict isolated-leaf layout. This profile matched
+all six fixed calibration examples; it is not proof of the historical version
+or a complete firmware linker. Stop and report evidence-backed ABI/boundary
+questions instead of repeatedly twisting C to match a guessed declaration.
+
+The coordinator executes the printed build command from the worker worktree
+and returns the redacted result directory. Compiler requests are serialized;
+the prefix lock rejects overlaps. A busy-lock scheduling retry is not a source
+attempt. Keep the genuine host/prefix used for licensing; no GUI or Windows
+desktop is needed. Do not run license diagnostics concurrently with builds.
+See [the build review](../decomp/results/preparation/armcc-calibration.md).
 
 On return, audit the **entire** worker diff, including untracked files; check
 allowed paths, readable recovered C, types, side effects and source provenance.
@@ -110,6 +118,6 @@ Same-UID processes can bypass filesystem conventions. Worktrees and read-only
 files are not a security sandbox. Configure the runner to deny device access
 and writes outside worker-owned paths; the coordinator retains the trusted
 reference and independently checks all output. No provider or model is launched
-by this repository. Compiler/build readiness is unresolved and claims are held.
+by this repository. The six-task preparation gate does not start a worker run.
 Original compiler provenance and matching coverage remain unknown; scaling
 beyond these leaves also needs a separate readiness review.

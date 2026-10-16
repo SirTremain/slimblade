@@ -18,19 +18,21 @@ submitted assignments or treating old startup prompts as a new work order.
 
 ## What is ready
 
-**Function claims are currently blocked** by [preparation.json](../decomp/preparation.json).
-The user requested preparation-blocker closure before a worker run. Follow
-[preparation.md](preparation.md), not the earlier exploratory-pilot launch verdict.
-Missing or malformed gate files do not enable claims. Passing configuration
-checks is not a readiness verdict; inspect the printed gate and queue status.
+**Six reviewed leaf assignments are prepared** under the explicit scope in
+[preparation.json](../decomp/preparation.json). The compiler/helper preparation
+blockers have supporting closure evidence in [preparation.md](preparation.md).
+Missing/malformed gates, changed pins or out-of-scope task IDs fail closed.
+Passing configuration checks is not a full-image verdict or a worker launch;
+the user must still assign models, concurrency and a total run budget.
 
 The scaffold supplies task validation, an atomic SQLite claim queue, worker
 prompts, evidence hashing and review transitions. The [first pilot](pilot.md)
 adds six reviewed leaf packets and a pinned source-build/exact-stock-range
 comparison command. It does not launch models, certify matching progress or
-build the complete firmware. The global inventory and original compiler remain
-unapproved/unknown. Use Python 3.10+. All commands below run from the main
-repository root; the worker's printed build command runs in its worktree.
+build the complete firmware. ARMCC5 is calibrated for this scope, not identified
+as the exact historical compiler. The global inventory remains unapproved.
+Use Python 3.10+. Queue commands run from the main repository root; the
+coordinator runs printed ARMCC build commands with the worker worktree as cwd.
 
 Check configuration and inspect tasks:
 
@@ -49,10 +51,11 @@ for their original setup scope, with the [pilot-readiness addendum](../decomp/re
 Do not restart bootstrap or launch workers automatically. The subsequent
 [preparation work](../decomp/results/preparation/notes.md) repairs the runtime
 helper model and inline-data classification; its corrected inventory passes
-structural checks. Compiler calibration still blocks a reconstruction run.
-The six separately checked leaf packets remain held, not ready to claim.
+structural checks. The subsequent ARMCC5 calibration and pinned comparison
+checks support the six-leaf run. No compiler/license setup remains for that
+scope; full-image linking and broader function support are later work.
 
-Start with [the copyable preparation prompt](pilot.md#start-here), which references
+Start with [the copyable startup prompt](pilot.md#start-here), which references
 the [coordinator instructions](../decomp/prompts/coordinator.md).
 The user assigns worker models, concurrency and a total run budget before any
 launch. Two inexpensive workers are a possible starting configuration, not a
@@ -187,8 +190,10 @@ These boundaries are a workflow convention until enforced by the chosen agent
 sandbox and independent integration environment. A worktree alone does not
 prevent a process accessing another directory or a device.
 
-After the preparation gate is reviewed and opened, run the prepared six-leaf pilot
-before proposing more functions. Record attempts, elapsed time, actual
+With local pins verified and a user-assigned budget, run the six-leaf pilot
+before proposing more functions. Serialize compiler requests through the
+coordinator; workers never receive the private Wine prefix or license files.
+Record attempts, elapsed time, actual
 model/cost when available and rejection reasons. Escalate ABI, shared types,
 interrupts, indirect dispatch and MMIO to stronger review. Apply the worker's
 20-minute/8-attempt limit and stop after 3 non-improving attempts.

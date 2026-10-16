@@ -1,0 +1,104 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-16",
+  "scope": "six-leaf preparation, not recovered-source certification",
+  "baseline_sha256": "e91502e8021e61c97a77fb12324e99ee4acb23bee55a5a67d18e26521ef856f7",
+  "compiler": "ARMCC 5.06 update 7 build 960, MDK Professional 5.43, headless Wine",
+  "linker": "LLD 23.1.1, isolated leaf layout only",
+  "lock_sha256": "2c2e3416849c68cade707434e9589c8c2806721fef9f02bd7b68c5286abc0c4a",
+  "calibration": [
+    {
+      "task": "fn_00003b48",
+      "result": "exact-range-bytes",
+      "expected_bytes": 28,
+      "actual_bytes": 28,
+      "actual_sha256": "d4ff5141763c5ee54f890d10561b0d031b29e7ebcb1fd0551e35ae4e2f5dba3a",
+      "source_sha256": "3483aeb09776d1ce2f65ab61192d338fe30ce8771e917b7b95339f8a2169cbb7"
+    },
+    {
+      "task": "fn_00003bb4",
+      "result": "exact-range-bytes",
+      "expected_bytes": 10,
+      "actual_bytes": 10,
+      "actual_sha256": "8e5b06f4efd978c49e656acbe37be6cfecec1543dc84d506b29f557853c81a25",
+      "source_sha256": "576c28ff70e5ac8fd4938bd11cc46f798337ea72c89d43f83b8ceaf07e49309c"
+    },
+    {
+      "task": "fn_0000e4ee",
+      "result": "exact-range-bytes",
+      "expected_bytes": 14,
+      "actual_bytes": 14,
+      "actual_sha256": "e700f45b3c6ba4b1041d8e76b95086dc5264d96b81111433aa81cb58aa10237a",
+      "source_sha256": "eb730dc49a5a86863952a2253f0ba2e08a1cb003c73f550b5e9671028774c500"
+    },
+    {
+      "task": "fn_0000e4fc",
+      "result": "exact-range-bytes",
+      "expected_bytes": 22,
+      "actual_bytes": 22,
+      "actual_sha256": "712f83795532adc5e6ba348158a5dd80be2669facd72d8e7443117ec804e35c6",
+      "source_sha256": "218f383db38a2d30f84f6fe3a89644f0e68a1ecc1838e1ac3c347c6d1ee90d32"
+    },
+    {
+      "task": "fn_0000e540",
+      "result": "exact-range-bytes",
+      "expected_bytes": 8,
+      "actual_bytes": 8,
+      "actual_sha256": "43c74ff5fc4986718af54ea65731a201de97ac3241f710a08cf154636d61d32e",
+      "source_sha256": "c0a9d39b2ae43905b4ae1b87402adddd9360aff3023b3760c125a9e054d36b88"
+    },
+    {
+      "task": "fn_0000e548",
+      "result": "exact-range-bytes",
+      "expected_bytes": 16,
+      "actual_bytes": 16,
+      "actual_sha256": "04e53681093316a093f0ac635bc4d05dbe612bfe3e77f87d74fb5b3edafa124e",
+      "source_sha256": "9927d3bc9ab819d66a42b2786b90ec2daf8c1e1bf0bfe33c349618d04e445a5b"
+    }
+  ],
+  "offline_tests": {
+    "run": 102,
+    "passed": 102,
+    "skipped": 0
+  },
+  "real_tool_controls": {
+    "passed": 7,
+    "total": 7
+  },
+  "cli_checks": {
+    "exact_exit": 0,
+    "wrong_constant_exit": 2
+  },
+  "queue_check": {
+    "temporary_copy": ".decomp/armcc-queue-smoke.lok8Da/queue.sqlite3",
+    "live_function_claims": 0,
+    "live_queue_sha256_before": "3685241591d4da9d385ac611d97d5adb8ab2afee0d6afc5452a93b2b202dd83d"
+  },
+  "artifacts": [
+    {
+      "path": ".decomp/calibration-armcc5-v5/report.json",
+      "bytes": 11754,
+      "sha256": "7b6b677c79f8e74fa77f4620f4ffe4717e26f621c6119b046350f01843993742"
+    },
+    {
+      "path": ".decomp/pilot-armcc5-v1/replay-01/report.json",
+      "bytes": 3569,
+      "sha256": "38796e42a7d71e3a90ad8b0b7ad2f77bc692f31e23793f40e58d592280890696"
+    },
+    {
+      "path": ".decomp/pilot-armcc5-v1/controls-01/report.json",
+      "bytes": 9330,
+      "sha256": "cb90467dd097aa6393f0e543b86bc67f46f6ea555096f9d3cda869413cdaae1e"
+    },
+    {
+      "path": ".decomp/pilot-armcc5-v1/lock.json",
+      "bytes": 12387,
+      "sha256": "2c2e3416849c68cade707434e9589c8c2806721fef9f02bd7b68c5286abc0c4a"
+    }
+  ],
+  "certified_match": false,
+  "matching_coverage": "unknown",
+  "full_image_verifier": "not_implemented",
+  "hardware_access": false,
+  "worker_launches": 0
+}

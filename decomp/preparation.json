@@ -1,9 +1,12 @@
 {
   "schema_version": 1,
-  "ready": false,
-  "reason": "Runtime-helper analysis repaired and replayed. Local ARMCC5 synthetic compile/link access now works under Wine. Worker launches remain held pending stock compiler calibration and reviewed build/comparison integration. The exploratory pilot alone does not meet the user's requested preparation standard.",
-  "evidence": "decomp/results/preparation/notes.md",
+  "ready": true,
+  "reason": "Runtime-helper analysis repaired and replayed; ARMCC5 b960 reproduces all six fixed calibration ranges through a pinned, tested leaf comparison path. Ready only for these reviewed assignments after the user assigns a run/budget and commits the preparation. This is not historical compiler proof, match certification, full-image support or a hardware verdict.",
+  "allowed_function_ids": ["fn_00003b48", "fn_00003bb4", "fn_0000e4ee", "fn_0000e4fc", "fn_0000e540", "fn_0000e548"],
+  "evidence": "decomp/results/preparation/armcc-calibration.md",
   "runtime_helper_analysis": "validated_bounded_model",
-  "compiler_configuration": "unresolved",
-  "build_verifier_integration": "pending_compiler_calibration"
+  "compiler_configuration": "armcc5_06u7_b960_calibrated_six_leaves",
+  "build_verifier_integration": "pinned_leaf_feedback_validated",
+  "full_image_verifier": "not_implemented",
+  "matching_coverage": "unknown"
 }

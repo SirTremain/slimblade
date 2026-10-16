@@ -14,6 +14,8 @@ from datetime import datetime, timezone
 ROOT = Path(__file__).resolve().parents[1]
 IDENTIFIER = re.compile(r"[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}\Z")
 SHA256 = re.compile(r"[0-9a-f]{64}\Z")
+COMPARATORS = {"stock-leaf-pilot-feedback-v1": "stock_compare",
+               "armcc5-leaf-feedback-v1": "armcc_compare"}
 
 
 def digest(data):
@@ -84,7 +86,7 @@ def load_tasks(root):
             require(task["boundary_review"] and
                     "REPLACE" not in task["boundary_review"], "unreviewed boundary")
             if "comparison_scope" in task:
-                require(task["comparison_scope"] == "stock-leaf-pilot-feedback-v1",
+                require(task["comparison_scope"] in COMPARATORS,
                         "unknown comparison scope")
                 comparison = task["comparison"]
                 relative_path(comparison["lock_path"])
@@ -138,12 +140,23 @@ def evidence_check(root, baseline, task):
     for name in ("listing.txt", "context.md"):
         require((path / name).is_file(), f"packet missing {name}")
     if "comparison_scope" in task:
-        import stock_compare
+        comparator = __import__(COMPARATORS[task["comparison_scope"]])
         comparison = task["comparison"]
-        lock = stock_compare.load_lock(root / comparison["lock_path"], comparison["lock_sha256"])
+        lock = comparator.load_lock(root / comparison["lock_path"], comparison["lock_sha256"])
         definition = {k: v for k, v in task.items() if k != "comparison"}
         require(lock["tasks"][task["id"]]["task_sha256"] ==
-                digest(stock_compare.encode(definition)), "task differs from comparison lock")
+                digest((json.dumps(definition, sort_keys=True, indent=2) + "\n").encode()),
+                "task differs from comparison lock")
+        require(lock["baseline"]["sha256"] == baseline["sha256"] and
+                lock["baseline_bytes"] == baseline["bytes"], "comparison baseline mismatch")
+        if task["comparison_scope"] == "armcc5-leaf-feedback-v1":
+            pinned = lock["tasks"][task["id"]]
+            require(len(task["ranges"]) == 1 and
+                    int(task["ranges"][0]["start"], 16) == int(pinned["entry"], 16) and
+                    int(task["ranges"][0]["end_exclusive"], 16) == int(pinned["end_exclusive"], 16),
+                    "comparison range mismatch")
+            require(all(task[k] == pinned[k] for k in ("entry", "mode", "signature", "abi_status")),
+                    "comparison ABI/entry mismatch")
 
 
 def connect(state):
@@ -169,13 +182,19 @@ def ready(task, states):
     return all(states.get(dep, {}).get("state") == "accepted" for dep in task["depends_on"])
 
 
-def preparation_ready(root):
+def preparation_ready(root, task=None):
     path = root / "decomp/preparation.json"
     if not path.exists():
         return False  # Fail closed: deleting the gate must not enable workers.
     gate = read_json(path)
     require(gate.get("schema_version") == 1 and isinstance(gate.get("ready"), bool),
             "invalid preparation gate")
+    if gate["ready"]:
+        ids = gate.get("allowed_function_ids")
+        require(isinstance(ids, list) and all(isinstance(i, str) and IDENTIFIER.fullmatch(i) for i in ids)
+                and len(set(ids)) == len(ids), "ready gate requires explicit function scope")
+        if task is not None:
+            return task["id"] in ids
     return gate["ready"]
 
 
@@ -188,14 +207,19 @@ def prompt(root, baseline, task, worker):
     )
     if "comparison" in task:
         c = task["comparison"]
-        command = ["python3", str(root / "tools/stock_compare.py"), "verify", "--lock",
+        script = COMPARATORS[task["comparison_scope"]] + ".py"
+        command = ["python3", str(root / "tools" / script), "verify", "--lock",
                    str(root / c["lock_path"]), "--lock-sha256", c["lock_sha256"], "--task", task["id"],
                    "--source", f"decomp/src/{task['id']}.c", "--output", f"decomp/results/{task['id']}/attempt-01"]
-        output += (f"\nMain coordinator root (read-only to worker): {root}\n\n"
+        output += (f"\nMain coordinator root (not a worker mount): {root}\n\n"
                    f"Evidence directory: {root / task['evidence_path']}\n\n"
-                   "Run from your assigned worker worktree. Change only the attempt output suffix for each build; "
+                   "Working directory for this command: the assigned worker worktree. Change only the attempt output suffix for each build; "
                    "never reuse an output directory. Exit 0 means exact range bytes, 2 means a byte/size mismatch, "
                    "1 means rejected source/build or changed trusted inputs. None certifies a recovered function.\n\n"
+                   "For ARMCC tasks, send the command and source path to the coordinator build service; "
+                   "workers must not receive access to the private licensed Wine prefix. The coordinator "
+                   "runs one compiler job at a time and returns the redacted attempt outputs. A busy-lock "
+                   "rejection is a scheduling retry, not a source attempt.\n\n"
                    "```sh\n" + shlex.join(command) + "\n```\n")
     return output
 
@@ -213,6 +237,8 @@ def execute(args):
               "whole-image verifier not implemented; matching coverage unknown")
         if not preparation_ready(root):
             print("Preparation BLOCKED: function claims disabled; see decomp/preparation.json")
+        else:
+            print("Preparation READY for the reviewed scope only; user-assigned run/budget still required")
         return
     if args.command == "verify-input":
         data = args.image.read_bytes()
@@ -242,7 +268,7 @@ def execute(args):
                     require(IDENTIFIER.fullmatch(args.worker), "invalid worker ID")
                     require(row is None or row["state"] == "queued", "task already owned")
                     require(ready(task, states), "dependencies not accepted")
-                    require(task["kind"] != "function" or preparation_ready(root),
+                    require(task["kind"] != "function" or preparation_ready(root, task),
                             "preparation blockers unresolved; function claims disabled")
                     packet = prompt(root, baseline, task, args.worker)
                     db.execute("INSERT OR REPLACE INTO tasks VALUES (?,?,?,?,?,NULL,NULL,NULL,NULL)",
@@ -300,7 +326,7 @@ def execute(args):
             status = row.get("state", "queued")
             if status == "queued" and not ready(task, states):
                 status = "waiting"
-            if status == "queued" and task["kind"] == "function" and not preparation_ready(root):
+            if status == "queued" and task["kind"] == "function" and not preparation_ready(root, task):
                 status = "blocked"
             print(f"{ident:28} {status:10} {row.get('worker', '-')}")
         count = sum(task["kind"] == "function" for task in tasks.values())

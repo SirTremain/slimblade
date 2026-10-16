@@ -13,8 +13,9 @@ inventory or a stock-matching pipeline.
 Later still, the [pilot-readiness review](../decomp/results/pilot-readiness/notes.md)
 accepted the three setup deliverables with explicit corrections/limitations
 and prepared six separately reviewed leaf tasks. The latest
-[preparation pass](preparation.md) repairs the runtime helper but holds worker
-launches for compiler/build readiness. The submitted-state descriptions below record
+[preparation pass](preparation.md) repaired the runtime helper and calibrated
+a pinned ARMCC5 comparison path for those six tasks. A user-assigned run/budget
+is still required. The submitted-state descriptions below record
 the earlier session, not today's queue.
 
 Completed 2026-10-16 in one coordinator session from commit
