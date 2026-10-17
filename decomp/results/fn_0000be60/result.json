@@ -1,0 +1,41 @@
+{
+  "task": "fn_0000be60",
+  "worker": "luna-b3-0000be60",
+  "status": "draft",
+  "observations": [
+    "0x0000be60 saves r4 and lr; 0x0000be62 calls 0x0000bd7c with incoming r0-r2 unchanged; 0x0000be66 clears r0; 0x0000be68 restores r4 and returns.",
+    "Caller 0x0000791c passes r4, 0, 1 and does not consume this wrapper's return.",
+    "Callee evidence shows object accesses and further calls/global access, so the call has side effects that this wrapper must preserve."
+  ],
+  "inferences": [
+    "The assigned C signature and pinned callee prototype are used as hypotheses; original source declarations and exact ABI provenance remain unconfirmed."
+  ],
+  "open_questions": [
+    "Independent full source/ABI, aliasing and clobber review is pending.",
+    "Exact-range compilation feedback is pending from the coordinator."
+  ],
+  "validation": [
+    "Manually cross-checked /evidence/listing.txt, /evidence/instructions.json, /evidence/llvm.txt, /evidence/references.json and caller/callee context.",
+    "Compiler/comparator not run by worker per enforced runner handoff; no exact-range match is claimed."
+  ],
+  "attempts": 0,
+  "elapsed_minutes": 0,
+  "model": "GPT-6 (Codex)",
+  "source_commit": "6c82af5dcc32159e7ace04d8736086267d0fbe4c",
+  "proposed_shared_changes": [],
+  "next_step": "Coordinator: compile this source candidate with the assigned pinned command and return redacted feedback for the next bounded iteration.",
+  "coordinator_review": {
+    "reviewer": "coordinator-batch3-20261017",
+    "decision": "reviewed_draft_not_certified_match",
+    "source_sha256": "231d95bbdfa41919cca3e728db1f273e1763df3570e1d0ece8c4ded7f1e1e455",
+    "exact_range_bytes": 10,
+    "differing_bytes": 0,
+    "independent_rebuild": true,
+    "ledger_attempts": 1,
+    "worker_turns": 1,
+    "requested_worker_model": "gpt-6-luna",
+    "source_review": "coordinator-review.md",
+    "worker_metadata_note": "Worker model/timing fields are retained as self-report; runner assignment/checkpoints establish gpt-6-luna and elapsed time. Initial quota failures launched no model. fn_000112b0 second turn wrote this blocked report before the supervisor stopped it at the original deadline; no source change.",
+    "remaining_uncertainty": "Historical declarations, compiler provenance, hidden callers and external callee implementations remain unresolved. No whole-image certification; matching coverage unknown."
+  }
+}

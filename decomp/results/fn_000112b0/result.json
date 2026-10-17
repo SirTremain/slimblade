@@ -1,0 +1,43 @@
+{
+  "task": "fn_000112b0",
+  "worker": "luna-b3-000112b0",
+  "status": "blocked",
+  "observations": [
+    "At 0x000112b0..0x000112ba the original Thumb sequence is PUSH {r4,lr} at 0x112b0, MOVS r0,#0 at 0x112b2, BL 0x0000e58c at 0x112b4, then POP {r4,pc} at 0x112b8.",
+    "Coordinator feedback for candidate attempt 1 reports the BL relocation correct at offset 4 and four of ten bytes differing because MOVS was scheduled before PUSH.",
+    "The source candidate calls the pinned external fn_0000e58c(unsigned int) with 0u and returns void; the packet provides no local state or additional side effect that would justify forcing a different scheduling order."
+  ],
+  "inferences": [
+    "The current mismatch is compiler instruction scheduling, not evidence of incorrect call target or argument behavior."
+  ],
+  "open_questions": [
+    "Whether an ordinary-C expression grounded in the original source can make the pinned compiler schedule PUSH before MOVS is unresolved; no evidence supports introducing extra state or side effects to force it.",
+    "Original source declarations and compiler provenance remain hypotheses; this candidate is not a certified reconstruction."
+  ],
+  "validation": [
+    "Reviewed /evidence/listing.txt, /evidence/instructions.json, /evidence/context.md, /evidence/llvm.txt, /evidence/metadata.json, /evidence/references.json, and /evidence/callee-instructions.json for the addressed body, Thumb state, caller, and callee contract.",
+    "Coordinator supplied attempt-1 redacted feedback: unchanged pins, four of ten bytes differ, with MOVS before PUSH and BL relocation correct at offset 4.",
+    "No new compiler command run, as required by the enforced runner handoff. No exact-range match verified."
+  ],
+  "attempts": 1,
+  "elapsed_minutes": 0,
+  "model": "GPT-6",
+  "source_commit": "6c82af5dcc32159e7ace04d8736086267d0fbe4c",
+  "proposed_shared_changes": [],
+  "next_step": "Coordinator: retain the evidence-backed instruction-scheduling blocker unless a source-supported ordinary-C candidate is identified; do not claim a match.",
+  "coordinator_review": {
+    "reviewer": "coordinator-batch3-20261017",
+    "decision": "terminal_block",
+    "source_sha256": "52a25180e6f144708e43b08c1b68aeadefa8c8730682f92769fc3d744ff33807",
+    "exact_range_bytes": 0,
+    "differing_bytes": 4,
+    "independent_rebuild": false,
+    "ledger_attempts": 1,
+    "worker_turns": 2,
+    "requested_worker_model": "gpt-6-luna",
+    "source_review": "coordinator-review.md",
+    "worker_metadata_note": "Worker model/timing fields are retained as self-report; runner assignment/checkpoints establish gpt-6-luna and elapsed time. Initial quota failures launched no model. fn_000112b0 second turn wrote this blocked report before the supervisor stopped it at the original deadline; no source change.",
+    "remaining_uncertainty": "Historical declarations, compiler provenance, hidden callers and external callee implementations remain unresolved. No whole-image certification; matching coverage unknown.",
+    "blocker": "Four-byte PUSH/MOVS scheduling mismatch under unchanged pinned compiler; original 20-minute claim deadline expired. No verified improved candidate and no further source-editing/rebuild budget granted."
+  }
+}
