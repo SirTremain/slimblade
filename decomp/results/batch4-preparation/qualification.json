@@ -1,0 +1,114 @@
+{
+  "certified_match": false,
+  "note": "Existing synthetic negative/repeat controls and ten stock-leaf regressions; no new candidate C or compiler invocation in batch-4 intake. Not whole-image certification.",
+  "profile_sha256": "2c2e3416849c68cade707434e9589c8c2806721fef9f02bd7b68c5286abc0c4a",
+  "results": [
+    {
+      "control": "changed-constant",
+      "passed": true,
+      "result": "mismatch_or_rejected"
+    },
+    {
+      "control": "changed-signedness",
+      "passed": true,
+      "result": "mismatch_or_rejected"
+    },
+    {
+      "control": "missing-store",
+      "passed": true,
+      "result": "mismatch_or_rejected"
+    },
+    {
+      "control": "changed-literal",
+      "passed": true,
+      "result": "mismatch_or_rejected"
+    },
+    {
+      "control": "two-byte-entry-repeat",
+      "passed": true,
+      "result": "exact-range-bytes"
+    },
+    {
+      "control": "repeat",
+      "passed": true,
+      "result": "exact-range-bytes"
+    },
+    {
+      "control": "wrong-signature",
+      "passed": true,
+      "result": "mismatch_or_rejected"
+    },
+    {
+      "control": "regression/fn_00003b48",
+      "passed": true,
+      "result": "exact-range-bytes",
+      "task": "fn_00003b48"
+    },
+    {
+      "control": "regression/fn_00003bb4",
+      "passed": true,
+      "result": "exact-range-bytes",
+      "task": "fn_00003bb4"
+    },
+    {
+      "control": "regression/fn_0000e4ee",
+      "passed": true,
+      "result": "exact-range-bytes",
+      "task": "fn_0000e4ee"
+    },
+    {
+      "control": "regression/fn_0000e4fc",
+      "passed": true,
+      "result": "exact-range-bytes",
+      "task": "fn_0000e4fc"
+    },
+    {
+      "control": "regression/fn_0000e540",
+      "passed": true,
+      "result": "exact-range-bytes",
+      "task": "fn_0000e540"
+    },
+    {
+      "control": "regression/fn_0000e548",
+      "passed": true,
+      "result": "exact-range-bytes",
+      "task": "fn_0000e548"
+    },
+    {
+      "control": "regression/fn_00013f58",
+      "passed": true,
+      "result": "exact-range-bytes",
+      "task": "fn_00013f58"
+    },
+    {
+      "control": "regression/fn_00013f72",
+      "passed": true,
+      "result": "exact-range-bytes",
+      "task": "fn_00013f72"
+    },
+    {
+      "control": "regression/fn_000154d4",
+      "passed": true,
+      "result": "exact-range-bytes",
+      "task": "fn_000154d4"
+    },
+    {
+      "control": "regression/fn_00018100",
+      "passed": true,
+      "result": "exact-range-bytes",
+      "task": "fn_00018100"
+    }
+  ],
+  "schema_version": 1,
+  "scope": "existing-leaf-profile-qualification-evidence",
+  "sources": [
+    {
+      "path": ".decomp/pilot-armcc5-v1/controls-01/report.json",
+      "sha256": "cb90467dd097aa6393f0e543b86bc67f46f6ea555096f9d3cda869413cdaae1e"
+    },
+    {
+      "path": ".decomp/broader-controls-v1/report.json",
+      "sha256": "ef238a9db8a72a6c4ba99e69c65be233e073341b09335db7b75d9d1b9994ee36"
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "status": "reviewed_selection_not_run_authorization",
+  "tasks": [
+    {
+      "id": "fn_00009fe2", "entry": "0x00009fe2", "end_exclusive": "0x0000a012",
+      "mode": "thumb", "signature": "unsigned int (unsigned int)",
+      "abi_status": "hypothesis_requires_review",
+      "review": "Register-only 48-byte leaf. Incoming r0 is compared as unsigned against 0x25, 0x26, 0x27 and 0xb; internal branches and explicit narrowing feed the returned r0. Only r0/r1 and flags are written; r2/r3, stack and higher registers are preserved. Callers at 0x80b6 and 0x9da2 consume the result, forwarding it to 0x2de4; the latter also stores its low byte at object offset 0x7a. Caller 0x80b4 supplies a byte; the other value comes from 0x9fa0. Do not infer a byte-only input domain or semantic key/protocol names. Unsigned-int signature is a compatible hypothesis, not the original declaration. No memory access or outgoing call in the owned body. Preserve all unsigned conditions and narrowing; check actual scratch clobbers, not just generic AAPCS allowances."
+    },
+    {
+      "id": "fn_00011e38", "entry": "0x00011e38", "end_exclusive": "0x00011e48",
+      "mode": "thumb", "signature": "void (unsigned char *, unsigned int)",
+      "abi_status": "hypothesis_requires_review",
+      "review": "Four ordered STRB writes to incoming r0 offsets 0..3 with logical shifts of r1. r0 remains unchanged; r1/r2 and flags change; r3 is preserved. No memory reads, stack or calls. Callers 0x17ca8, 0x17cb0, 0x17cba, 0x17cc4 supply r5 plus 0/4/8/12 and word-loaded values, and do not consume a return. Critically, r3 is live across these calls as a base for later LDR instructions: preserving it is mandatory even though AAPCS permits scratch clobbers. Pointer alignment/domain/volatile qualifiers and unseen callers remain unknown; no wider stores, restrict, library calls or invented alignment. Body is byte-identical to reviewed fn_0000e548, but this address has separate callers/ownership. Reuse that fact as evidence, not as proof of this ABI or automatic acceptance. No new C is supplied in preparation."
+    },
+    {
+      "id": "fn_00015e0c", "entry": "0x00015e0c", "end_exclusive": "0x00015e2a",
+      "mode": "thumb", "signature": "unsigned int (unsigned int, unsigned int)",
+      "abi_status": "hypothesis_requires_review",
+      "review": "Register-only 30-byte leaf. Logical right shifts by seven, comparisons against zero and 0xff, conditional and unconditional internal branches select the original r1 or constants 0x7f/0x81 for r0. It writes r0/r1/r2 and flags, preserves r3 and higher registers, and has no memory, calls or stack. Known callers 0x1b480 and 0x1b48c pass LDRB-derived r0/r1 and store the low byte of r0 to stack offsets 1/2. That observed domain does not prove all callers use bytes; retain full unsigned 32-bit semantics and do not replace logical shifts with signed tests. Original declarations, semantic purpose and hidden callers remain unknown. Source/ABI/clobber review remains independent of exact-range feedback."
+    }
+  ],
+  "excluded": [
+    {"id": "fn_00015724", "reason": "Constructs fixed address 0x800000 and performs word writes at +0x18/+0x30. MMIO/data ownership is outside current leaf admission; register-only address construction must not evade that restriction."},
+    {"id": "fn_000178dc", "reason": "Branch escapes its saved body to 0x178d0; shared flow/ownership requires separate review."},
+    {"id": "fn_00006464", "reason": "Existing call calibration specimen; not a fresh discovery or worker assignment."},
+    {"id": "fn_00006500", "reason": "Existing call calibration specimen; not a fresh discovery or worker assignment."},
+    {"id": "fn_000112b0", "reason": "Terminal blocked batch-3 task; no retry budget or reconciliation assigned."}
+  ]
+}

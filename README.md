@@ -19,9 +19,10 @@ Current state: **both leaf batches are complete: ten drafts reviewed**.
 exact-range rebuilds of 174 owned bytes, not certified matching coverage.
 The [broader workflow](docs/broader-workflow.md) now supports qualified direct
 Thumb calls, explicit dependency/byte accounting and pinned batch admission.
-**Batch 3 prepares fn_0000be60 and fn_000112b0**, with no precomputed C or worker
-launch. Review and commit preparation, then assign its bounded run.
-[Start here](docs/broader-workflow.md#next-run) for the handoff and copyable prompt.
+Batch 3 finished with one more reviewed draft and one blocked candidate.
+**[Batch 4](docs/batch-4.md) prepares three Rea-assisted leaves**, with no candidate
+C generated or worker launch. Review and commit preparation, then assign its
+bounded run. [Start here](docs/batch-4.md#next-run) for the current handoff.
 The runtime-helper analysis has been repaired and independently replayed;
 the corrected inventory has zero saved analysis errors, not blanket boundary
 approval. ARMCC 5.06u7 b960 runs headlessly on Linux through Wine and reproduces

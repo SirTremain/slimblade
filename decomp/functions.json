@@ -434,8 +434,110 @@
       ],
       "signature": "void (void)",
       "title": "Batch 3 direct-call body 0x000112b0"
+    },
+    {
+      "abi_status": "hypothesis_requires_review",
+      "acceptance": "Independent full-diff/source/ABI/clobber review and fresh unchanged-source exact-range rebuild; not certification.",
+      "allowed_paths": [
+        "decomp/src/fn_00009fe2.c",
+        "decomp/results/fn_00009fe2/"
+      ],
+      "boundary_review": "2026-10-17 coordinator: original bytes, fresh Ghidra per-instruction mode/flow, unique ownership, LLVM, Rea and addressed caller review; docs/batch-4.md.",
+      "comparison": {
+        "lock_path": ".decomp/rea-batch4-v2/lock.json",
+        "lock_sha256": "16c0d91990135f1012122072e5e41514d3100108abcee7c34fcab4c951944703"
+      },
+      "comparison_scope": "armcc5-leaf-feedback-v1",
+      "depends_on": [
+        "bootstrap-inventory",
+        "bootstrap-toolchain",
+        "bootstrap-verifier"
+      ],
+      "entry": "0x00009fe2",
+      "evidence_path": ".decomp/evidence/rea-batch4-v2/fn_00009fe2",
+      "evidence_sha256": "15ce2b72c1cd299be0e242f4cea4b3b2547bb428d2b8af4b032d581a15f01222",
+      "id": "fn_00009fe2",
+      "instructions": "Read the packet, docs/batch-4.md and docs/rea.md. Recover only this leaf using the unchanged ARMCC5 profile. Treat Rea pseudocode as a hypothesis; preserve widths, unsigned conditions, byte ordering, aliasing and actual scratch-register effects. No calls, absolute globals, asm, intrinsics, raw instruction data or pin changes. Coordinator guarded builds only. Stop at 20 minutes/8 attempts/3 non-improving attempts. Submit draft or blocked, never matched.",
+      "kind": "function",
+      "mode": "thumb",
+      "ranges": [
+        {
+          "end_exclusive": "0x0000a012",
+          "start": "0x00009fe2"
+        }
+      ],
+      "signature": "unsigned int (unsigned int)",
+      "title": "Batch 4 Rea-assisted leaf 0x00009fe2"
+    },
+    {
+      "abi_status": "hypothesis_requires_review",
+      "acceptance": "Independent full-diff/source/ABI/clobber review and fresh unchanged-source exact-range rebuild; not certification.",
+      "allowed_paths": [
+        "decomp/src/fn_00011e38.c",
+        "decomp/results/fn_00011e38/"
+      ],
+      "boundary_review": "2026-10-17 coordinator: original bytes, fresh Ghidra per-instruction mode/flow, unique ownership, LLVM, Rea and addressed caller review; docs/batch-4.md.",
+      "comparison": {
+        "lock_path": ".decomp/rea-batch4-v2/lock.json",
+        "lock_sha256": "16c0d91990135f1012122072e5e41514d3100108abcee7c34fcab4c951944703"
+      },
+      "comparison_scope": "armcc5-leaf-feedback-v1",
+      "depends_on": [
+        "bootstrap-inventory",
+        "bootstrap-toolchain",
+        "bootstrap-verifier"
+      ],
+      "entry": "0x00011e38",
+      "evidence_path": ".decomp/evidence/rea-batch4-v2/fn_00011e38",
+      "evidence_sha256": "4e5e317da7826473de5b9c17cd3937a670d435364c045d4ca33522ece8e1a24f",
+      "id": "fn_00011e38",
+      "instructions": "Read the packet, docs/batch-4.md and docs/rea.md. Recover only this leaf using the unchanged ARMCC5 profile. Treat Rea pseudocode as a hypothesis; preserve widths, unsigned conditions, byte ordering, aliasing and actual scratch-register effects. No calls, absolute globals, asm, intrinsics, raw instruction data or pin changes. Coordinator guarded builds only. Stop at 20 minutes/8 attempts/3 non-improving attempts. Submit draft or blocked, never matched.",
+      "kind": "function",
+      "mode": "thumb",
+      "ranges": [
+        {
+          "end_exclusive": "0x00011e48",
+          "start": "0x00011e38"
+        }
+      ],
+      "signature": "void (unsigned char *, unsigned int)",
+      "title": "Batch 4 Rea-assisted leaf 0x00011e38"
+    },
+    {
+      "abi_status": "hypothesis_requires_review",
+      "acceptance": "Independent full-diff/source/ABI/clobber review and fresh unchanged-source exact-range rebuild; not certification.",
+      "allowed_paths": [
+        "decomp/src/fn_00015e0c.c",
+        "decomp/results/fn_00015e0c/"
+      ],
+      "boundary_review": "2026-10-17 coordinator: original bytes, fresh Ghidra per-instruction mode/flow, unique ownership, LLVM, Rea and addressed caller review; docs/batch-4.md.",
+      "comparison": {
+        "lock_path": ".decomp/rea-batch4-v2/lock.json",
+        "lock_sha256": "16c0d91990135f1012122072e5e41514d3100108abcee7c34fcab4c951944703"
+      },
+      "comparison_scope": "armcc5-leaf-feedback-v1",
+      "depends_on": [
+        "bootstrap-inventory",
+        "bootstrap-toolchain",
+        "bootstrap-verifier"
+      ],
+      "entry": "0x00015e0c",
+      "evidence_path": ".decomp/evidence/rea-batch4-v2/fn_00015e0c",
+      "evidence_sha256": "e857b9304d77580d6bb6219456d9aa76275b5d1390e16d2c313a9f6f8f896ff8",
+      "id": "fn_00015e0c",
+      "instructions": "Read the packet, docs/batch-4.md and docs/rea.md. Recover only this leaf using the unchanged ARMCC5 profile. Treat Rea pseudocode as a hypothesis; preserve widths, unsigned conditions, byte ordering, aliasing and actual scratch-register effects. No calls, absolute globals, asm, intrinsics, raw instruction data or pin changes. Coordinator guarded builds only. Stop at 20 minutes/8 attempts/3 non-improving attempts. Submit draft or blocked, never matched.",
+      "kind": "function",
+      "mode": "thumb",
+      "ranges": [
+        {
+          "end_exclusive": "0x00015e2a",
+          "start": "0x00015e0c"
+        }
+      ],
+      "signature": "unsigned int (unsigned int, unsigned int)",
+      "title": "Batch 4 Rea-assisted leaf 0x00015e0c"
     }
   ],
-  "inventory_status": "six_reviewed_drafts_and_four_reviewed_batch_2_assignments_global_inventory_unapproved",
+  "inventory_status": "eleven_reviewed_one_blocked_three_prepared_global_inventory_unapproved",
   "schema_version": 1
 }

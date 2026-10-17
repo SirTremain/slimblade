@@ -1,18 +1,18 @@
 # Preparation status
 
-Current scope: **broader guarded call workflow and two batch-3 assignments**.
-Both leaf batches are complete: ten reviewed drafts, with unchanged pins and
-fresh ten-source regression checks. The [broader handoff](broader-workflow.md)
-and [preparation report](../decomp/results/broader-preparation/notes.md) describe
-stock-call qualification, explicit callee/dependency contracts and frozen batch
-admission. This is not full-image support. Preparation must be committed before
+Current scope: **three Rea-assisted batch-4 leaves**, described in the
+[current handoff](batch-4.md) and [preparation report](../decomp/results/batch4-preparation/notes.md).
+Batches 1–3 are terminal: eleven reviewed drafts and one blocked task.
+Existing compiler/verifier profiles are unchanged. Batch 4 has fresh immutable
+packets and a task lock; retained Rea observations supplement original byte/ABI
+evidence. This is not full-image support. Preparation must be committed before
 worker worktrees are created, and a separate user-assigned run is required.
 
 The following sections are the **historical first-pilot preparation record**.
 That [six-task pilot completed](../decomp/results/pilot-run-20261016/notes.md)
 with all six drafts reviewed and independently rebuilt. Its old launch steps
 are not instructions to reclaim those tasks. [Expansion](expansion.md) likewise
-archives the completed batch-2 procedure; use the broader handoff for current work.
+archives the completed batch-2 procedure; use the batch-4 handoff for current work.
 
 At the first pilot's pre-launch review on 2026-10-16, preparation was complete
 for six functions. That run and its prerequisite commit have since happened;

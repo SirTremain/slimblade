@@ -21,10 +21,10 @@ import swarm_build as sb
 class HandoffTests(unittest.TestCase):
     def test_actual_batch_definitions_gate_and_policy_agree(self):
         _, tasks = decomp.load_tasks(ROOT)
-        proposal = json.loads((ROOT / 'decomp/proposals/batch-3-calls.json').read_text())
         gate = json.loads((ROOT / 'decomp/preparation.json').read_text())
         policy = json.loads((ROOT / 'decomp/swarm-policy.json').read_text())
         batch = json.loads((ROOT / policy['batch']['path']).read_text())
+        proposal = json.loads((ROOT / batch.get('proposal', 'decomp/proposals/batch-3-calls.json')).read_text())
         expected = set(batch['tasks'])
         self.assertEqual(expected, {t['id'] for t in proposal['functions']})
         self.assertTrue(gate['ready'])
@@ -48,6 +48,10 @@ class HandoffTests(unittest.TestCase):
                              '2c2e3416849c68cade707434e9589c8c2806721fef9f02bd7b68c5286abc0c4a')
         self.assertNotIn('fn_00006464', tasks)
         self.assertNotIn('fn_00006500', tasks)
+        # Historical batch-3 tasks remain intact but are outside the new gate.
+        for ident in ('fn_0000be60', 'fn_000112b0'):
+            with patch('reconstruction.load_batch', return_value=batch):
+                self.assertFalse(decomp.preparation_ready(ROOT, tasks[ident]))
 
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix='slimblade-handoff-test-')

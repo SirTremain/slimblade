@@ -1,5 +1,9 @@
 # Broader offline reconstruction workflow
 
+Current handoff: [batch 4](batch-4.md). Batch 3 has finished with one reviewed
+draft and one terminal blocked task; its manifest and startup prompt below are
+historical preparation evidence, not instructions to reclaim those tasks.
+
 Updated 2026-10-17. Both leaf batches are complete: ten reviewed drafts, not
 certified matches. This preparation adds a reusable intake path beyond leaves;
 it prepares batch 3 but does not start workers or implement full-image reconstruction.

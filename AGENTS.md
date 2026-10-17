@@ -29,9 +29,9 @@ supported ingestion path and SDK/device compatibility before implementation.
 
 - Read the project plan, [the workflow](docs/workflow.md) and your assigned task
   packet. Historical notes are evidence, not current operating instructions.
-- Both leaf batches are complete: ten reviewed drafts. The
-  [preparation gate](decomp/preparation.json) selects only batch 3's
-  fn_0000be60 and fn_000112b0. Follow [broader workflow intake](docs/broader-workflow.md)
+- Batches 1–3 are terminal: eleven reviewed drafts and fn_000112b0 blocked. The
+  [preparation gate](decomp/preparation.json) selects only [batch 4](docs/batch-4.md):
+  fn_00009fe2, fn_00011e38 and fn_00015e0c. Follow [broader workflow intake](docs/broader-workflow.md)
   for dependency contracts, immutable packet/profile pins and batch preflight.
   Check [preparation.md](docs/preparation.md) and local pins before a separately
   user-budgeted run. Call feedback is bounded, not arbitrary-function support.

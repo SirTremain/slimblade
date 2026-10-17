@@ -181,7 +181,9 @@ The [second run](../decomp/results/batch2-run-20261017/notes.md) is also complet
 four more reviewed drafts using the unchanged ARMCC5 profile. The
 [broader workflow](broader-workflow.md) adds stock-qualified direct-call feedback,
 guarded dispatch, frozen batch admission and explicit byte/dependency accounting.
-Batch 3 prepares only fn_0000be60 and fn_000112b0; their C has not been generated.
+[Batch 3 finished](../decomp/results/batch3-run-20261017/notes.md): fn_0000be60 is
+reviewed and fn_000112b0 is terminal blocked. [Batch 4](batch-4.md) prepares three
+new leaves with retained Rea evidence and unchanged compiler/verifier profiles.
 Two earlier wrapper specimens serve as calibration, not worker assignments.
 New runs require committed preparation, an explicit assignment and live quota.
 

@@ -21,11 +21,11 @@ submitted assignments or treating old startup prompts as a new work order.
 The [first six-task run](../decomp/results/pilot-run-20261016/notes.md) is complete:
 all six drafts are reviewed and independently rebuilt. Do not reclaim them.
 The [second run](../decomp/results/batch2-run-20261017/notes.md) is also complete;
-do not reclaim its four tasks. [Broader preparation](broader-workflow.md) selects
-two fresh call-bearing tasks for batch 3. The global inventory and calibration
-specimens remain outside the active gate.
+do not reclaim its four tasks. Batch 3 is also terminal: fn_0000be60 reviewed and
+fn_000112b0 blocked. [Batch 4](batch-4.md) selects three fresh Rea-assisted leaves.
+The global inventory and calibration specimens remain outside the active gate.
 
-**Two batch-3 direct-call assignments are prepared** under the explicit scope in
+**Three batch-4 leaf assignments are prepared** under the explicit scope in
 [preparation.json](../decomp/preparation.json). The compiler/helper preparation
 blockers have supporting closure evidence in [preparation.md](preparation.md).
 Missing/malformed gates, changed pins or out-of-scope task IDs fail closed.
@@ -62,7 +62,7 @@ structural checks. The subsequent ARMCC5 calibration and pinned comparison
 checks support the six-leaf run. No compiler/license setup remains for that
 scope; full-image linking and broader function support are later work.
 
-Start with [the batch-3 startup prompt](broader-workflow.md#next-run), which references
+Start with [the batch-4 handoff](batch-4.md#next-run), which references
 the [coordinator instructions](../decomp/prompts/coordinator.md).
 The user assigns a run before any firmware launch. The existing budget policy
 uses at most two Luna workers, with a 45%-remaining stop to preserve a 40% weekly
@@ -95,7 +95,7 @@ same absolute main checkout with --root and the same --state SQLite path.
 Claim an assignment; stdout is the complete worker prompt:
 
 ```sh
-python3 tools/decomp.py claim fn_0000be60 --worker worker-a
+python3 tools/decomp.py claim fn_00009fe2 --worker worker-a
 ```
 
 Launch through [swarm_worker.py](../tools/swarm_worker.py), as described in
@@ -106,7 +106,7 @@ are transactional: competing processes cannot both claim the same task.
 Reprint a prompt after a lost terminal session:
 
 ```sh
-python3 tools/decomp.py packet fn_0000be60
+python3 tools/decomp.py packet fn_00009fe2
 ```
 
 Workers produce result.json using [the template](../decomp/templates/result.json)
@@ -114,7 +114,7 @@ and notes under their task's allowed directory. The coordinator records a
 completed attempt, referencing the worker's actual result file:
 
 ```sh
-python3 tools/decomp.py submit fn_0000be60 --worker worker-a --report .worktrees/worker-a/decomp/results/fn_0000be60/result.json
+python3 tools/decomp.py submit fn_00009fe2 --worker worker-a --report .worktrees/worker-a/decomp/results/fn_00009fe2/result.json
 ```
 
 An independent reviewer uses [the review prompt](../decomp/prompts/reviewer.md).
@@ -122,7 +122,7 @@ After auditing the complete diff and independently rebuilding/reviewing the
 function draft, record review acceptance:
 
 ```sh
-python3 tools/decomp.py review fn_0000be60 --reviewer reviewer-1 --decision accept --note "Reviewed source and independently rebuilt; not match certification"
+python3 tools/decomp.py review fn_00009fe2 --reviewer reviewer-1 --decision accept --note "Reviewed source and independently rebuilt; not match certification"
 ```
 
 Acceptance records a human/coordinator decision. It is not an automated proof.
@@ -133,7 +133,7 @@ requeue/release requires a separately reviewed retry budget, not an automatic
 loop. Release an unfinished claim only after confirming its worker has stopped:
 
 ```sh
-python3 tools/decomp.py release fn_0000be60 --worker worker-a --note "Worker stopped; preserve notes before reassignment"
+python3 tools/decomp.py release fn_00009fe2 --worker worker-a --note "Worker stopped; preserve notes before reassignment"
 ```
 
 Claims never expire silently. The queue lives in ignored .decomp/queue.sqlite3;
@@ -150,8 +150,8 @@ blocked tasks, change frozen evidence, or launch workers. Preserve its caveats
 alongside original bytes when preparing a new packet; existing admission and
 compiler/review gates still apply.
 
-The inventory exporter does not create runnable tasks. The two batch-3 tasks
-are already prepared and the previous ten are reviewed; do not regenerate
+The inventory exporter does not create runnable tasks. The three batch-4 tasks
+are already prepared and batches 1–3 are terminal; do not regenerate or reclaim
 them on startup. For later work,
 review boundaries,
 instruction state and data ownership, then add task objects to the functions

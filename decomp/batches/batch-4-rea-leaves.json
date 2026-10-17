@@ -1,0 +1,31 @@
+{
+  "baseline_sha256": "e91502e8021e61c97a77fb12324e99ee4acb23bee55a5a67d18e26521ef856f7",
+  "call_contracts": [],
+  "id": "batch-4-rea-leaves",
+  "ledger": {
+    "path": "decomp/reconstruction.json",
+    "sha256": "433ed296b2f1d83ccde879a3640666f56b4a7845ef8218363c9f66d268a1e627"
+  },
+  "profile_locks": {
+    "armcc5-leaf-feedback-v1": {
+      "path": ".decomp/pilot-armcc5-v1/lock.json",
+      "sha256": "2c2e3416849c68cade707434e9589c8c2806721fef9f02bd7b68c5286abc0c4a"
+    }
+  },
+  "proposal": "decomp/proposals/batch-4-leaves.json",
+  "qualification": {
+    "armcc5-leaf-feedback-v1": {
+      "path": "decomp/results/batch4-preparation/qualification.json",
+      "sha256": "0cb740adb7ecce2c11179fb0b1f783de3416fe14eb27fbd71b9401f65881703d"
+    }
+  },
+  "review_note": "Three contiguous Thumb leaves, 94 bytes, independently reviewed original bytes/LLVM/flow/callers and retained Rea caveats. Internal conditional/unconditional branches only; no calls, literal pools, stack or absolute globals. Byte-store helper preserves caller-live r3. One duplicate byte body is explicit, not a fresh algorithm discovery. No candidate C generated; original types and hidden callers remain unknown. Exact feedback only.",
+  "reviewer": "coordinator-rea-intake-20261017",
+  "schema_version": 1,
+  "status": "prepared",
+  "tasks": {
+    "fn_00009fe2": "86370eb3bdbfe1a09017804eb7b72ec0f33402212f21ca24ab082922527c43f5",
+    "fn_00011e38": "2c7d4098d82b1e88f5f7af15d57a68807a6c5eba3ae02ed6d3db2fabedb9e2ea",
+    "fn_00015e0c": "781d040bfbb83d71b42d801e66238f1e39b43eeb630587f2c499bb4bc376c8f8"
+  }
+}
