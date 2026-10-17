@@ -46,6 +46,11 @@ supported ingestion path and SDK/device compatibility before implementation.
   baseline, verifier and integration. Workers propose shared changes in notes.
 - Ghidra pseudocode, names, comments, old notes and agent summaries are leads.
   Support conclusions with addresses, bytes, references and reproducible checks.
+- The optional [Rea adapter](docs/rea.md) is coordinator-only analysis of a
+  checked disposable project copy. Use retained summaries/facets, preserve every
+  limitation, and incorporate evidence only into newly reviewed packets. Do not
+  expose the bridge to workers, substitute its default raw import, or treat its
+  local observations as canonical Rea Evidence or reconstruction certification.
 - Never change expected bytes, comparison rules, compiler flags or function
   boundaries merely to improve a score. Do not disguise original code bytes,
   inline assembly, post-link patches, stubs or omitted behavior as recovered C.

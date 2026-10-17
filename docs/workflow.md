@@ -144,6 +144,12 @@ Identifiers are bookkeeping, not authentication.
 
 ## Creating function assignments later
 
+Optional [Rea-backed analysis](rea.md) supplies retained function dossiers from
+the corrected project for coordinator intake. It does not reopen completed or
+blocked tasks, change frozen evidence, or launch workers. Preserve its caveats
+alongside original bytes when preparing a new packet; existing admission and
+compiler/review gates still apply.
+
 The inventory exporter does not create runnable tasks. The two batch-3 tasks
 are already prepared and the previous ten are reviewed; do not regenerate
 them on startup. For later work,

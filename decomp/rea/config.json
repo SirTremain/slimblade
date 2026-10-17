@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "adapter": "saved-project-bridge-v1",
+  "archive": {
+    "path": ".decomp/rea/artifacts/rea-agents-6.5.0.tgz",
+    "url": "https://registry.npmjs.org/rea-agents/-/rea-agents-6.5.0.tgz",
+    "version": "6.5.0",
+    "retrieved_at": "2026-10-17",
+    "bytes": 5634033,
+    "sha256": "531717a06e92ca651aab52691190f916fac044272c01f875e22c5e293218e699",
+    "integrity": "sha512-C6BG7LyrAdR74mSjertM6PrxJkcNZ2bfQNOJornPo9erDEp2tyPRVYPnV5Yodr+1RqewCQla68WulXlVnveD+A=="
+  },
+  "bridge_directory": ".decomp/rea/bridge-6.5.0",
+  "baseline_sha256": "e91502e8021e61c97a77fb12324e99ee4acb23bee55a5a67d18e26521ef856f7",
+  "baseline_bytes": 128112,
+  "program": "stock-v4.49.bin",
+  "project_owner": "tremain",
+  "bubblewrap_version": "bubblewrap 0.13.1",
+  "files": {
+    "hosts": {
+      "path": "decomp/rea/hosts",
+      "sha256": "1ead55d8f6319f724fce8fab5317bbfd1619854492c26c1b47b220dd7d64d3d9"
+    },
+    "project": {
+      "path": "ghidra/projects/SlimBlade-v449-runtime-v4.gpr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "inventory": {
+      "path": ".decomp/inventory-runtime-v4.json",
+      "sha256": "468be36c1cc8af5f9201bc20f1207127ddd55a1b392645183bba4d43d3eb7fd2"
+    },
+    "runtime_xml": {
+      "path": ".decomp/runtime-fixup-v2/runtime.xml",
+      "sha256": "97c8390185d02e984db938331cb6eb29d1ffadd576375d3db8f5c7583d48c81c"
+    },
+    "checker": {
+      "path": "ghidra/CheckReaProject.java",
+      "sha256": "cf129288711085eda5ab30934aba609cb11482ab2d1d65e0ada64d570254ba6f"
+    }
+  },
+  "trees": {
+    "project": {
+      "path": "ghidra/projects/SlimBlade-v449-runtime-v4.rep",
+      "sha256": "db301f26d37c98d0d6acb5bb05eb1f9769dd993032d72e52ec14d928998c2784"
+    },
+    "ghidra": {
+      "path": ".decomp/tools/ghidra_12.1.4_PUBLIC",
+      "sha256": "dcc12a4f875b91eb15667620df63171d74c58f9bc38dec41ac7d4841f2e00625"
+    },
+    "java": {
+      "path": ".decomp/tools/jdk-21.0.12.1+1",
+      "sha256": "b46f6c54c6707a797d6608715ce4edbb6a2384732b10b2da67fba14a863788f2"
+    }
+  }
+}

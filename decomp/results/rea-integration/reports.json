@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "record_kind": "local-rea-integration-controls-not-match-certification",
+  "date": "2026-10-17",
+  "runner_sha256": "e6e812c84fc3b8c060d67b30f7743c82b7085920e8d130173f2b9770518f4ff5",
+  "controls": [
+    {
+      "control": "corrected-project-observations",
+      "path": ".decomp/rea/runs/control-test_positive_corrected_project-c99ced0a/report.json",
+      "sha256": "82ed5450112d176c6e93c7ec00f8a3d973cc66e3bd27102669253e9ff332fff3",
+      "expected_status": "observed"
+    },
+    {
+      "control": "wrong-baseline-expectation",
+      "path": ".decomp/rea/runs/control-test_wrong_baseline-08fd398b/report.json",
+      "sha256": "2e8855f5e7c49241d24fc573236243e7bb2910dc338dece1e4b11c0691a4d8aa",
+      "expected_status": "failed"
+    },
+    {
+      "control": "wrong-runtime-model-expectation",
+      "path": ".decomp/rea/runs/control-test_wrong_runtime_model-27e761da/report.json",
+      "sha256": "611055be24fa81e6788ccd9703c2cca176017cb2d1b0a336d3d6b85b20c69f65",
+      "expected_status": "failed"
+    }
+  ],
+  "tests_passed_with_local_integration_opt_in": 177,
+  "certified_match": false,
+  "matching_coverage": "unknown"
+}

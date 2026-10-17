@@ -44,6 +44,7 @@ command in the active toolset. Matching coverage remains unknown.
 - [Completed pilot and historical startup prompt](docs/pilot.md)
 - [Stock byte accounting and unresolved dependencies](docs/dependencies.md)
 - [Ghidra setup and evidence export](docs/ghidra.md)
+- [Rea integration: guarded analysis and retained function dossiers](docs/rea.md)
 - [Bootstrap results and reproduction](docs/bootstrap.md)
 - [Stock baseline and outstanding questions](docs/stock-baseline.md)
 - [Retired work and retained hardware notes](docs/legacy.md)
