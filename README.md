@@ -13,21 +13,22 @@ Preserve stock wireless functionality where feasible. Remove it only as the
 first optional feature if measured size limits require that tradeoff in the
 custom firmware—not during stock reconstruction. Current work remains offline.
 
-Current state: **the six-function agent pilot is complete: all six drafts reviewed**.
-[Run results and limits](decomp/results/pilot-run-20261016/notes.md) record nine
-Luna turns and six independent exact-range rebuilds (98 bytes total). This is
-not a full-image rebuild or certified matching coverage. **Four additional
-leaves are prepared for batch 2**, with a separate lock and unchanged compiler
-profile. Commit preparation and assign a new run before launching workers.
-[Start here](docs/expansion.md) for the current handoff and copyable prompt.
-The new direct-call verifier remains experimental and outside the worker scope.
+Current state: **both leaf batches are complete: ten drafts reviewed**.
+[Pilot results](decomp/results/pilot-run-20261016/notes.md) and
+[batch-2 results](decomp/results/batch2-run-20261017/notes.md) record independent
+exact-range rebuilds of 174 owned bytes, not certified matching coverage.
+The [broader workflow](docs/broader-workflow.md) now supports qualified direct
+Thumb calls, explicit dependency/byte accounting and pinned batch admission.
+**Batch 3 prepares fn_0000be60 and fn_000112b0**, with no precomputed C or worker
+launch. Review and commit preparation, then assign its bounded run.
+[Start here](docs/broader-workflow.md#next-run) for the handoff and copyable prompt.
 The runtime-helper analysis has been repaired and independently replayed;
 the corrected inventory has zero saved analysis errors, not blanket boundary
 approval. ARMCC 5.06u7 b960 runs headlessly on Linux through Wine and reproduces
-all six fixed stock calibration ranges. A new pinned comparison path replaces
+all ten reviewed leaf ranges and two separate call calibration specimens. The pinned comparison path replaces
 the exploratory Clang profile without changing the reference bytes or packets.
 
-The first firmware worker run has finished. The
+The first two firmware worker runs have finished. The
 [bounded runner](docs/swarm.md) now enforces worker isolation, task limits and
 a live weekly-usage stop. Small compiler probes are calibration evidence, not
 integrated recovered firmware or certified matches. The comparator still provides
@@ -38,7 +39,8 @@ command in the active toolset. Matching coverage remains unknown.
 - [Research: Ghidra and collaborative decompilation](docs/decompilation-research.md)
 - [Start and coordinate agents](docs/workflow.md)
 - [Preparation evidence and limits](docs/preparation.md)
-- [Batch 2 and copyable startup prompt](docs/expansion.md)
+- [Broader workflow, batch 3 and startup prompt](docs/broader-workflow.md)
+- [Completed batch-2 preparation record](docs/expansion.md)
 - [Completed pilot and historical startup prompt](docs/pilot.md)
 - [Stock byte accounting and unresolved dependencies](docs/dependencies.md)
 - [Ghidra setup and evidence export](docs/ghidra.md)

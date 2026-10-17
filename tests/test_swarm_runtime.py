@@ -150,6 +150,8 @@ class RuntimeTests(unittest.TestCase):
         (self.root / 'decomp').mkdir()
         file = self.root / 'decomp/swarm-policy.json'
         value = json.loads((ROOT / 'decomp/swarm-policy.json').read_text())
+        value['scope'] = 'four-reviewed-leaf-batch-2-only'
+        value.pop('batch', None)
         value['quota_window_resets_at'] = int(time.time()) + 1000
         file.write_text(json.dumps(value))
         for ident in sr.BATCHES['four-reviewed-leaf-batch-2-only']:

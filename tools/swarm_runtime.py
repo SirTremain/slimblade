@@ -19,7 +19,7 @@ import time
 MODELS = ('gpt-6-luna', 'gpt-6.1-sol')
 STOP_REMAINING = 45.0
 WORKER_READS = ('AGENTS.md', 'docs/project-plan.md', 'docs/workflow.md',
-                'docs/pilot.md', 'docs/expansion.md', 'decomp/templates/result.json')
+                'docs/pilot.md', 'docs/expansion.md', 'docs/broader-workflow.md', 'decomp/templates/result.json')
 BATCHES = {
     'six-reviewed-leaf-pilot-only': ('fn_00003b48', 'fn_00003bb4', 'fn_0000e4ee',
                                    'fn_0000e4fc', 'fn_0000e540', 'fn_0000e548'),
@@ -203,10 +203,20 @@ def guarded_quota(read_quota, state_dir, expected_reset):
 
 def policy(root, task_id=None):
     value = json.loads((root / 'decomp/swarm-policy.json').read_text())
-    require(isinstance(value.get('scope'), str) and value['scope'] in BATCHES,
+    require(isinstance(value.get('scope'), str) and value['scope'] in (*BATCHES, 'reviewed-batch-v1'),
             'unreviewed batch scope')
+    if value['scope'] == 'reviewed-batch-v1':
+        import reconstruction
+        batch = reconstruction.load_batch(root, value['batch'], local=True)
+        gate = json.loads((root / 'decomp/preparation.json').read_text())
+        require(gate.get('schema_version') == 1 and gate.get('ready') is True and gate.get('batch') == value['batch'] and
+                set(gate.get('allowed_function_ids', [])) == set(batch['tasks']),
+                'batch gate/policy mismatch')
+        ids = batch['tasks']
+    else:
+        ids = BATCHES[value['scope']]
     if task_id is not None:
-        require(task_id in BATCHES[value['scope']], 'task outside selected batch policy')
+        require(task_id in ids, 'task outside selected batch policy')
     expected = {'schema_version': 1,
                 'worker_models': list(MODELS), 'maximum_concurrent_workers': 2,
                 'stop_remaining_percent': 45, 'work_reserve_percent': 40,

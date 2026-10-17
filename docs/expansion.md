@@ -1,11 +1,10 @@
 # Batch 2: four more stock leaves
 
-Updated 2026-10-17 (Australia/Brisbane). Preparation is complete for **four additional leaf tasks**.
-No batch-2 worker has started and no new firmware C has been recovered during
-this preparation. Commit the preparation and explicitly assign the next run
-before launching. The completed six-task pilot stays reviewed and must not be
-reclaimed. The active preparation gate and runner policy now select only these
-four IDs; the comparator and all prior compiler/reference pins are unchanged.
+Historical batch-2 preparation record. [That run is complete](../decomp/results/batch2-run-20261017/notes.md):
+all four drafts are reviewed and independently rebuilt. Do not reclaim them or
+repeat the old prompt below. The prior six drafts also remain reviewed.
+Use [the broader workflow](broader-workflow.md) for current intake and batch 3.
+Existing leaf pins remain unchanged.
 
 | Task | Owned range, end exclusive | Main review concern |
 | --- | --- | --- |
@@ -44,7 +43,7 @@ document read-only in addition to the prior selected instructions. Its CLI
 permissions, authentication isolation and writable mounts are unchanged.
 The runtime and preparation gate both reject tasks outside this batch.
 
-## Next run
+## Historical run procedure — completed, do not rerun
 
 After committing preparation, check local pins, queue and runner versions, then
 obtain a fresh account reading. The existing dated window and 45%-remaining
@@ -59,11 +58,10 @@ python3 tools/decomp.py check --local
 python3 tools/decomp.py status
 ```
 
-Expected state: six reviewed functions and four queued/unclaimed functions.
+Historical pre-run state: six reviewed functions and four queued/unclaimed functions.
 No task should be claimed until immediately before its worker launch.
 
-For a new run, copy **only the contents of this block** into the coordinator
-session. Everything inside the block is the prompt:
+The following is the completed run's archived prompt, not a new assignment:
 
 ```text
 Create a Goal to coordinate batch 2 only: fn_00013f58, fn_00013f72, fn_000154d4 and fn_00018100. Read AGENTS.md, docs/expansion.md, docs/preparation.md, docs/swarm.md and decomp/prompts/coordinator.md. Check committed preparation, local pins, queue, runner versions and live quota before claims. Use at most two gpt-6-luna workers through tools/swarm_worker.py, not inherited-permission subagents; use gpt-6.1-sol only for a bounded escalation. Stop at 45% weekly usage remaining to preserve at least 40% for work. Fail closed on unavailable quota, honor PAUSED.json, and ask before resuming or starting a new quota window. Use tools/swarm_build.py for serial pinned compilation and independent unchanged-source rebuilds. Audit every full diff and independently review source, ABI, aliasing and register clobbers; exact-range bytes are not certification. Respect the 20-minute, eight-attempt and three-no-improvement limits. Continue until these four tasks are reviewed or evidence-backed blocked, or the reserve guard stops the run. Do not reclaim the completed six tasks, add tasks, enable the experimental call verifier, change pins, access hardware, commit or push.
@@ -72,6 +70,11 @@ Create a Goal to coordinate batch 2 only: fn_00013f58, fn_00013f72, fn_000154d4 
 The block ends above. The two call wrappers below are **not** part of that run.
 
 ## Direct-call extension: tested experiment, not worker-ready
+
+Historical status below. The [broader preparation](broader-workflow.md) subsequently
+qualified two stock call specimens and integrated trusted dispatch, callee
+contracts and guarded batch admission without changing this experiment's pins.
+The original two specimens are calibration, not worker assignments.
 
 [armcc_calls.py](../tools/armcc_calls.py) is a separately locked experiment,
 not a replacement for the leaf comparator. It allows explicitly declared

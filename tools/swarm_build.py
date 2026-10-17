@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Bounded coordinator build/rebuild around the unchanged pinned leaf verifier.
+"""Bounded coordinator build/rebuild around explicitly pinned comparators.
 
 Run outside the outer Codex sandbox with approval; the existing compiler
 sandbox remains enabled. No worker-supplied command is executed.
@@ -15,6 +15,15 @@ import swarm_runtime as sr
 from swarm_account import monitored_account
 from swarm_worker import assignment
 from swarm_runtime import attempt_budget
+import decomp
+
+
+def comparator_script(root, task):
+    """Trusted dispatch only; task data cannot supply a command or module path."""
+    scope = task.get('comparison_scope')
+    sr.require(scope in ('armcc5-leaf-feedback-v1', 'armcc5-direct-call-experiment-v1'),
+               'unsupported guarded build scope')
+    return root / 'tools' / (decomp.COMPARATORS[scope] + '.py')
 
 
 def build(args):
@@ -53,7 +62,7 @@ def build(args):
             history.append(entry)
             sr.write_json(ledger, history)
         try:
-            cmd = [sys.executable, str(root / 'tools/armcc_compare.py'), 'verify',
+            cmd = [sys.executable, str(comparator_script(root, task)), 'verify',
                 '--lock', str(root / task['comparison']['lock_path']),
                 '--lock-sha256', task['comparison']['lock_sha256'],
                 '--task', args.task, '--source', str(source), '--output', str(output)]

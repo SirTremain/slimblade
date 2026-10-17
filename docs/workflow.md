@@ -20,11 +20,12 @@ submitted assignments or treating old startup prompts as a new work order.
 
 The [first six-task run](../decomp/results/pilot-run-20261016/notes.md) is complete:
 all six drafts are reviewed and independently rebuilt. Do not reclaim them.
-The [second preparation pass](expansion.md) separately reviews four more leaves;
-only those four are eligible for the next user-assigned run. The global inventory
-and experimental call wrappers remain outside the active gate.
+The [second run](../decomp/results/batch2-run-20261017/notes.md) is also complete;
+do not reclaim its four tasks. [Broader preparation](broader-workflow.md) selects
+two fresh call-bearing tasks for batch 3. The global inventory and calibration
+specimens remain outside the active gate.
 
-**Four batch-2 leaf assignments are prepared** under the explicit scope in
+**Two batch-3 direct-call assignments are prepared** under the explicit scope in
 [preparation.json](../decomp/preparation.json). The compiler/helper preparation
 blockers have supporting closure evidence in [preparation.md](preparation.md).
 Missing/malformed gates, changed pins or out-of-scope task IDs fail closed.
@@ -61,7 +62,7 @@ structural checks. The subsequent ARMCC5 calibration and pinned comparison
 checks support the six-leaf run. No compiler/license setup remains for that
 scope; full-image linking and broader function support are later work.
 
-Start with [the copyable startup prompt](expansion.md#next-run), which references
+Start with [the batch-3 startup prompt](broader-workflow.md#next-run), which references
 the [coordinator instructions](../decomp/prompts/coordinator.md).
 The user assigns a run before any firmware launch. The existing budget policy
 uses at most two Luna workers, with a 45%-remaining stop to preserve a 40% weekly
@@ -73,8 +74,8 @@ The three original tasks covered inventory/import setup, compiler/ABI research
 and a synthetic verifier prototype. Their acceptance does not prove a matching
 toolchain or full inventory is available. Resolve the remaining
 [dependency/storage questions](dependencies.md) and extend/review the verifier
-before assigning call/data-bearing functions or claiming full-image verification.
-Batch 2 remains within the unchanged leaf comparator's supported scope.
+before assigning unsupported call/data shapes or claiming full-image verification.
+Batch 3 uses a separately pinned direct-call profile and explicit callee contracts.
 
 Create each worker's isolated worktree from a commit containing the current
 instructions and tools. The commands below are queue-operation examples, not
@@ -94,7 +95,7 @@ same absolute main checkout with --root and the same --state SQLite path.
 Claim an assignment; stdout is the complete worker prompt:
 
 ```sh
-python3 tools/decomp.py claim fn_00013f58 --worker worker-a
+python3 tools/decomp.py claim fn_0000be60 --worker worker-a
 ```
 
 Launch through [swarm_worker.py](../tools/swarm_worker.py), as described in
@@ -105,7 +106,7 @@ are transactional: competing processes cannot both claim the same task.
 Reprint a prompt after a lost terminal session:
 
 ```sh
-python3 tools/decomp.py packet fn_00013f58
+python3 tools/decomp.py packet fn_0000be60
 ```
 
 Workers produce result.json using [the template](../decomp/templates/result.json)
@@ -113,7 +114,7 @@ and notes under their task's allowed directory. The coordinator records a
 completed attempt, referencing the worker's actual result file:
 
 ```sh
-python3 tools/decomp.py submit fn_00013f58 --worker worker-a --report .worktrees/worker-a/decomp/results/fn_00013f58/result.json
+python3 tools/decomp.py submit fn_0000be60 --worker worker-a --report .worktrees/worker-a/decomp/results/fn_0000be60/result.json
 ```
 
 An independent reviewer uses [the review prompt](../decomp/prompts/reviewer.md).
@@ -121,16 +122,18 @@ After auditing the complete diff and independently rebuilding/reviewing the
 function draft, record review acceptance:
 
 ```sh
-python3 tools/decomp.py review fn_00013f58 --reviewer reviewer-1 --decision accept --note "Reviewed source and independently rebuilt; not match certification"
+python3 tools/decomp.py review fn_0000be60 --reviewer reviewer-1 --decision accept --note "Reviewed source and independently rebuilt; not match certification"
 ```
 
 Acceptance records a human/coordinator decision. It is not an automated proof.
 Function acceptance is labeled reviewed, never matched. A blocked report cannot
-be accepted. Return a submitted attempt for another try using decision requeue.
-Release an unfinished claim only after confirming its worker has stopped:
+be accepted. Use review decision `block` for an evidence-backed blocked report;
+it remains terminal and cannot be reclaimed to reset limits. A deliberate
+requeue/release requires a separately reviewed retry budget, not an automatic
+loop. Release an unfinished claim only after confirming its worker has stopped:
 
 ```sh
-python3 tools/decomp.py release fn_00013f58 --worker worker-a --note "Worker stopped; preserve notes before reassignment"
+python3 tools/decomp.py release fn_0000be60 --worker worker-a --note "Worker stopped; preserve notes before reassignment"
 ```
 
 Claims never expire silently. The queue lives in ignored .decomp/queue.sqlite3;
@@ -141,8 +144,8 @@ Identifiers are bookkeeping, not authentication.
 
 ## Creating function assignments later
 
-The inventory exporter does not create runnable tasks. The current four batch-2
-tasks are already prepared and the previous six are reviewed; do not regenerate
+The inventory exporter does not create runnable tasks. The two batch-3 tasks
+are already prepared and the previous ten are reviewed; do not regenerate
 them on startup. For later work,
 review boundaries,
 instruction state and data ownership, then add task objects to the functions
@@ -181,9 +184,9 @@ packets or independent project copies.
 ## Verification before scaling
 
 The current leaf comparator implements pinned real-range feedback for its
-restricted scope. The [direct-call experiment](expansion.md#direct-call-extension-tested-experiment-not-worker-ready)
-adds ARMCC call controls but is not enabled for workers; the older synthetic
-prototype also tests data. None is full stock proof. For broader work, require all of the following
+restricted scope. The [direct-call workflow](broader-workflow.md) adds qualified
+call controls and guarded batch dispatch; the older synthetic prototype also
+tests data. None is full stock proof. For broader work, require all of the following
 in the extended verifier and test independently:
 
 1. Hash-lock original input, tools, compiler version, flags, ABI, linker settings

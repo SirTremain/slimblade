@@ -177,16 +177,18 @@ baseline intact regardless of later feature choices.
 
 The [first six-task agent run](../decomp/results/pilot-run-20261016/notes.md) has
 completed: all six drafts are reviewed, with independent exact-range rebuilds.
-The [second preparation pass](expansion.md) now supplies four additional leaf
-assignments with reviewed boundaries and a separate lock using the unchanged
-ARMCC5 profile. The active gate selects only those four. Their run requires
-committed preparation, an explicit assignment and live quota checks. Two
-direct-call wrappers remain experiments, not runnable tasks.
+The [second run](../decomp/results/batch2-run-20261017/notes.md) is also complete:
+four more reviewed drafts using the unchanged ARMCC5 profile. The
+[broader workflow](broader-workflow.md) adds stock-qualified direct-call feedback,
+guarded dispatch, frozen batch admission and explicit byte/dependency accounting.
+Batch 3 prepares only fn_0000be60 and fn_000112b0; their C has not been generated.
+Two earlier wrapper specimens serve as calibration, not worker assignments.
+New runs require committed preparation, an explicit assignment and live quota.
 
 The [isolated runner](swarm.md) retains bounded turns and the 45%-remaining
 weekly stop chosen to preserve the user's 40% work reserve. No new quota window
-or model run is assigned by preparation. The first six sources were freshly
-rebuilt during expansion and still reproduce their complete owned ranges.
+or model run is assigned by preparation. All ten reviewed sources were freshly
+rebuilt during broader preparation and still reproduce their complete owned ranges.
 
 The runtime-helper call model and inline-data analysis were repaired on a
 separate project copy, checked against 10,368 original-instruction executions,
@@ -197,9 +199,9 @@ request is needed for the demonstrated leaf profile. The exact historical
 compiler remains unknown. Matching coverage is unknown.
 
 Full-image linking, independent certification and the
-[dependency/storage ledger](dependencies.md) remain milestone work. The two
-direct-call experiments need stock qualification and guarded runner integration
-before assignment; shared data and interworking need further verifier support.
+[dependency/storage ledger](dependencies.md) remain milestone work. Bounded
+direct-call qualification and guarded integration are implemented; shared data
+and interworking still need further verifier support.
 The full hardware gates still apply, and no current result establishes safe
 flashing. See [the workflow](workflow.md).
 

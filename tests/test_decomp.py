@@ -16,6 +16,7 @@ SCRIPT = REPO / "tools/decomp.py"
 sys.path.insert(0, str(REPO / 'tools'))
 import decomp as coordinator
 import armcc_compare
+import armcc_calls
 
 
 class CoordinationTests(unittest.TestCase):
@@ -141,6 +142,25 @@ class CoordinationTests(unittest.TestCase):
         self.cli("review", "bootstrap-toolchain", "--reviewer", "reviewer",
                  "--decision", "accept", "--note", "blocked", success=False)
 
+    def test_block_is_terminal_and_does_not_silently_reset_budget(self):
+        self.cli('claim', 'bootstrap-toolchain', '--worker', 'worker-a')
+        report = self.report(status='blocked')
+        self.cli('submit', 'bootstrap-toolchain', '--worker', 'worker-a', '--report', str(report))
+        self.cli('review', 'bootstrap-toolchain', '--reviewer', 'reviewer', '--decision', 'block',
+                 '--note', 'Synthetic evidence-backed blocker')
+        self.assertIn('blocked', self.cli('status').stdout)
+        self.cli('claim', 'bootstrap-toolchain', '--worker', 'worker-b', success=False)
+        self.cli('release', 'bootstrap-toolchain', '--worker', 'worker-a', '--note', 'reset', success=False)
+
+    def test_dependency_states_distinguish_bootstraps_and_reviewed_functions(self):
+        tasks = {'boot': {'kind': 'bootstrap'}, 'leaf': {'kind': 'function'}}
+        task = {'depends_on': ['boot', 'leaf']}
+        states = {'boot': {'state': 'accepted'}, 'leaf': {'state': 'reviewed'}}
+        self.assertTrue(coordinator.ready(task, states, tasks))
+        for state in ('accepted', 'submitted', 'blocked', 'claimed', 'queued', 'matched'):
+            states['leaf']['state'] = state
+            self.assertFalse(coordinator.ready(task, states, tasks))
+
     def test_invalid_paths_and_cycles(self):
         queue = self.root / "decomp/tasks.json"
         original = json.loads(queue.read_text())
@@ -248,6 +268,29 @@ class CoordinationTests(unittest.TestCase):
         self.cli("verify-input", str(image))
         image.write_bytes(b"Header-payload")
         self.cli("verify-input", str(image), success=False)
+
+    def test_call_lock_retains_parent_and_full_task_contract(self):
+        task, _ = self.function()
+        task.update(comparison_scope=armcc_calls.SCOPE, signature='unsigned int (void)',
+                    abi_status='hypothesis_requires_review',
+                    extern_functions={'fn_00002000': {'entry':'0x2000','mode':'thumb','signature':'void (void)'}},
+                    calls=[{'address':'0x1002','callee':'fn_00002000'}],
+                    comparison={'lock_path':'.decomp/calls.json','lock_sha256':'0'*64})
+        baseline = coordinator.read_json(self.root/'decomp/baseline.json')
+        definition = {k:v for k,v in task.items() if k != 'comparison'}
+        pinned = {**task, 'end_exclusive':task['ranges'][0]['end_exclusive'],
+                  'task_sha256':coordinator.digest(armcc_compare.sc.encode(definition))}
+        parent = {'baseline':{'sha256':baseline['sha256']},'baseline_bytes':baseline['bytes']}
+        extension = {'tasks':{task['id']:pinned}}
+        with mock.patch.object(armcc_calls,'load_lock',return_value=(extension,parent)):
+            self.assertIn('tools/armcc_calls.py',coordinator.prompt(self.root,baseline,task,'fixture'))
+            pinned['calls'] = []
+            with self.assertRaisesRegex(ValueError,'call contract'):
+                coordinator.evidence_check(self.root,baseline,task)
+            pinned['calls'] = task['calls']
+            parent['baseline']['sha256'] = 'f'*64
+            with self.assertRaisesRegex(ValueError,'baseline mismatch'):
+                coordinator.evidence_check(self.root,baseline,task)
 
 
 if __name__ == "__main__":

@@ -13,8 +13,9 @@ subsequent [runtime repair](../decomp/results/preparation/notes.md) resolves the
 last diagnostic and the silent inline-data misclassification. The repeatable
 analysis copy is `SlimBlade-v449-runtime-v4`; original copies remain untouched.
 Its structural checks pass, but global boundary approval is still outstanding.
-The [six-leaf tasks](pilot.md) now have calibrated ARMCC5 comparison support
-and await a user-assigned run/budget.
+Both leaf batches are complete. The [broader workflow](broader-workflow.md) now
+prepares two direct-call tasks with fresh read-only packets; its next run still
+requires committed preparation and an explicit assignment/budget.
 Full original import commands, memory-map
 evidence, artifact hashes and limitations are in the
 [inventory result](../decomp/results/bootstrap-inventory/notes.md).

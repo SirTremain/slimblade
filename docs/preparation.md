@@ -1,18 +1,18 @@
 # Preparation status
 
-Current scope: **the four batch-2 leaves are prepared**, after individual
-boundary/ABI-hypothesis review and creation of a separate leaf lock. The
-[batch-2 handoff](expansion.md) and [review report](../decomp/results/expansion-preparation/notes.md)
-record the checks. All six prior sources rebuilt exactly; their original pins
-and queue-reviewed state are unchanged. The new direct-call experiment is not
-enabled for workers. Commit the preparation and explicitly assign the next
-run before launching; no batch-2 worker has started.
+Current scope: **broader guarded call workflow and two batch-3 assignments**.
+Both leaf batches are complete: ten reviewed drafts, with unchanged pins and
+fresh ten-source regression checks. The [broader handoff](broader-workflow.md)
+and [preparation report](../decomp/results/broader-preparation/notes.md) describe
+stock-call qualification, explicit callee/dependency contracts and frozen batch
+admission. This is not full-image support. Preparation must be committed before
+worker worktrees are created, and a separate user-assigned run is required.
 
 The following sections are the **historical first-pilot preparation record**.
 That [six-task pilot completed](../decomp/results/pilot-run-20261016/notes.md)
 with all six drafts reviewed and independently rebuilt. Its old launch steps
-are not instructions to reclaim those tasks. Use [expansion.md](expansion.md)
-for the current four-task prompt and expected queue state.
+are not instructions to reclaim those tasks. [Expansion](expansion.md) likewise
+archives the completed batch-2 procedure; use the broader handoff for current work.
 
 At the first pilot's pre-launch review on 2026-10-16, preparation was complete
 for six functions. That run and its prerequisite commit have since happened;
@@ -75,8 +75,9 @@ build isolation is not a claim of network isolation or portable licensing.
   ARMCC5 profile is calibrated for these leaves, not proven for every function.
 - Function signatures are pinned hypotheses. Workers must review callers and
   report ambiguity; byte equality does not prove the original C declaration.
-- The comparator does not support calls, shared tails, external data, arbitrary
-  ARM code or full-image packaging. Extend and test it before assigning those.
+- The original leaf comparator does not support calls. The separately pinned
+  call comparator now has bounded qualification and guarded dispatch, but shared
+  tails, external data, arbitrary ARM code and full-image packaging remain unsupported.
 - Full stock reconstruction, independent source/ABI certification, whole-image
   verification and dependency/recovery accounting remain milestone work.
 - The replacement mouse's firmware/hardware revision is not established.

@@ -1,12 +1,12 @@
 # Coordinator startup prompt
 
 Run only the user's assigned session. Read AGENTS.md, docs/project-plan.md,
-docs/workflow.md, docs/preparation.md, docs/expansion.md and docs/swarm.md.
-Current offline scope is **batch 2 only**: fn_00013f58, fn_00013f72,
-fn_000154d4 and fn_00018100. The first six-task pilot is complete and all six
-drafts are reviewed. Do not release, reclaim or requeue those completed tasks.
-The direct-call experiment and its two wrapper candidates are not worker-ready
-and are excluded from the active gate and runner policy.
+docs/workflow.md, docs/preparation.md, docs/broader-workflow.md and docs/swarm.md.
+Current offline scope is **batch 3 only**: fn_0000be60 and fn_000112b0.
+Both earlier leaf batches are complete: ten reviewed drafts. Do not release,
+reclaim or requeue those tasks. The two earlier call-wrapper calibration
+specimens are not worker tasks. The selected batch, dependency ledger and
+qualification evidence are pinned in decomp/batches/batch-3-calls.json.
 
 The goal remains a complete exact stock reconstruction followed by separately
 gated hardware validation. OpenAxis and the mode-toggle button belong to a later
@@ -16,9 +16,9 @@ this run. Preparation alone is not an instruction to start a model job.
 
 Before claims, check the committed preparation, main queue, local packet/tool
 pins, runner versions, live weekly quota, policy window and PAUSED.json.
-The four new leaf definitions use a separate lock with the unchanged ARMCC5
-profile. The previous six definitions and compiler locks must remain unchanged.
-No new source has yet been recovered for batch 2; exact-range feedback is not
+The two new call definitions use a separate lock chained to the unchanged ARMCC5
+profile and frozen call verifier. All ten earlier definitions and compiler locks
+must remain unchanged. No C has been precomputed for batch 3; exact-range feedback is not
 proof of the original compiler, original declaration or whole-image equivalence.
 The global inventory remains unapproved. Do not reopen historical licence or
 runtime-helper investigations; their scoped preparation evidence is recorded.
@@ -51,9 +51,11 @@ ten-minute bound, not another source-editing turn. Respect existing ledgers.
 
 Audit every complete worktree diff, not just the C file. Independently review
 source provenance, ABI, widths, signedness, aliasing, memory access order,
-register clobbers and caller assumptions against addressed evidence. In batch 2,
-fn_00013f58 must preserve overlapping-copy behavior and fn_000154d4 must preserve
-r3 where original callers rely on it. No embedded code bytes, inline assembly,
+register clobbers, stack effects and caller assumptions against addressed evidence.
+fn_0000be60 must preserve argument forwarding and side-effecting calls despite a
+zero result; fn_000112b0 must preserve its constant argument and transitive
+memory effects. Read the pinned callee contracts; do not turn fixed external
+addresses into claims of recovered callees. No embedded code bytes, inline assembly,
 intrinsics, stubs, post-link patches or omitted behavior masquerading as C.
 Signature corrections require coordinator review, not silently changing a lock.
 
@@ -62,6 +64,8 @@ submission. Review source/ABI separately from byte equality. Once workers stop,
 submit and record acceptance as reviewed, never matched. Preserve evidence-backed
 blocked attempts and their limits. Integrate only allowed source/reports; no
 automatic commits, pushes, task additions or scope expansion. Continue only
-until the four assigned tasks are reviewed/blocked or the reserve guard stops.
+until the two assigned tasks are reviewed/blocked or the reserve guard stops.
+Use the terminal block review decision for an evidence-backed blocked report;
+do not release/reclaim to reset limits or automatically resume it.
 Report draft/reviewed status separately from certified matches and whole-image
 progress; matching coverage remains unknown.

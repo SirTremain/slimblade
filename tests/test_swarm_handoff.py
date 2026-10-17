@@ -21,18 +21,29 @@ import swarm_build as sb
 class HandoffTests(unittest.TestCase):
     def test_actual_batch_definitions_gate_and_policy_agree(self):
         _, tasks = decomp.load_tasks(ROOT)
-        proposal = json.loads((ROOT / 'decomp/proposals/batch-2-leaves.json').read_text())
+        proposal = json.loads((ROOT / 'decomp/proposals/batch-3-calls.json').read_text())
         gate = json.loads((ROOT / 'decomp/preparation.json').read_text())
         policy = json.loads((ROOT / 'decomp/swarm-policy.json').read_text())
-        expected = set(sr.BATCHES[policy['scope']])
+        batch = json.loads((ROOT / policy['batch']['path']).read_text())
+        expected = set(batch['tasks'])
         self.assertEqual(expected, {t['id'] for t in proposal['functions']})
+        self.assertTrue(gate['ready'])
         self.assertEqual(expected, set(gate['allowed_function_ids']))
+        self.assertEqual(gate['batch'], policy['batch'])
+        self.assertEqual(decomp.digest((ROOT / policy['batch']['path']).read_bytes()), policy['batch']['sha256'])
         for task in proposal['functions']:
             self.assertEqual(tasks[task['id']], task)
             self.assertTrue(task['evidence_path'].startswith('.decomp/evidence/'))
-            self.assertTrue(decomp.preparation_ready(ROOT, task))
+            self.assertEqual(batch['tasks'][task['id']], decomp.digest(decomp.canonical(task)))
+        # Public test has no dependency on ignored firmware/toolchain evidence.
+        with patch('reconstruction.load_batch', return_value=batch):
+            for task in proposal['functions']:
+                self.assertTrue(decomp.preparation_ready(ROOT, task))
+            for ident in sr.BATCHES['four-reviewed-leaf-batch-2-only']:
+                self.assertFalse(decomp.preparation_ready(ROOT, tasks[ident]))
         for ident in sr.BATCHES['six-reviewed-leaf-pilot-only']:
-            self.assertFalse(decomp.preparation_ready(ROOT, tasks[ident]))
+            with patch('reconstruction.load_batch', return_value=batch):
+                self.assertFalse(decomp.preparation_ready(ROOT, tasks[ident]))
             self.assertEqual(tasks[ident]['comparison']['lock_sha256'],
                              '2c2e3416849c68cade707434e9589c8c2806721fef9f02bd7b68c5286abc0c4a')
         self.assertNotIn('fn_00006464', tasks)
@@ -46,6 +57,7 @@ class HandoffTests(unittest.TestCase):
         self.work.mkdir(parents=True)
         self.task_id = 'fn_00001000'
         self.task = {'id': self.task_id, 'kind': 'function',
+            'comparison_scope': 'armcc5-leaf-feedback-v1',
             'allowed_paths': [f'decomp/src/{self.task_id}.c', f'decomp/results/{self.task_id}/'],
             'comparison': {'lock_path': 'fixture-lock.json', 'lock_sha256': 'fixture-only'}}
 
@@ -102,6 +114,7 @@ class HandoffTests(unittest.TestCase):
         called = []
         def compare(command, prompt, process_output, quota, **kwargs):
             called.append(command)
+            self.assertEqual(command[1], str(sb.comparator_script(self.root, self.task)))
             output = Path(command[-1])
             output.mkdir()
             sr.write_json(output / 'comparison.json',
@@ -124,6 +137,19 @@ class HandoffTests(unittest.TestCase):
             self.assertNotEqual(called[0][-1], called[1][-1])
             self.assertEqual(json.loads((folder / 'review-status.json').read_text())['result'],
                              'exact-range-bytes')
+
+    def test_guarded_dispatch_is_explicit_and_never_worker_supplied(self):
+        for scope, script in [('armcc5-leaf-feedback-v1', 'armcc_compare.py'),
+                              ('armcc5-direct-call-experiment-v1', 'armcc_calls.py')]:
+            self.assertEqual(sb.comparator_script(self.root, {'comparison_scope': scope}),
+                             self.root / 'tools' / script)
+        for scope in (None, '../../evil', 'stock-leaf-pilot-feedback-v1', 'armcc5-data-v1'):
+            with self.assertRaisesRegex(ValueError, 'unsupported'):
+                sb.comparator_script(self.root, {'comparison_scope': scope})
+
+    def test_call_backend_retains_serial_ledger_and_unchanged_rebuild_guards(self):
+        self.task['comparison_scope'] = 'armcc5-direct-call-experiment-v1'
+        self.test_build_ledger_and_independent_rebuild_reject_changed_source()
 
     def test_global_compiler_slot_rejects_overlapping_task_builds(self):
         with sr.compiler_slot(self.root):

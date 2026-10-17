@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "baseline_sha256": "e91502e8021e61c97a77fb12324e99ee4acb23bee55a5a67d18e26521ef856f7",
+  "tasks": [
+    {
+      "id": "fn_0000be60", "entry": "0x0000be60", "end_exclusive": "0x0000be6a",
+      "mode": "thumb", "signature": "unsigned int (unsigned char *, unsigned int, unsigned int)",
+      "abi_status": "hypothesis_requires_review",
+      "calls": [{"address": "0x0000be62", "callee": "fn_0000bd7c"}],
+      "extern_functions": {"fn_0000bd7c": {"entry": "0x0000bd7c", "mode": "thumb", "signature": "unsigned int (unsigned char *, unsigned int, unsigned int)"}},
+      "review": "0xbe60 saves r4/lr; 0xbe62 calls 0xbd7c with unchanged r0/r1/r2; 0xbe66 clears r0; 0xbe68 restores r4/pc. Caller 0x791c passes pointer r4, r1=0, r2=1 and does not consume the result. Callee 0xbd7e saves incoming r0 as a byte-addressed object; 0xbd92 tests full r1; 0xbd9a compares full r2 and 0xbd9c stores its byte. Callee exits at 0xbe54 with r0=0 and restores its saved frame; original pointer/scalar declarations remain hypotheses. It accesses object fields, a global via 0xbe5c, and further callees. Those transitive side effects are not reconstructed or assumed pure. Preserve argument forwarding, actual wrapper stack/clobbers and the side-effecting call; do not substitute the known zero return or provide callee stubs."
+    },
+    {
+      "id": "fn_000112b0", "entry": "0x000112b0", "end_exclusive": "0x000112ba",
+      "mode": "thumb", "signature": "void (void)", "abi_status": "hypothesis_requires_review",
+      "calls": [{"address": "0x000112b4", "callee": "fn_0000e58c"}],
+      "extern_functions": {"fn_0000e58c": {"entry": "0x0000e58c", "mode": "thumb", "signature": "void (unsigned int)"}},
+      "review": "0x112b0 saves r4/lr; 0x112b2 sets r0=0; 0x112b4 calls 0xe58c; 0x112b8 restores r4/pc. Caller 0x10a2a ignores the return and reloads r0 at 0x10a2e, supporting a void/no-argument hypothesis. Callee 0xe58e forwards r0 to 0x6008, then 0xe594 stores the returned low byte at RAM 0x400515 via 0xe598. At 0x600c..0x6012 RAM byte 0x40011d selects modes 2/3; for r0=0, 0x6024 clears RAM word 0x400124. 0x6008..0x6028 uses r0/r1/r2 and flags, preserves r3, has no further calls, and returns r0=0 for this input. Qualifiers and RAM semantics remain hypotheses. Do not omit the call or its transitive effects, invent globals in the wrapper, or replace the callee by a stub."
+    }
+  ]
+}

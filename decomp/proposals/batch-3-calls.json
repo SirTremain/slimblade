@@ -1,0 +1,100 @@
+{
+  "baseline_id": "slimblade-pro-stock-v4.49",
+  "functions": [
+    {
+      "abi_status": "hypothesis_requires_review",
+      "acceptance": "Independent full-diff/source/ABI/aliasing/clobber review and fresh unchanged-source exact-range rebuild; not certification.",
+      "allowed_paths": [
+        "decomp/src/fn_0000be60.c",
+        "decomp/results/fn_0000be60/"
+      ],
+      "boundary_review": "2026-10-17 coordinator: original bytes, Ghidra TMode/flow, unique ownership, LLVM and addressed caller/callee review; docs/broader-workflow.md.",
+      "calls": [
+        {
+          "address": "0x0000be62",
+          "callee": "fn_0000bd7c"
+        }
+      ],
+      "comparison": {
+        "lock_path": ".decomp/call-batch-3-v2/lock.json",
+        "lock_sha256": "f1c2f407acf8b6e620a121b99143f1aab1b5dde0c3fbbb8facfa7e7752d7cd03"
+      },
+      "comparison_scope": "armcc5-direct-call-experiment-v1",
+      "depends_on": [
+        "bootstrap-inventory",
+        "bootstrap-toolchain",
+        "bootstrap-verifier"
+      ],
+      "entry": "0x0000be60",
+      "evidence_path": ".decomp/evidence/call-batch-3-v2/fn_0000be60",
+      "evidence_sha256": "68eb1c3e6f8774a6f7666417cae1bc2a62830a6ed9c80a840eb8b69046b31c54",
+      "extern_functions": {
+        "fn_0000bd7c": {
+          "entry": "0x0000bd7c",
+          "mode": "thumb",
+          "signature": "unsigned int (unsigned char *, unsigned int, unsigned int)"
+        }
+      },
+      "id": "fn_0000be60",
+      "instructions": "Read the packet and docs/broader-workflow.md. Recover only the owned body with exact pinned extern declarations; preserve all argument, return, stack/register and side-effect behavior. Fixed callee bindings are not reconstructed dependencies. No asm, stubs, data globals, absolute casts or pin changes. Coordinator guarded builds only. Stop at 20 minutes/8 attempts/3 non-improving attempts.",
+      "kind": "function",
+      "mode": "thumb",
+      "ranges": [
+        {
+          "end_exclusive": "0x0000be6a",
+          "start": "0x0000be60"
+        }
+      ],
+      "signature": "unsigned int (unsigned char *, unsigned int, unsigned int)",
+      "title": "Batch 3 direct-call body 0x0000be60"
+    },
+    {
+      "abi_status": "hypothesis_requires_review",
+      "acceptance": "Independent full-diff/source/ABI/aliasing/clobber review and fresh unchanged-source exact-range rebuild; not certification.",
+      "allowed_paths": [
+        "decomp/src/fn_000112b0.c",
+        "decomp/results/fn_000112b0/"
+      ],
+      "boundary_review": "2026-10-17 coordinator: original bytes, Ghidra TMode/flow, unique ownership, LLVM and addressed caller/callee review; docs/broader-workflow.md.",
+      "calls": [
+        {
+          "address": "0x000112b4",
+          "callee": "fn_0000e58c"
+        }
+      ],
+      "comparison": {
+        "lock_path": ".decomp/call-batch-3-v2/lock.json",
+        "lock_sha256": "f1c2f407acf8b6e620a121b99143f1aab1b5dde0c3fbbb8facfa7e7752d7cd03"
+      },
+      "comparison_scope": "armcc5-direct-call-experiment-v1",
+      "depends_on": [
+        "bootstrap-inventory",
+        "bootstrap-toolchain",
+        "bootstrap-verifier"
+      ],
+      "entry": "0x000112b0",
+      "evidence_path": ".decomp/evidence/call-batch-3-v2/fn_000112b0",
+      "evidence_sha256": "d061fb62e20e83446302ce201b310aff58462d49026c0546ad84a668c6e4e2dd",
+      "extern_functions": {
+        "fn_0000e58c": {
+          "entry": "0x0000e58c",
+          "mode": "thumb",
+          "signature": "void (unsigned int)"
+        }
+      },
+      "id": "fn_000112b0",
+      "instructions": "Read the packet and docs/broader-workflow.md. Recover only the owned body with exact pinned extern declarations; preserve all argument, return, stack/register and side-effect behavior. Fixed callee bindings are not reconstructed dependencies. No asm, stubs, data globals, absolute casts or pin changes. Coordinator guarded builds only. Stop at 20 minutes/8 attempts/3 non-improving attempts.",
+      "kind": "function",
+      "mode": "thumb",
+      "ranges": [
+        {
+          "end_exclusive": "0x000112ba",
+          "start": "0x000112b0"
+        }
+      ],
+      "signature": "void (void)",
+      "title": "Batch 3 direct-call body 0x000112b0"
+    }
+  ],
+  "schema_version": 1
+}

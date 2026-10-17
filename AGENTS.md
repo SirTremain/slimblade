@@ -29,10 +29,12 @@ supported ingestion path and SDK/device compatibility before implementation.
 
 - Read the project plan, [the workflow](docs/workflow.md) and your assigned task
   packet. Historical notes are evidence, not current operating instructions.
-- The [preparation gate](decomp/preparation.json) covers only the four
-  [batch-2 leaves](docs/expansion.md); the first six drafts are already reviewed.
-  Both batches use the unchanged ARMCC5 leaf profile. Check [preparation.md](docs/preparation.md)
-  and local pins before a user-budgeted run. Expansion needs a separate review.
+- Both leaf batches are complete: ten reviewed drafts. The
+  [preparation gate](decomp/preparation.json) selects only batch 3's
+  fn_0000be60 and fn_000112b0. Follow [broader workflow intake](docs/broader-workflow.md)
+  for dependency contracts, immutable packet/profile pins and batch preflight.
+  Check [preparation.md](docs/preparation.md) and local pins before a separately
+  user-budgeted run. Call feedback is bounded, not arbitrary-function support.
   The coordinator alone runs the licensed compiler; never expose its private
   Wine prefix or license configuration to workers.
 - Use the [bounded runner](docs/swarm.md) for firmware workers, not inherited-

@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "id": "REPLACE_WITH_REVIEWED_BATCH_ID",
+  "status": "draft",
+  "baseline_sha256": "REPLACE_WITH_BASELINE_SHA256",
+  "reviewer": "REPLACE_WITH_COORDINATOR",
+  "review_note": "Record supported shape, addressed source/ABI review and limits.",
+  "ledger": {"path": "decomp/reconstruction.json", "sha256": "REPLACE_WITH_SHA256"},
+  "tasks": {"fn_REPLACE": "REPLACE_WITH_COMPACT_CANONICAL_FULL_TASK_SHA256"},
+  "qualification": {
+    "armcc5-direct-call-experiment-v1": {
+      "path": ".decomp/broader-controls-v1/report.json",
+      "sha256": "ef238a9db8a72a6c4ba99e69c65be233e073341b09335db7b75d9d1b9994ee36"
+    }
+  },
+  "call_contracts": [
+    {"caller": "fn_REPLACE", "callee": "fn_REPLACE", "dependency": "REPLACE_LEDGER_ID",
+     "treatment": "fixed_address_not_reconstructed",
+     "arguments": "REPLACE_WITH_ADDRESSED_EVIDENCE",
+     "return_value": "REPLACE_WITH_ADDRESSED_EVIDENCE",
+     "register_clobbers": "REPLACE_WITH_ACTUAL_REGISTER_EFFECTS_AND_CALLER_LIVENESS",
+     "memory_effects": "REPLACE_WITH_READS_WRITES_WIDTHS_ALIASES_AND_UNKNOWNS",
+     "evidence": "REPLACE_WITH_IMMUTABLE_PACKET_REFERENCES"}
+  ],
+  "profile_locks": {
+    "armcc5-direct-call-experiment-v1": {"path": ".decomp/direct-calls-v1/lock.json", "sha256": "973b9272d7345924e44b5084437b05557e18731afbcea257fee37b593ac1c3bc"}
+  }
+}

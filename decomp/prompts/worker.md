@@ -18,14 +18,17 @@ Use the pinned compile/diff command only if the coordinator supplies a working
 verifier. If it is absent, produce an evidence-backed draft or a blocker, and
 explicitly report that no match was verified. Never alter the baseline, shared
 types, toolchain, build flags, comparison rules, reference assembly or bytes.
-The current six-leaf pilot includes a concrete command in the claim output;
-read docs/pilot.md. For ARMCC builds, send the command/source path to the
+The claim output includes the pinned comparator contract; read
+docs/broader-workflow.md for scope and callee contracts. For ARMCC builds, send the command/source path to the
 coordinator and await the redacted outputs. Do not access its private Wine
 prefix or license files. The calibrated profile reports exact-range bytes or a mismatch, never certified
 matching coverage. Original compiler provenance and source declaration details
 remain hypotheses. Do not use inline assembly/intrinsics or expand your body
-to absorb padding. No calls, absolute addresses or globals are supported by
-this pilot comparator. Request a coordinator decision if evidence needs them.
+to absorb padding. The leaf comparator forbids calls; the separate call profile
+permits only explicitly pinned ordinary direct Thumb calls and declarations.
+Neither supports absolute data addresses/globals or arbitrary interworking.
+Fixed external callees are dependencies, not reconstructed code. Request a
+coordinator decision if evidence needs unsupported behavior.
 
 Default function budget: 20 minutes, 8 compile/diff attempts maximum; stop after
 3 attempts with no improvement. A smaller assigned budget takes precedence.

@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "id": "batch-3-calls",
+  "status": "prepared",
+  "baseline_sha256": "e91502e8021e61c97a77fb12324e99ee4acb23bee55a5a67d18e26521ef856f7",
+  "reviewer": "coordinator-broader-20261017",
+  "review_note": "Two contiguous Thumb direct-call bodies, individually reviewed against stock bytes, Ghidra read-only instruction export, independent LLVM decode, entry-only references and caller/callee contexts. Signatures are hypotheses. No new source precomputed. Fixed callees and globals remain unreconstructed. Only these two tasks are selected; no whole-image or hardware verdict.",
+  "ledger": {"path": "decomp/reconstruction.json", "sha256": "433ed296b2f1d83ccde879a3640666f56b4a7845ef8218363c9f66d268a1e627"},
+  "tasks": {
+    "fn_0000be60": "b258943bc1841cd10bca2b6fd81cb690a4c8e5993abb3b5a5ecd98edc289eb1a",
+    "fn_000112b0": "0c501ab88da7d967ef3af83fe58b9c6285d1773ee73d330c6ba6096ee5c9d4fd"
+  },
+  "qualification": {
+    "armcc5-direct-call-experiment-v1": {
+      "path": ".decomp/broader-controls-v1/report.json",
+      "sha256": "ef238a9db8a72a6c4ba99e69c65be233e073341b09335db7b75d9d1b9994ee36"
+    }
+  },
+  "profile_locks": {
+    "armcc5-direct-call-experiment-v1": {
+      "path": ".decomp/direct-calls-v1/lock.json",
+      "sha256": "973b9272d7345924e44b5084437b05557e18731afbcea257fee37b593ac1c3bc"
+    }
+  },
+  "call_contracts": [
+    {
+      "caller": "fn_0000be60", "callee": "fn_0000bd7c", "dependency": "callee-0000bd7c",
+      "treatment": "fixed_address_not_reconstructed",
+      "arguments": "Forward incoming r0/r1/r2 unchanged. Caller 0x791c supplies r4 pointer, scalar zero and scalar one. Callee 0xbd7e retains r0 as byte-addressed object; 0xbd92 compares full r1 and 0xbd9a compares full r2 before a byte store. Unsigned-char pointer and two unsigned-int parameters are compatible hypotheses, not historical declarations; pointer alignment/qualifiers and unseen callers remain unknown.",
+      "return_value": "Callee 0xbe54 clears r0; wrapper independently clears r0 at 0xbe66. Caller 0x791c ignores it. Unsigned-int return is a pinned hypothesis; do not remove the side-effecting call merely because output is zero.",
+      "register_clobbers": "Wrapper saves/restores r4 and its return address and does not otherwise write incoming argument registers before BL. Callee saves/restores r4-r7 and frame, uses r0-r3 and flags and makes further calls. Transitive scratch effects are unresolved; do not invent a narrower clobber contract. Original wrapper bytes must preserve pass-through effects; verify generated register/stack behavior and caller liveness separately from generic AAPCS assumptions.",
+      "memory_effects": "Callee reads/writes fields of incoming object (for example 0xbd84, 0xbd88, 0xbd9c, 0xbe46, 0xbe4e), reads global byte via 0xbe5c and calls other routines. Full transitive effects, object size/type, aliases and MMIO classification remain unresolved and are not reconstructed by the wrapper. No purity/noalias annotations or callee stubs.",
+      "evidence": ".decomp/evidence/call-batch-3-v2/fn_0000be60/: immutable instructions.json, listing.txt, llvm.txt, context-listing.txt, callee-instructions.json and references.json. Full packet is pinned in task definition. Original body owns exactly 0xbe60..0xbe6a; adjacent padding/literals excluded."
+    },
+    {
+      "caller": "fn_000112b0", "callee": "fn_0000e58c", "dependency": "callee-0000e58c",
+      "treatment": "fixed_address_not_reconstructed",
+      "arguments": "Wrapper sets r0 to zero at 0x112b2. Callee 0xe58e forwards r0 to 0x6008, whose 0x6014 compares it against zero. No incoming wrapper parameter is used. void(void) wrapper and void(unsigned int) callee declarations are hypotheses consistent with the known caller.",
+      "return_value": "Caller 0x10a2a reloads r0 at 0x10a2e and ignores the wrapper result. Callee returns the r0 from 0x6008; for zero input it is zero. Void source does not promise arbitrary output bits; actual pinned output must retain original pass-through register behavior.",
+      "register_clobbers": "Wrapper and 0xe58c save/restore r4 and return address. Leaf 0x6008..0x6028 changes only r0/r1/r2 and condition flags, preserves r3, and has no calls. 0xe592 changes r1 and STRB leaves r0 unchanged. Verify generated wrapper stack and registers; do not infer safety solely from AAPCS scratch-register allowances.",
+      "memory_effects": "0x6008 reads mode byte at RAM 0x40011d; on mode 2/3 and zero input, 0x6024 clears word 0x400124. 0xe594 stores returned low byte to RAM 0x400515. These globals, literals and qualifiers remain outside wrapper ownership, explicitly unreconstructed. No globals or stubs may be inserted into the candidate.",
+      "evidence": ".decomp/evidence/call-batch-3-v2/fn_000112b0/: immutable instruction and caller/callee packet, including transitive 0x6008 original bytes. Packet pinned in task definition. Exact owned range 0x112b0..0x112ba; no padding/literals owned."
+    }
+  ]
+}

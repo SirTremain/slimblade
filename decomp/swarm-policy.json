@@ -1,6 +1,7 @@
 {
   "schema_version": 1,
-  "scope": "four-reviewed-leaf-batch-2-only",
+  "scope": "reviewed-batch-v1",
+  "batch": {"path": "decomp/batches/batch-3-calls.json", "sha256": "9dc0b60e5914eb1b56e26a522587bb485198a879e8d9b917ff43a0c75f40b4de"},
   "worker_models": ["gpt-6-luna", "gpt-6.1-sol"],
   "maximum_concurrent_workers": 2,
   "stop_remaining_percent": 45,

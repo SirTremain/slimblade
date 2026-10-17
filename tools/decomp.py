@@ -15,7 +15,8 @@ ROOT = Path(__file__).resolve().parents[1]
 IDENTIFIER = re.compile(r"[a-zA-Z0-9][a-zA-Z0-9_-]{0,79}\Z")
 SHA256 = re.compile(r"[0-9a-f]{64}\Z")
 COMPARATORS = {"stock-leaf-pilot-feedback-v1": "stock_compare",
-               "armcc5-leaf-feedback-v1": "armcc_compare"}
+               "armcc5-leaf-feedback-v1": "armcc_compare",
+               "armcc5-direct-call-experiment-v1": "armcc_calls"}
 
 
 def digest(data):
@@ -143,13 +144,18 @@ def evidence_check(root, baseline, task):
         comparator = __import__(COMPARATORS[task["comparison_scope"]])
         comparison = task["comparison"]
         lock = comparator.load_lock(root / comparison["lock_path"], comparison["lock_sha256"])
+        # Call locks extend an immutable leaf parent. Never treat a fixed
+        # external address as a reconstructed callee or flatten away its pins.
+        if task["comparison_scope"] == "armcc5-direct-call-experiment-v1":
+            extension, parent = lock
+            lock = {**parent, "tasks": extension["tasks"]}
         definition = {k: v for k, v in task.items() if k != "comparison"}
         require(lock["tasks"][task["id"]]["task_sha256"] ==
                 digest((json.dumps(definition, sort_keys=True, indent=2) + "\n").encode()),
                 "task differs from comparison lock")
         require(lock["baseline"]["sha256"] == baseline["sha256"] and
                 lock["baseline_bytes"] == baseline["bytes"], "comparison baseline mismatch")
-        if task["comparison_scope"] == "armcc5-leaf-feedback-v1":
+        if task["comparison_scope"] in ("armcc5-leaf-feedback-v1", "armcc5-direct-call-experiment-v1"):
             pinned = lock["tasks"][task["id"]]
             require(len(task["ranges"]) == 1 and
                     int(task["ranges"][0]["start"], 16) == int(pinned["entry"], 16) and
@@ -157,6 +163,9 @@ def evidence_check(root, baseline, task):
                     "comparison range mismatch")
             require(all(task[k] == pinned[k] for k in ("entry", "mode", "signature", "abi_status")),
                     "comparison ABI/entry mismatch")
+            if task["comparison_scope"] == "armcc5-direct-call-experiment-v1":
+                require(all(task[k] == pinned[k] for k in ("extern_functions", "calls")),
+                        "comparison call contract mismatch")
 
 
 def connect(state):
@@ -178,8 +187,12 @@ def rows(db, tasks):
     return result
 
 
-def ready(task, states):
-    return all(states.get(dep, {}).get("state") == "accepted" for dep in task["depends_on"])
+def ready(task, states, tasks):
+    # Scheduling dependencies are not machine-code dependencies or certification.
+    # Bootstrap review uses accepted; function drafts use reviewed, never matched.
+    return all(states.get(dep, {}).get("state") ==
+               ("accepted" if tasks[dep]["kind"] == "bootstrap" else "reviewed")
+               for dep in task["depends_on"])
 
 
 def preparation_ready(root, task=None):
@@ -193,6 +206,10 @@ def preparation_ready(root, task=None):
         ids = gate.get("allowed_function_ids")
         require(isinstance(ids, list) and all(isinstance(i, str) and IDENTIFIER.fullmatch(i) for i in ids)
                 and len(set(ids)) == len(ids), "ready gate requires explicit function scope")
+        if "batch" in gate:
+            import reconstruction
+            batch = reconstruction.load_batch(root, gate['batch'], local=True)
+            require(set(ids) == set(batch['tasks']), "batch gate membership mismatch")
         if task is not None:
             return task["id"] in ids
     return gate["ready"]
@@ -267,7 +284,7 @@ def execute(args):
                 if args.command == "claim":
                     require(IDENTIFIER.fullmatch(args.worker), "invalid worker ID")
                     require(row is None or row["state"] == "queued", "task already owned")
-                    require(ready(task, states), "dependencies not accepted")
+                    require(ready(task, states, tasks), "scheduling dependencies not reviewed/accepted")
                     require(task["kind"] != "function" or preparation_ready(root, task),
                             "preparation blockers unresolved; function claims disabled")
                     packet = prompt(root, baseline, task, args.worker)
@@ -302,12 +319,17 @@ def execute(args):
                     require(IDENTIFIER.fullmatch(args.reviewer) and args.reviewer != row["worker"],
                             "independent reviewer ID required")
                     report = Path(row["report"])
-                    if args.decision == "accept":
+                    if args.decision in ("accept", "block"):
                         require(digest(report.read_bytes()) == row["report_hash"],
                                 "submitted report changed; requeue before resubmitting")
                         evidence_check(root, baseline, task)
+                    if args.decision == "accept":
                         require(read_json(report)["status"] == "draft", "blocked result cannot pass")
                         next_state = "accepted" if task["kind"] == "bootstrap" else "reviewed"
+                    elif args.decision == "block":
+                        require(read_json(report)["status"] == "blocked", "block requires evidence-backed blocked report")
+                        require(args.note.strip(), "block requires reviewer explanation")
+                        next_state = "blocked"
                     else:
                         next_state = "queued"
                     db.execute("UPDATE tasks SET state=?, updated=?, reviewer=?, note=? WHERE id=?",
@@ -324,7 +346,7 @@ def execute(args):
         for ident, task in tasks.items():
             row = states.get(ident, {})
             status = row.get("state", "queued")
-            if status == "queued" and not ready(task, states):
+            if status == "queued" and not ready(task, states, tasks):
                 status = "waiting"
             if status == "queued" and task["kind"] == "function" and not preparation_ready(root, task):
                 status = "blocked"
@@ -352,7 +374,7 @@ def main():
             child.add_argument("--report", type=Path, required=True)
         if name == "review":
             child.add_argument("--reviewer", required=True)
-            child.add_argument("--decision", choices=("accept", "requeue"), required=True)
+            child.add_argument("--decision", choices=("accept", "requeue", "block"), required=True)
         if name in ("release", "review"):
             child.add_argument("--note", required=True)
     try:
